@@ -32,9 +32,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
   const perfil = atual?.perfil;
   const aberto = card != null;
   const validacao = card ? podeAvancar(card) : { ok: false as const };
-  const podeAgir = card ? podeExecutarEtapa(perfil, card.etapa) : false;
+  const podeAgir = card ? podeExecutarEtapa(perfil, card.etapa, card.modalidade) : false;
   const podeEditar = card ? podeEditarCard(perfil, card.etapa) : false;
-  const dono = card ? donoDaEtapa(card.etapa) : undefined;
+  const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
 
   return (
     <>
@@ -217,6 +217,16 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
           Salvar conferência
         </button>
         {card.almoxarifado?.verificado && <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">✓ Conferência registrada</p>}
+      </Gate>
+    );
+  }
+
+  if (etapa === "SUPRIMENTOS" && card.modalidade !== "VENDA") {
+    return (
+      <Gate titulo="Suprimentos · aquisição (Locação)">
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          Demanda de <strong>Locação</strong> recebida da Coordenação. Adquira 100% dos itens e avance para o Monitoramento.
+        </p>
       </Gate>
     );
   }

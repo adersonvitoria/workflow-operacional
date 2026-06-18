@@ -60,7 +60,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (tocaEdit && !podeEditarCard(s.perfil, existente.etapa)) {
     return NextResponse.json({ erro: "Seu perfil não pode editar os dados deste card nesta etapa." }, { status: 403 });
   }
-  if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa)) {
+  if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa, existente.modalidade ?? undefined)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
   }
 

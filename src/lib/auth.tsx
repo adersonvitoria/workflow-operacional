@@ -31,6 +31,7 @@ const EMAIL_PADRAO: Record<Perfil, string> = {
   COORDENADOR: "coordenacao@empresa.com",
   COMERCIAL: "comercial@empresa.com",
   ALMOXARIFADO: "almoxarifado@empresa.com",
+  SUPRIMENTOS: "suprimentos@empresa.com",
   SUPERVISOR_MONITORAMENTO: "monitoramento@empresa.com",
   SUPERVISOR_TECNICO: "tecnica@empresa.com",
   ADMINISTRATIVO: "admin@empresa.com",

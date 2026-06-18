@@ -9,6 +9,7 @@ const USUARIOS = [
   { nome: "Carla Coordenação", email: "coordenacao@empresa.com", perfil: "COORDENADOR" },
   { nome: "Daniela Zimiani", email: "comercial@empresa.com", perfil: "COMERCIAL" },
   { nome: "Murilo Souza", email: "almoxarifado@empresa.com", perfil: "ALMOXARIFADO" },
+  { nome: "Paulo Suprimentos", email: "suprimentos@empresa.com", perfil: "SUPRIMENTOS" },
   { nome: "Felipe Saldanha", email: "monitoramento@empresa.com", perfil: "SUPERVISOR_MONITORAMENTO" },
   { nome: "Jessi Diemes", email: "tecnica@empresa.com", perfil: "SUPERVISOR_TECNICO" },
   { nome: "Samya Cruz", email: "admin@empresa.com", perfil: "ADMINISTRATIVO" },

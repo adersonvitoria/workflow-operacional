@@ -6,7 +6,7 @@
  * perfil administrador (acesso total + gestão de usuários).
  */
 
-import type { EtapaImplantacao } from "@/types";
+import type { EtapaImplantacao, Modalidade } from "@/types";
 
 export type Perfil =
   | "COORDENADOR"
@@ -14,7 +14,8 @@ export type Perfil =
   | "SUPERVISOR_MONITORAMENTO"
   | "COMERCIAL"
   | "ADMINISTRATIVO"
-  | "ALMOXARIFADO";
+  | "ALMOXARIFADO"
+  | "SUPRIMENTOS";
 
 export interface PerfilMeta {
   rotulo: string;
@@ -56,15 +57,27 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
   },
   ALMOXARIFADO: {
     rotulo: "Almoxarifado",
-    descricao: "Confere o estoque físico (Venda) e aponta a lista do que falta.",
+    descricao: "Nas demandas de Venda, confere o estoque físico e aponta a lista do que falta.",
     etapas: ["SUPRIMENTOS"],
     acoes: [
       "Conferir estoque físico (modalidade Venda)",
       'Preencher a "lista do que falta"',
-      "Liberar para Compras",
+      "Liberar para o Monitoramento",
     ],
     classe: "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-500/30",
     cor: "bg-purple-500",
+  },
+  SUPRIMENTOS: {
+    rotulo: "Suprimentos",
+    descricao: "Recebe as demandas de Locação vindas da Coordenação e adquire 100% dos itens.",
+    etapas: ["SUPRIMENTOS"],
+    acoes: [
+      "Receber demandas de Locação aprovadas pela Coordenação",
+      "Adquirir 100% dos itens (Locação)",
+      "Liberar para o Monitoramento",
+    ],
+    classe: "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30",
+    cor: "bg-indigo-500",
   },
   SUPERVISOR_MONITORAMENTO: {
     rotulo: "Supervisor de Monitoramento",
@@ -108,16 +121,21 @@ export const PERFIS: Perfil[] = [
   "COORDENADOR",
   "COMERCIAL",
   "ALMOXARIFADO",
+  "SUPRIMENTOS",
   "SUPERVISOR_MONITORAMENTO",
   "SUPERVISOR_TECNICO",
   "ADMINISTRATIVO",
 ];
 
-/** Qual perfil é dono (executor) de cada etapa do gate. */
+/**
+ * Qual perfil é dono (executor) de cada etapa do gate.
+ * SUPRIMENTOS é resolvido à parte por `donoDaEtapa` (depende da modalidade):
+ * Venda → Almoxarifado (conferência); Locação → Suprimentos (aquisição).
+ */
 const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   COMERCIAL: "COMERCIAL",
   COORDENACAO_APROVACAO: "COORDENADOR",
-  SUPRIMENTOS: "ALMOXARIFADO",
+  SUPRIMENTOS: "SUPRIMENTOS",
   MONITORAMENTO: "SUPERVISOR_MONITORAMENTO",
   TECNICA: "SUPERVISOR_TECNICO",
   COORDENACAO_AUDITORIA: "COORDENADOR",
@@ -129,13 +147,20 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
  * O Coordenador supervisiona e pode agir em qualquer etapa; os demais perfis
  * só executam o gate da etapa que lhes pertence.
  */
-export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string): boolean {
+export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, modalidade?: Modalidade): boolean {
   if (!perfil) return false;
   if (perfil === "COORDENADOR") return true;
-  return DONO_DA_ETAPA[etapa as EtapaImplantacao] === perfil;
+  return donoDaEtapa(etapa, modalidade) === perfil;
 }
 
-export function donoDaEtapa(etapa: string): Perfil | undefined {
+/**
+ * Dono da etapa. Em SUPRIMENTOS a posse depende da modalidade:
+ * Venda → Almoxarifado (confere estoque); Locação → Suprimentos (compra 100%).
+ */
+export function donoDaEtapa(etapa: string, modalidade?: Modalidade): Perfil | undefined {
+  if (etapa === "SUPRIMENTOS") {
+    return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
+  }
   return DONO_DA_ETAPA[etapa as EtapaImplantacao];
 }
 

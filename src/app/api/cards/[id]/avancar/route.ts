@@ -26,7 +26,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const card = rowToCard(row);
 
   // RBAC: só o setor dono da etapa (ou ADMINISTRATIVO) pode avançar.
-  if (!podeExecutarEtapa(s.perfil, card.etapa)) {
+  if (!podeExecutarEtapa(s.perfil, card.etapa, card.modalidade)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar esta etapa." }, { status: 403 });
   }
   // Gate: regra de negócio validada no servidor.
