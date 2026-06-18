@@ -40,6 +40,12 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Deep-link "?card=ID" (vindo de Minhas pendências) abre o slide-over.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("card");
+    if (id) setAbertoId(id);
+  }, []);
+
   const aberto = abertoId ? obter(abertoId) ?? null : null;
 
   async function handleMover(id: string, destino: EtapaId) {

@@ -1,12 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { COLUNAS_IMPLANTACAO, formatarBRL, MODALIDADE_META } from "@/lib/flows";
 import { useCards } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { PERFIL_META, podeExecutarEtapa } from "@/lib/perfis";
+import { rotuloEtapa } from "@/lib/routing";
 import type { Card } from "@/types";
 
 export function Dashboard() {
   const { porFluxo } = useCards();
+  const { atual } = useAuth();
   const imp = porFluxo("IMPLANTACAO");
+
+  // Pendências do perfil logado: cards (não concluídos) cuja etapa é executável por ele.
+  const pendencias = imp.filter(
+    (c) => c.status !== "CONCLUIDO" && podeExecutarEtapa(atual?.perfil, c.etapa, c.modalidade),
+  );
 
   const ativos = imp.filter((c) => c.status !== "CONCLUIDO");
   const concluidos = imp.filter((c) => c.etapa === "MEDICAO");
@@ -33,6 +43,34 @@ export function Dashboard() {
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto bg-surface-app p-6 scrollbar-hide dark:bg-slate-950">
+        {/* Meu painel — pendências do perfil logado */}
+        <Painel titulo={`Minhas pendências${atual ? " · " + PERFIL_META[atual.perfil].rotulo : ""} (${pendencias.length})`}>
+          {pendencias.length === 0 ? (
+            <p className="text-sm text-slate-400">Nada aguardando sua ação no momento. 🎉</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {pendencias.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{c.cliente.nome}</p>
+                    <p className="text-xs text-slate-400">#{c.codigo} · {rotuloEtapa(c.etapa)}{c.cr ? ` · CR ${c.cr}` : ""}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {c.modalidade && (
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${MODALIDADE_META[c.modalidade].classe}`}>
+                        {MODALIDADE_META[c.modalidade].rotulo}
+                      </span>
+                    )}
+                    <Link href={`/implantacoes?card=${c.id}`} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">
+                      Abrir →
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Painel>
+
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi rotulo="Projetos ativos" valor={String(ativos.length)} hint={`${imp.length} no total`} />
