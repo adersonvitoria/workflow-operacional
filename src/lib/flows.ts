@@ -44,12 +44,15 @@ export function nivelSla(card: Pick<Card, "etapa" | "historico" | "datas" | "sta
   return "normal";
 }
 
-/** Estilo (borda/realce/selo) por nível de SLA. */
-export const SLA_META: Record<NivelSla, { borda: string; selo: string }> = {
-  normal: { borda: "border-slate-200 hover:border-brand/40 dark:border-slate-700", selo: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300" },
-  amarelo: { borda: "border-amber-400 ring-1 ring-amber-300 dark:border-amber-500/60 dark:ring-amber-500/40", selo: "bg-amber-500 text-white" },
-  vermelho: { borda: "border-rose-400 ring-1 ring-rose-300 dark:border-rose-500/60 dark:ring-rose-500/40", selo: "bg-rose-500 text-white" },
-  roxo: { borda: "border-purple-400 ring-1 ring-purple-300 dark:border-purple-500/60 dark:ring-purple-500/40", selo: "bg-purple-600 text-white" },
+/**
+ * Estilo do card por nível de SLA. `fundo` preenche o card inteiro (cor +
+ * borda); `selo` é o badge de horas.
+ */
+export const SLA_META: Record<NivelSla, { fundo: string; selo: string }> = {
+  normal: { fundo: "border-slate-200 bg-surface-card hover:border-brand/40 dark:border-slate-700 dark:bg-slate-800", selo: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300" },
+  amarelo: { fundo: "border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-500/15", selo: "bg-amber-500 text-white" },
+  vermelho: { fundo: "border-rose-300 bg-rose-50 dark:border-rose-500/50 dark:bg-rose-500/15", selo: "bg-rose-500 text-white" },
+  roxo: { fundo: "border-purple-300 bg-purple-50 dark:border-purple-500/50 dark:bg-purple-500/15", selo: "bg-purple-600 text-white" },
 };
 
 /** True se o card está parado além do limite (vermelho/roxo). */

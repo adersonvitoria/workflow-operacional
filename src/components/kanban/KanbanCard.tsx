@@ -37,8 +37,8 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       {...listeners}
       onClick={() => onAbrir(card.id)}
       className={[
-        "group cursor-grab rounded-card border bg-surface-card p-3 shadow-card transition hover:shadow-md active:cursor-grabbing dark:bg-slate-800",
-        SLA_META[sla].borda,
+        "group cursor-grab rounded-card border p-3 shadow-card transition hover:shadow-md active:cursor-grabbing",
+        SLA_META[sla].fundo,
         isDragging ? "opacity-40" : "",
         arrastando ? "rotate-1 shadow-card-drag ring-2 ring-brand/30" : "",
       ].join(" ")}

@@ -18,7 +18,13 @@
 
 import type { Card, EtapaImplantacao, Modalidade } from "@/types";
 
-/** Ordem visual das 7 colunas no board de Implantação. */
+/** Itens obrigatórios do checklist da etapa Técnica · Execução. */
+export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
+  { id: "tec-conclusao", rotulo: "Conclusão do projeto" },
+  { id: "tec-comunicando", rotulo: "Sistema comunicando" },
+];
+
+/** Ordem visual das colunas no board de Implantação. */
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
   "COORDENACAO_APROVACAO",
@@ -117,8 +123,8 @@ export function podeAvancar(card: Card): ResultadoTransicao {
 
     case "TECNICA":
       // a Técnica não encerra: precisa concluir o checklist da execução
-      if (card.checklist.some((c) => c.etapa === "TECNICA" && c.obrigatorio && !c.concluido)) {
-        return { ok: false, motivo: "Conclua o checklist de execução." };
+      if (!CHECKLIST_TECNICA.every((it) => card.checklist.some((c) => c.id === it.id && c.concluido))) {
+        return { ok: false, motivo: "Conclua o checklist da Técnica (conclusão do projeto e sistema comunicando)." };
       }
       break;
 

@@ -8,7 +8,7 @@ import {
   SETOR_ROTULO,
   STATUS_META,
 } from "@/lib/flows";
-import { podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_TECNICA, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, FormaPagamento } from "@/types";
@@ -244,6 +244,10 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
     );
   }
 
+  if (etapa === "TECNICA") {
+    return <ChecklistTecnica card={card} patch={patch} />;
+  }
+
   if (etapa === "MEDICAO") {
     return <MedicaoForm card={card} patch={patch} />;
   }
@@ -251,7 +255,35 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   return null;
 }
 
-const PGTO_LABEL: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado", BOLETO: "Boleto", PIX: "Pix" };
+/** Checklist da Técnica · Execução: conclusão do projeto + sistema comunicando. */
+function ChecklistTecnica({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  function toggle(id: string, rotulo: string) {
+    const existe = card.checklist.find((c) => c.id === id);
+    const novo = existe
+      ? card.checklist.map((c) => (c.id === id ? { ...c, concluido: !c.concluido } : c))
+      : [...card.checklist, { id, etapa: "TECNICA" as const, rotulo, concluido: true, obrigatorio: true }];
+    patch({ checklist: novo });
+  }
+  return (
+    <Gate titulo="Checklist da Técnica · Execução">
+      <ul className="space-y-1.5">
+        {CHECKLIST_TECNICA.map((it) => {
+          const done = card.checklist.some((c) => c.id === it.id && c.concluido);
+          return (
+            <li key={it.id}>
+              <button type="button" onClick={() => toggle(it.id, it.rotulo)} className="flex w-full items-center gap-2 text-left text-sm">
+                <span className={["flex h-4 w-4 items-center justify-center rounded border text-[10px]", done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent dark:border-slate-600"].join(" ")}>✓</span>
+                <span className={done ? "text-slate-500 line-through" : "text-slate-700 dark:text-slate-200"}>{it.rotulo}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Gate>
+  );
+}
+
+const PGTO_LABEL: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado" };
 
 /** Formulário de Medição: registra os dados e finaliza o card. */
 function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {

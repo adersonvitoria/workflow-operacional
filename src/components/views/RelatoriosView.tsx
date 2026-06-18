@@ -7,7 +7,7 @@ import { podeGerarRelatorio } from "@/lib/perfis";
 import { formatarBRL } from "@/lib/flows";
 import type { Card } from "@/types";
 
-const PGTO: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado", BOLETO: "Boleto", PIX: "Pix" };
+const PGTO: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado" };
 
 function dataBR(iso?: string) {
   if (!iso) return "—";

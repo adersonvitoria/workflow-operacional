@@ -68,7 +68,7 @@ export type CardStatus =
 export type Prioridade = "BAIXA" | "NORMAL" | "ALTA" | "URGENTE";
 
 export type Natureza = "INVESTIMENTO" | "DESPESA" | "ESTOQUE";
-export type FormaPagamento = "A_VISTA" | "PARCELADO" | "BOLETO" | "PIX";
+export type FormaPagamento = "A_VISTA" | "PARCELADO";
 
 // ---------------------------------------------------------------------------
 // Sub-entidades
