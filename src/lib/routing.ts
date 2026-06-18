@@ -134,8 +134,9 @@ export function movimentoValido(card: Card, destino: EtapaImplantacao): Resultad
   return r;
 }
 
-export function rotuloEtapa(etapa: EtapaImplantacao | null | undefined): string {
-  const mapa: Record<EtapaImplantacao, string> = {
+export function rotuloEtapa(etapa: string | null | undefined): string {
+  if (!etapa) return "—";
+  const mapa: Record<string, string> = {
     COMERCIAL: "Comercial",
     COORDENACAO_APROVACAO: "Coordenação · Aprovação",
     SUPRIMENTOS: "Suprimentos",
@@ -143,6 +144,12 @@ export function rotuloEtapa(etapa: EtapaImplantacao | null | undefined): string 
     TECNICA: "Técnica",
     COORDENACAO_AUDITORIA: "Coordenação · Auditoria",
     MEDICAO: "Medição",
+    // Manutenção
+    APONTAMENTO: "Apontamento",
+    ORCAMENTACAO: "Orçamentação",
+    APROVACAO_CLIENTE: "Aprovação",
+    COMPRAS_ALMOX: "Compras / Almox",
+    EXECUCAO: "Execução",
   };
-  return etapa ? mapa[etapa] : "—";
+  return mapa[etapa] ?? etapa;
 }

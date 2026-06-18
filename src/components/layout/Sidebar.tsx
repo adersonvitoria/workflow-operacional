@@ -1,29 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface ItemNav {
-  id: string;
+  href: string;
   rotulo: string;
-  icone: string; // emoji como placeholder (trocar por lucide-react em produção)
+  icone: string; // placeholder (trocar por lucide-react em produção)
 }
 
 const NAV: ItemNav[] = [
-  { id: "dashboard", rotulo: "Dashboard", icone: "▦" },
-  { id: "implantacoes", rotulo: "Implantações", icone: "▤" },
-  { id: "manutencoes", rotulo: "Manutenções", icone: "▣" },
-  { id: "estoque", rotulo: "Estoque", icone: "▥" },
-  { id: "config", rotulo: "Configurações", icone: "⚙" },
+  { href: "/dashboard", rotulo: "Dashboard", icone: "▦" },
+  { href: "/implantacoes", rotulo: "Implantações", icone: "▤" },
+  { href: "/manutencoes", rotulo: "Manutenções", icone: "▣" },
+  { href: "/estoque", rotulo: "Estoque", icone: "▥" },
 ];
 
-interface SidebarProps {
-  ativo: string;
-  onSelecionar: (id: string) => void;
-}
-
-/** Sidebar esquerdo retrátil. */
-export function Sidebar({ ativo, onSelecionar }: SidebarProps) {
+/** Sidebar esquerdo retrátil, com navegação por rota. */
+export function Sidebar() {
   const [recolhido, setRecolhido] = useState(false);
+  const pathname = usePathname();
 
   return (
     <aside
@@ -49,31 +46,27 @@ export function Sidebar({ ativo, onSelecionar }: SidebarProps) {
 
       <nav className="flex-1 space-y-1 px-2 py-2">
         {NAV.map((item) => {
-          const selecionado = item.id === ativo;
+          const ativo = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
-            <button
-              key={item.id}
-              onClick={() => onSelecionar(item.id)}
+            <Link
+              key={item.href}
+              href={item.href}
               className={[
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
-                selecionado
-                  ? "bg-brand-600 text-white"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                ativo ? "bg-brand-600 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white",
               ].join(" ")}
               title={item.rotulo}
             >
               <span className="text-base leading-none">{item.icone}</span>
               {!recolhido && <span>{item.rotulo}</span>}
-            </button>
+            </Link>
           );
         })}
       </nav>
 
       <div className="border-t border-white/10 px-3 py-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-            AD
-          </span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">AD</span>
           {!recolhido && (
             <div className="text-xs">
               <p className="font-medium text-white">Admin</p>
