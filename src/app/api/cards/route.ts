@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       responsavelSetor: "COMERCIAL",
       responsavelPessoa: s.nome,
       observacoes: b.observacoes ?? null,
+      materiais: Array.isArray(b.materiais) ? b.materiais : [],
       historico: [{ id: "h0", data: agora, setor: "COMERCIAL", autor: s.nome, acao: "Projeto cadastrado", para: etapa }],
     },
   });

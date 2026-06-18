@@ -217,6 +217,7 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
           Salvar conferência
         </button>
         {card.almoxarifado?.verificado && <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">✓ Conferência registrada</p>}
+        <ItensGate card={card} patch={patch} />
       </Gate>
     );
   }
@@ -227,6 +228,7 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
         <p className="text-xs text-slate-600 dark:text-slate-300">
           Demanda de <strong>Locação</strong> recebida da Coordenação. Adquira 100% dos itens e avance para o Monitoramento.
         </p>
+        <ItensGate card={card} patch={patch} />
       </Gate>
     );
   }
@@ -254,6 +256,33 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   return null;
+}
+
+/** Lista os itens do projeto no gate de Suprimentos + ação de "adquirir". */
+function ItensGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  if (card.materiais.length === 0) return null;
+  const pendentes = card.materiais.some((m) => m.statusAlmox === "PENDENTE" || m.statusAlmox === "EM_COMPRAS");
+  return (
+    <div className="mt-3 border-t border-brand/20 pt-2">
+      <p className="mb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Itens do projeto ({card.materiais.length})</p>
+      <ul className="mb-2 space-y-1 text-xs">
+        {card.materiais.map((m) => (
+          <li key={m.id} className="flex items-center justify-between">
+            <span className="text-slate-600 dark:text-slate-300"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
+            <span className="text-[10px] text-slate-400">{m.statusAlmox}</span>
+          </li>
+        ))}
+      </ul>
+      {pendentes && (
+        <button
+          onClick={() => patch({ materiais: card.materiais.map((m) => ({ ...m, statusAlmox: "RETIRADO" })) })}
+          className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
+        >
+          Marcar itens como adquiridos
+        </button>
+      )}
+    </div>
+  );
 }
 
 function Gate({ titulo, children }: { titulo: string; children: React.ReactNode }) {

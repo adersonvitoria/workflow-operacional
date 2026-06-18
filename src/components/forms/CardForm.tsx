@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { MODALIDADE_META } from "@/lib/flows";
+import { CATALOGO_ITENS } from "@/lib/catalogo";
 import type { NovoCardInput } from "@/lib/store";
-import type { Card, Fluxo, Modalidade, Prioridade } from "@/types";
+import type { Card, Fluxo, ItemMaterial, Modalidade, Prioridade } from "@/types";
 
 interface CardFormProps {
   aberto: boolean;
@@ -25,6 +26,9 @@ const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 /** Modal de cadastro/edição de card. */
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
   const [form, setForm] = useState<NovoCardInput>(VAZIO(fluxo));
+  const [itens, setItens] = useState<ItemMaterial[]>([]);
+  const [itemSel, setItemSel] = useState<string>(CATALOGO_ITENS[0]);
+  const [qtdSel, setQtdSel] = useState<string>("1");
   const [erro, setErro] = useState<string | null>(null);
   const edicao = !!inicial;
 
@@ -51,6 +55,9 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
     } else {
       setForm(VAZIO(fluxo));
     }
+    setItens(inicial?.materiais ?? []);
+    setItemSel(CATALOGO_ITENS[0]);
+    setQtdSel("1");
     setErro(null);
   }, [aberto, inicial, fluxo]);
 
@@ -65,11 +72,25 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
     return Number.isFinite(n) ? n : undefined;
   }
 
+  function addItem() {
+    const q = parseInt(qtdSel, 10);
+    if (!itemSel || !Number.isFinite(q) || q < 1) return;
+    const natureza = form.modalidade === "VENDA" ? "INVESTIMENTO" : "ESTOQUE";
+    setItens((prev) => [
+      ...prev,
+      { id: `m-${prev.length}-${Date.now()}`, descricao: itemSel, quantidade: q, natureza, statusAlmox: "PENDENTE" },
+    ]);
+    setQtdSel("1");
+  }
+  function removeItem(id: string) {
+    setItens((prev) => prev.filter((m) => m.id !== id));
+  }
+
   function submeter() {
     if (!form.clienteNome.trim()) return setErro("Informe o nome do cliente.");
     if (fluxo === "IMPLANTACAO" && !form.modalidade) return setErro("Selecione a modalidade (Locação ou Venda).");
     if (!form.total && !form.mensal) return setErro("Informe ao menos um valor (Total ou Mensal).");
-    onSubmit(form);
+    onSubmit({ ...form, materiais: itens });
   }
 
   return (
@@ -123,6 +144,38 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
           </div>
 
           <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
+
+          {/* Itens do projeto (Qtd + Item) */}
+          <div>
+            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              Itens do projeto {form.modalidade ? `(${MODALIDADE_META[form.modalidade].rotulo})` : ""}
+            </span>
+            <div className="flex items-end gap-2">
+              <div className="w-20">
+                <span className="mb-1 block text-[10px] text-slate-400">Qtd</span>
+                <input type="number" min={1} value={qtdSel} onChange={(e) => setQtdSel(e.target.value)} className={inputCls} />
+              </div>
+              <div className="flex-1">
+                <span className="mb-1 block text-[10px] text-slate-400">Item</span>
+                <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls}>
+                  {CATALOGO_ITENS.map((it) => <option key={it} value={it}>{it}</option>)}
+                </select>
+              </div>
+              <button type="button" onClick={addItem} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700">Adicionar</button>
+            </div>
+
+            {itens.length > 0 && (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
+                {itens.map((m) => (
+                  <li key={m.id} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                    <span className="text-slate-700 dark:text-slate-200"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
+                    <button type="button" onClick={() => removeItem(m.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <Campo label="Observações"><textarea rows={2} value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} className={`${inputCls} resize-none`} /></Campo>
 
           {erro && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{erro}</p>}
