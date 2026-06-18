@@ -13,6 +13,7 @@ const USUARIOS = [
   { nome: "Paulo Suprimentos", email: "suprimentos@empresa.com", perfil: "SUPRIMENTOS" },
   { nome: "Felipe Saldanha", email: "monitoramento@empresa.com", perfil: "SUPERVISOR_MONITORAMENTO" },
   { nome: "Jessi Diemes", email: "tecnica@empresa.com", perfil: "SUPERVISOR_TECNICO" },
+  { nome: "Patrícia Medição", email: "medicao@empresa.com", perfil: "MEDICAO" },
   { nome: "Samya Cruz", email: "admin@empresa.com", perfil: "ADMINISTRATIVO" },
 ] as const;
 

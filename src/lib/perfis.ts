@@ -15,7 +15,8 @@ export type Perfil =
   | "COMERCIAL"
   | "ADMINISTRATIVO"
   | "ALMOXARIFADO"
-  | "SUPRIMENTOS";
+  | "SUPRIMENTOS"
+  | "MEDICAO";
 
 export interface PerfilMeta {
   rotulo: string;
@@ -103,14 +104,26 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
     classe: "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:ring-teal-500/30",
     cor: "bg-teal-500",
   },
-  ADMINISTRATIVO: {
-    rotulo: "Administrativo",
-    descricao: "Realiza a medição/faturamento e administra os usuários do sistema.",
+  MEDICAO: {
+    rotulo: "Medição",
+    descricao: "Registra os dados de medição/faturamento e finaliza o card; gera relatórios por competência.",
     etapas: ["MEDICAO"],
     acoes: [
-      "Medir e faturar o cliente",
+      "Registrar competência, valor, forma de pagamento e parcelas",
+      "Finalizar o card após o faturamento",
+      "Gerar relatórios por competência ou por card",
+    ],
+    classe: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
+    cor: "bg-emerald-600",
+  },
+  ADMINISTRATIVO: {
+    rotulo: "Administrativo",
+    descricao: "Administra os usuários do sistema e o catálogo de itens.",
+    etapas: [],
+    acoes: [
       "Gerir usuários e perfis (cadastro/edição)",
-      "Acesso administrativo a todas as etapas",
+      "Gerir o catálogo de itens",
+      "Gerar relatórios",
     ],
     classe: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/30",
     cor: "bg-slate-700",
@@ -124,6 +137,7 @@ export const PERFIS: Perfil[] = [
   "SUPRIMENTOS",
   "SUPERVISOR_MONITORAMENTO",
   "SUPERVISOR_TECNICO",
+  "MEDICAO",
   "ADMINISTRATIVO",
 ];
 
@@ -136,7 +150,7 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   MONITORAMENTO: "SUPERVISOR_MONITORAMENTO",
   TECNICA: "SUPERVISOR_TECNICO",
   COORDENACAO_AUDITORIA: "COORDENADOR",
-  MEDICAO: "ADMINISTRATIVO",
+  MEDICAO: "MEDICAO",
 };
 
 /**
@@ -179,4 +193,9 @@ export function podeGerenciarUsuarios(perfil: Perfil | undefined): boolean {
 /** Gerir o catálogo de itens do projeto: Comercial, Coordenador e Administrativo. */
 export function podeGerenciarItens(perfil: Perfil | undefined): boolean {
   return perfil === "COMERCIAL" || perfil === "COORDENADOR" || perfil === "ADMINISTRATIVO";
+}
+
+/** Acesso aos relatórios de medição: Medição, Coordenador e Administrativo. */
+export function podeGerarRelatorio(perfil: Perfil | undefined): boolean {
+  return perfil === "MEDICAO" || perfil === "COORDENADOR" || perfil === "ADMINISTRATIVO";
 }

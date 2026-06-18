@@ -21,6 +21,7 @@ enum Perfil {
   ADMINISTRATIVO
   ALMOXARIFADO
   SUPRIMENTOS
+  MEDICAO
 }
 
 enum Fluxo {
@@ -32,6 +33,7 @@ enum CardStatus {
   EM_ANDAMENTO
   AGUARDANDO_APROVACAO
   CONCLUIDO
+  FINALIZADO
   TRAVADO
 }
 
@@ -112,6 +114,7 @@ model Card {
   // Gates e estruturas aninhadas (jsonb)
   aprovacaoInicial Json?
   auditoriaFinal   Json?
+  medicao          Json?
   almoxarifado     Json?
   sigma            Json?
   materiais        Json @default("[]")

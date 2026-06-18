@@ -132,6 +132,11 @@ export const STATUS_META: Record<
     classe: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
     ponto: "bg-emerald-500",
   },
+  FINALIZADO: {
+    rotulo: "Finalizado",
+    classe: "bg-emerald-100 text-emerald-800 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-500/40",
+    ponto: "bg-emerald-600",
+  },
   TRAVADO: {
     rotulo: "Travado",
     classe: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30",

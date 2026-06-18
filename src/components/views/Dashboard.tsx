@@ -13,12 +13,14 @@ export function Dashboard() {
   const { atual } = useAuth();
   const imp = porFluxo("IMPLANTACAO");
 
-  // Pendências do perfil logado: cards (não concluídos) cuja etapa é executável por ele.
+  const encerrado = (s: Card["status"]) => s === "CONCLUIDO" || s === "FINALIZADO";
+
+  // Pendências do perfil logado: cards (não encerrados) cuja etapa é executável por ele.
   const pendencias = imp.filter(
-    (c) => c.status !== "CONCLUIDO" && podeExecutarEtapa(atual?.perfil, c.etapa, c.modalidade),
+    (c) => !encerrado(c.status) && podeExecutarEtapa(atual?.perfil, c.etapa, c.modalidade),
   );
 
-  const ativos = imp.filter((c) => c.status !== "CONCLUIDO");
+  const ativos = imp.filter((c) => !encerrado(c.status));
   const concluidos = imp.filter((c) => c.etapa === "MEDICAO");
   const aguardando = imp.filter((c) => c.status === "AGUARDANDO_APROVACAO");
   const pipeline = soma(ativos, (c) => c.valores.total);

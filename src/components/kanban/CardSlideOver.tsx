@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   formatarBRL,
   MODALIDADE_META,
@@ -10,7 +11,7 @@ import {
 import { podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
-import type { Card, EtapaImplantacao } from "@/types";
+import type { Card, EtapaImplantacao, FormaPagamento } from "@/types";
 
 interface CardSlideOverProps {
   card: Card | null;
@@ -242,7 +243,104 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
     );
   }
 
+  if (etapa === "MEDICAO") {
+    return <MedicaoForm card={card} patch={patch} />;
+  }
+
   return null;
+}
+
+const PGTO_LABEL: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado", BOLETO: "Boleto", PIX: "Pix" };
+
+/** Formulário de Medição: registra os dados e finaliza o card. */
+function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const { atual } = useAuth();
+  const finalizado = card.status === "FINALIZADO" || !!card.medicao?.finalizadoEm;
+  const m = card.medicao ?? {};
+  const [f, setF] = useState({
+    numeroImplantar: m.numeroImplantar ?? card.codigo,
+    competencia: m.competencia ?? "",
+    valorMedicao: m.valorMedicao != null ? String(m.valorMedicao) : (card.valores.total != null ? String(card.valores.total) : ""),
+    chamado: m.chamado ?? card.chamado ?? "",
+    dataAbertura: m.dataAbertura?.slice(0, 10) ?? card.datas.abertura?.slice(0, 10) ?? "",
+    formaPagamento: (m.formaPagamento ?? card.pagamento?.forma ?? "A_VISTA") as string,
+    parcelas: m.parcelas != null ? String(m.parcelas) : (card.pagamento?.parcelas != null ? String(card.pagamento.parcelas) : ""),
+  });
+  useEffect(() => {
+    const mm = card.medicao ?? {};
+    setF({
+      numeroImplantar: mm.numeroImplantar ?? card.codigo,
+      competencia: mm.competencia ?? "",
+      valorMedicao: mm.valorMedicao != null ? String(mm.valorMedicao) : (card.valores.total != null ? String(card.valores.total) : ""),
+      chamado: mm.chamado ?? card.chamado ?? "",
+      dataAbertura: mm.dataAbertura?.slice(0, 10) ?? card.datas.abertura?.slice(0, 10) ?? "",
+      formaPagamento: (mm.formaPagamento ?? card.pagamento?.forma ?? "A_VISTA") as string,
+      parcelas: mm.parcelas != null ? String(mm.parcelas) : (card.pagamento?.parcelas != null ? String(card.pagamento.parcelas) : ""),
+    });
+  }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+  function finalizar() {
+    if (!f.competencia.trim()) return;
+    patch({
+      medicao: {
+        numeroImplantar: f.numeroImplantar,
+        competencia: f.competencia.trim(),
+        valorMedicao: f.valorMedicao ? Number(f.valorMedicao.replace(",", ".")) : undefined,
+        chamado: f.chamado || undefined,
+        dataAbertura: f.dataAbertura || undefined,
+        formaPagamento: f.formaPagamento as FormaPagamento,
+        parcelas: f.parcelas ? Number(f.parcelas) : undefined,
+        finalizadoEm: new Date().toISOString(),
+        finalizadoPor: atual?.nome,
+      },
+      status: "FINALIZADO",
+    });
+  }
+
+  if (finalizado) {
+    return (
+      <Gate titulo="Medição finalizada">
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          Competência <strong>{card.medicao?.competencia ?? "—"}</strong> · {formatarBRL(card.medicao?.valorMedicao)}
+        </p>
+        <Link href={`/relatorios?card=${card.id}`} className="mt-2 block w-full rounded-lg bg-brand px-3 py-2 text-center text-sm font-semibold text-white hover:bg-brand-700">
+          Gerar relatório
+        </Link>
+      </Gate>
+    );
+  }
+
+  return (
+    <Gate titulo="Registrar medição">
+      <div className="grid grid-cols-2 gap-2">
+        <Campito label="Nº Implantar"><input value={f.numeroImplantar} onChange={(e) => setF({ ...f, numeroImplantar: e.target.value })} className={inp} /></Campito>
+        <Campito label="Competência *"><input value={f.competencia} onChange={(e) => setF({ ...f, competencia: e.target.value })} placeholder="06/2026" className={inp} /></Campito>
+        <Campito label="Valor medição"><input inputMode="decimal" value={f.valorMedicao} onChange={(e) => setF({ ...f, valorMedicao: e.target.value })} className={inp} /></Campito>
+        <Campito label="Chamado"><input value={f.chamado} onChange={(e) => setF({ ...f, chamado: e.target.value })} className={inp} /></Campito>
+        <Campito label="Data abertura"><input type="date" value={f.dataAbertura} onChange={(e) => setF({ ...f, dataAbertura: e.target.value })} className={inp} /></Campito>
+        <Campito label="Forma pgto.">
+          <select value={f.formaPagamento} onChange={(e) => setF({ ...f, formaPagamento: e.target.value })} className={inp}>
+            {Object.keys(PGTO_LABEL).map((k) => <option key={k} value={k}>{PGTO_LABEL[k]}</option>)}
+          </select>
+        </Campito>
+        <Campito label="Parcelas"><input inputMode="numeric" value={f.parcelas} onChange={(e) => setF({ ...f, parcelas: e.target.value })} className={inp} /></Campito>
+      </div>
+      <button onClick={finalizar} disabled={!f.competencia.trim()} className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+        Registrar e finalizar
+      </button>
+    </Gate>
+  );
+}
+
+function Campito({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-0.5 block text-[10px] text-slate-400">{label}</span>
+      {children}
+    </label>
+  );
 }
 
 /** Conferência do Almoxarifado (Venda): marca cada item em estoque x faltante. */

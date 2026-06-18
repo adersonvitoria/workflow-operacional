@@ -61,7 +61,8 @@ export type EtapaId = EtapaImplantacao | EtapaManutencao;
 export type CardStatus =
   | "EM_ANDAMENTO" // azul/slate — fluindo normalmente
   | "AGUARDANDO_APROVACAO" // âmbar      — parado num gate de Coordenação
-  | "CONCLUIDO" // esmeralda  — faturado
+  | "CONCLUIDO" // esmeralda  — fluxo concluído
+  | "FINALIZADO" // verde      — medição registrada / faturado
   | "TRAVADO"; // rosa       — problema / bloqueado
 
 export type Prioridade = "BAIXA" | "NORMAL" | "ALTA" | "URGENTE";
@@ -145,6 +146,19 @@ export interface EventoHistorico {
   para?: EtapaId;
 }
 
+/** Dados de Medição/Faturamento (preenchidos pelo setor de Medição). */
+export interface DadosMedicao {
+  numeroImplantar?: string;
+  competencia?: string; // ex.: "06/2026" ou "JUNHO/2026"
+  valorMedicao?: number;
+  chamado?: string;
+  dataAbertura?: string; // ISO 8601
+  formaPagamento?: FormaPagamento;
+  parcelas?: number;
+  finalizadoEm?: string; // ISO 8601
+  finalizadoPor?: string;
+}
+
 /**
  * Dados do Monitoramento + sincronização com o Sigma Cloud (integração futura).
  * O setor de Monitoramento cria a conta no software central e gera os dados
@@ -188,6 +202,7 @@ export interface Card {
   // Gates da Coordenação (à prova de erros)
   aprovacaoInicial?: Aprovacao;
   auditoriaFinal?: Aprovacao;
+  medicao?: DadosMedicao;
 
   // Etapa de Almoxarifado (só VENDA)
   almoxarifado?: DadosAlmoxarifado;
