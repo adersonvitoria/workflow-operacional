@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { cardParado, COLUNAS_IMPLANTACAO, formatarBRL, MODALIDADE_META } from "@/lib/flows";
 import { useCards } from "@/lib/store";
@@ -35,28 +35,14 @@ export function Dashboard() {
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto bg-surface-app p-6 scrollbar-hide dark:bg-slate-950">
-        {/* Minhas pendências — para quem atua em etapas */}
-        {(ehOperacional || ehMedicao || perfil === "COORDENADOR" || ehComercial) && (
-          <Painel titulo={`Minhas pendências (${pendencias.length})`}>
-            {pendencias.length === 0 ? (
-              <p className="text-sm text-slate-400">Nada aguardando sua ação no momento. 🎉</p>
-            ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {pendencias.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{c.cliente.nome}</p>
-                      <p className="text-xs text-slate-400">#{c.codigo} · {rotuloEtapa(c.etapa)}{c.cr ? ` · CR ${c.cr}` : ""}{cardParado(c) ? " · ⏱ +96h" : ""}</p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {c.modalidade && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${MODALIDADE_META[c.modalidade].classe}`}>{MODALIDADE_META[c.modalidade].rotulo}</span>}
-                      <Link href={`/implantacoes?card=${c.id}`} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">Abrir →</Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Painel>
+        {/* Topo: pendências + (para gestão) análise IA automática, lado a lado */}
+        {ehGestao ? (
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <PendenciasPanel pendencias={pendencias} />
+            <AnaliseIA />
+          </div>
+        ) : (
+          <PendenciasPanel pendencias={pendencias} />
         )}
 
         {ehGestao && <Gestao imp={imp} />}
@@ -96,16 +82,39 @@ function Gestao({ imp }: { imp: Card[] }) {
           <Barra rotulo="Venda" qtd={venda} pct={(venda / totalMod) * 100} cor="bg-purple-500" />
         </Painel>
       </div>
-
-      <AnaliseIA />
     </>
+  );
+}
+
+function PendenciasPanel({ pendencias }: { pendencias: Card[] }) {
+  return (
+    <Painel titulo={`Minhas pendências (${pendencias.length})`}>
+      {pendencias.length === 0 ? (
+        <p className="text-sm text-slate-400">Nada aguardando sua ação no momento. 🎉</p>
+      ) : (
+        <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto scrollbar-hide dark:divide-slate-800">
+          {pendencias.map((c) => (
+            <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{c.cliente.nome}</p>
+                <p className="text-xs text-slate-400">#{c.codigo} · {rotuloEtapa(c.etapa)}{c.cr ? ` · CR ${c.cr}` : ""}{cardParado(c) ? " · ⏱ +96h" : ""}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {c.modalidade && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${MODALIDADE_META[c.modalidade].classe}`}>{MODALIDADE_META[c.modalidade].rotulo}</span>}
+                <Link href={`/implantacoes?card=${c.id}`} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700">Abrir →</Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Painel>
   );
 }
 
 function AnaliseIA() {
   const [analise, setAnalise] = useState<string | null>(null);
   const [fonte, setFonte] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
 
   async function analisar() {
     setCarregando(true);
@@ -120,21 +129,26 @@ function AnaliseIA() {
     setCarregando(false);
   }
 
+  // Gera a análise automaticamente ao abrir o dashboard.
+  useEffect(() => { void analisar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <section className="rounded-card border border-brand/30 bg-brand/5 p-5 shadow-card dark:border-brand/40 dark:bg-brand/10">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">🤖 Análise da Coordenação (IA)</h2>
-        <button onClick={analisar} disabled={carregando} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
-          {carregando ? "Analisando…" : analise ? "Reanalisar" : "Analisar problemas"}
+        <button onClick={analisar} disabled={carregando} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
+          {carregando ? "Analisando…" : "Atualizar"}
         </button>
       </div>
-      {analise ? (
+      {carregando && !analise ? (
+        <p className="animate-pulse text-sm text-slate-500 dark:text-slate-400">Analisando os cards parados (SLA) e pendentes de aprovação…</p>
+      ) : analise ? (
         <>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-200">{analise}</p>
-          {fonte === "heuristica" && <p className="mt-2 text-[11px] text-slate-400">Análise baseada em regras (defina ANTHROPIC_API_KEY para usar a IA da Claude).</p>}
+          <p className="max-h-80 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-slate-700 scrollbar-hide dark:text-slate-200">{analise}</p>
+          {fonte === "heuristica" && <p className="mt-2 text-[11px] text-slate-400">Análise por regras (defina ANTHROPIC_API_KEY para usar o Claude Sonnet 4.6).</p>}
         </>
       ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Gere uma análise dos cards parados (SLA) e pendentes de aprovação, com as ações recomendadas.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Sem dados para analisar.</p>
       )}
     </section>
   );
