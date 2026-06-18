@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
-import { podeCriarCard } from "@/lib/perfis";
+import { podeCriarCard, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
 import { rowToCard } from "@/lib/mappers";
 import type { Card } from "@/types";
+
+// Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
+const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "observacoes", "pagamento"];
+const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
 function patchToData(p: Partial<Card>): Record<string, unknown> {
@@ -44,13 +48,24 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+
+  const existente = await prisma.card.findUnique({ where: { id: params.id } });
+  if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
+
   const body = (await req.json().catch(() => ({}))) as Partial<Card>;
-  try {
-    const row = await prisma.card.update({ where: { id: params.id }, data: patchToData(body) });
-    return NextResponse.json({ card: rowToCard(row) });
-  } catch {
-    return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
+  const chaves = Object.keys(body);
+  const tocaEdit = chaves.some((k) => CAMPOS_EDIT.includes(k));
+  const tocaGate = chaves.some((k) => CAMPOS_GATE.includes(k));
+
+  if (tocaEdit && !podeEditarCard(s.perfil, existente.etapa)) {
+    return NextResponse.json({ erro: "Seu perfil não pode editar os dados deste card nesta etapa." }, { status: 403 });
   }
+  if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa)) {
+    return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
+  }
+
+  const row = await prisma.card.update({ where: { id: params.id }, data: patchToData(body) });
+  return NextResponse.json({ card: rowToCard(row) });
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

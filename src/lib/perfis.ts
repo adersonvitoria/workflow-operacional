@@ -124,10 +124,14 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   MEDICAO: "ADMINISTRATIVO",
 };
 
-/** O ADMINISTRATIVO é admin: pode executar qualquer gate. */
+/**
+ * Executar o GATE de uma etapa (aprovar/checar para seguir o fluxo).
+ * O Coordenador supervisiona e pode agir em qualquer etapa; os demais perfis
+ * só executam o gate da etapa que lhes pertence.
+ */
 export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string): boolean {
   if (!perfil) return false;
-  if (perfil === "ADMINISTRATIVO") return true;
+  if (perfil === "COORDENADOR") return true;
   return DONO_DA_ETAPA[etapa as EtapaImplantacao] === perfil;
 }
 
@@ -135,8 +139,21 @@ export function donoDaEtapa(etapa: string): Perfil | undefined {
   return DONO_DA_ETAPA[etapa as EtapaImplantacao];
 }
 
+/** Cadastrar novo card: apenas Coordenador e Comercial. */
 export function podeCriarCard(perfil: Perfil | undefined): boolean {
-  return perfil === "COMERCIAL" || perfil === "ADMINISTRATIVO" || perfil === "COORDENADOR";
+  return perfil === "COORDENADOR" || perfil === "COMERCIAL";
+}
+
+/**
+ * Editar os dados (comerciais/cadastrais) de um card:
+ * - Coordenador: em qualquer etapa;
+ * - Comercial: somente enquanto o card está na etapa Comercial;
+ * - demais perfis: não editam (apenas executam o gate da sua etapa).
+ */
+export function podeEditarCard(perfil: Perfil | undefined, etapa: string): boolean {
+  if (perfil === "COORDENADOR") return true;
+  if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
+  return false;
 }
 
 export function podeGerenciarUsuarios(perfil: Perfil | undefined): boolean {

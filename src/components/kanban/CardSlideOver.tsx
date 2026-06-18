@@ -9,7 +9,7 @@ import {
 } from "@/lib/flows";
 import { podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
-import { donoDaEtapa, PERFIL_META, podeExecutarEtapa } from "@/lib/perfis";
+import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao } from "@/types";
 
 interface CardSlideOverProps {
@@ -33,6 +33,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
   const aberto = card != null;
   const validacao = card ? podeAvancar(card) : { ok: false as const };
   const podeAgir = card ? podeExecutarEtapa(perfil, card.etapa) : false;
+  const podeEditar = card ? podeEditarCard(perfil, card.etapa) : false;
   const dono = card ? donoDaEtapa(card.etapa) : undefined;
 
   return (
@@ -54,7 +55,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{card.cliente.nome}</h2>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={onEditar} className="rounded-lg px-2 py-1 text-xs font-medium text-brand hover:bg-brand/10">Editar</button>
+                  {podeEditar && <button onClick={onEditar} className="rounded-lg px-2 py-1 text-xs font-medium text-brand hover:bg-brand/10">Editar</button>}
                   <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar">✕</button>
                 </div>
               </div>
@@ -113,7 +114,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
                       <ul className="space-y-1.5">
                         {card.checklist.map((item) => (
                           <li key={item.id}>
-                            <button type="button" onClick={() => onPatch({ checklist: card.checklist.map((c) => (c.id === item.id ? { ...c, concluido: !c.concluido } : c)) })} className="flex w-full items-center gap-2 text-left text-sm">
+                            <button type="button" disabled={!podeAgir} onClick={() => podeAgir && onPatch({ checklist: card.checklist.map((c) => (c.id === item.id ? { ...c, concluido: !c.concluido } : c)) })} className="flex w-full items-center gap-2 text-left text-sm disabled:cursor-default">
                               <span className={["flex h-4 w-4 items-center justify-center rounded border text-[10px]", item.concluido ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent"].join(" ")}>✓</span>
                               <span className={item.concluido ? "text-slate-500 line-through" : "text-slate-700 dark:text-slate-300"}>{item.rotulo}</span>
                             </button>
