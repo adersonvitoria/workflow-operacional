@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { SEED_CARDS } from "../src/lib/mock-data";
+import { CATALOGO_SEED } from "../src/lib/catalogo";
 import type { Card } from "../src/types";
 
 const prisma = new PrismaClient();
@@ -62,6 +63,15 @@ async function main() {
     });
   }
   console.log(`Usuários: ${USUARIOS.length} (senha padrão: ${SENHA_PADRAO})`);
+
+  for (const it of CATALOGO_SEED) {
+    await prisma.item.upsert({
+      where: { descricao: it.descricao },
+      update: { unidade: it.unidade, preco: it.preco },
+      create: { descricao: it.descricao, unidade: it.unidade, preco: it.preco, ativo: true },
+    });
+  }
+  console.log(`Itens do catálogo: ${CATALOGO_SEED.length}`);
 
   const total = await prisma.card.count();
   if (total === 0) {

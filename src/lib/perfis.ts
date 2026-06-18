@@ -184,3 +184,8 @@ export function podeEditarCard(perfil: Perfil | undefined, etapa: string): boole
 export function podeGerenciarUsuarios(perfil: Perfil | undefined): boolean {
   return perfil === "ADMINISTRATIVO" || perfil === "COORDENADOR";
 }
+
+/** Gerir o catálogo de itens do projeto: Comercial, Coordenador e Administrativo. */
+export function podeGerenciarItens(perfil: Perfil | undefined): boolean {
+  return perfil === "COMERCIAL" || perfil === "COORDENADOR" || perfil === "ADMINISTRATIVO";
+}

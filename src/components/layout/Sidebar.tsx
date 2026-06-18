@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { PERFIL_META, podeGerenciarUsuarios } from "@/lib/perfis";
+import { PERFIL_META, podeGerenciarItens, podeGerenciarUsuarios } from "@/lib/perfis";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface ItemNav {
@@ -27,6 +27,7 @@ export function Sidebar() {
   const { atual, sair } = useAuth();
 
   const nav = [...NAV_BASE];
+  if (podeGerenciarItens(atual?.perfil)) nav.push({ href: "/itens", rotulo: "Itens", icone: "◆" });
   if (podeGerenciarUsuarios(atual?.perfil)) nav.push({ href: "/usuarios", rotulo: "Usuários", icone: "◍" });
 
   function logout() {

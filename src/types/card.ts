@@ -99,6 +99,7 @@ export interface ItemMaterial {
   quantidade: number;
   natureza: Natureza;
   statusAlmox: StatusMaterial;
+  precoUnitario?: number; // preço do catálogo no momento da seleção
   fornecedor?: string;
   sc?: string; // nº Solicitação de Compra
   pc?: string; // nº Pedido de Compra

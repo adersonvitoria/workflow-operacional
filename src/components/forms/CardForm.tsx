@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MODALIDADE_META } from "@/lib/flows";
-import { CATALOGO_ITENS } from "@/lib/catalogo";
+import { formatarBRL, MODALIDADE_META } from "@/lib/flows";
+import { useCatalogo } from "@/lib/catalogo-store";
 import type { NovoCardInput } from "@/lib/store";
 import type { Card, Fluxo, ItemMaterial, Modalidade, Prioridade } from "@/types";
 
@@ -25,12 +25,22 @@ const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 
 /** Modal de cadastro/edição de card. */
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
+  const { ativos } = useCatalogo();
   const [form, setForm] = useState<NovoCardInput>(VAZIO(fluxo));
   const [itens, setItens] = useState<ItemMaterial[]>([]);
-  const [itemSel, setItemSel] = useState<string>(CATALOGO_ITENS[0]);
+  const [itemSel, setItemSel] = useState<string>("");
   const [qtdSel, setQtdSel] = useState<string>("1");
   const [erro, setErro] = useState<string | null>(null);
   const edicao = !!inicial;
+
+  // Valores derivados dos itens do projeto.
+  const equipamentos = itens.reduce((s, m) => s + (m.precoUnitario ?? 0) * m.quantidade, 0);
+  const totalCalc = (form.maoDeObra ?? 0) + equipamentos;
+
+  // Seleciona o primeiro item do catálogo assim que ele carrega.
+  useEffect(() => {
+    if (!itemSel && ativos.length) setItemSel(ativos[0].id);
+  }, [ativos, itemSel]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -56,7 +66,6 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
       setForm(VAZIO(fluxo));
     }
     setItens(inicial?.materiais ?? []);
-    setItemSel(CATALOGO_ITENS[0]);
     setQtdSel("1");
     setErro(null);
   }, [aberto, inicial, fluxo]);
@@ -74,11 +83,12 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
   function addItem() {
     const q = parseInt(qtdSel, 10);
-    if (!itemSel || !Number.isFinite(q) || q < 1) return;
+    const item = ativos.find((i) => i.id === itemSel);
+    if (!item || !Number.isFinite(q) || q < 1) return;
     const natureza = form.modalidade === "VENDA" ? "INVESTIMENTO" : "ESTOQUE";
     setItens((prev) => [
       ...prev,
-      { id: `m-${prev.length}-${Date.now()}`, descricao: itemSel, quantidade: q, natureza, statusAlmox: "PENDENTE" },
+      { id: `m-${prev.length}-${Date.now()}`, descricao: item.descricao, quantidade: q, natureza, statusAlmox: "PENDENTE", precoUnitario: item.preco },
     ]);
     setQtdSel("1");
   }
@@ -89,8 +99,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
   function submeter() {
     if (!form.clienteNome.trim()) return setErro("Informe o nome do cliente.");
     if (fluxo === "IMPLANTACAO" && !form.modalidade) return setErro("Selecione a modalidade (Locação ou Venda).");
-    if (!form.total && !form.mensal) return setErro("Informe ao menos um valor (Total ou Mensal).");
-    onSubmit({ ...form, materiais: itens });
+    if (!totalCalc && !form.mensal) return setErro("Adicione itens (Total/Equipamentos) ou informe o Mensal.");
+    onSubmit({ ...form, equipamentos, total: totalCalc, materiais: itens });
   }
 
   return (
@@ -128,10 +138,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Campo label="Valor total (R$)"><input inputMode="decimal" value={form.total ?? ""} onChange={(e) => set("total", num(e.target.value))} className={inputCls} /></Campo>
-            <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
             <Campo label="Mão de obra (R$)"><input inputMode="decimal" value={form.maoDeObra ?? ""} onChange={(e) => set("maoDeObra", num(e.target.value))} className={inputCls} /></Campo>
-            <Campo label="Equipamentos (R$)"><input inputMode="decimal" value={form.equipamentos ?? ""} onChange={(e) => set("equipamentos", num(e.target.value))} className={inputCls} /></Campo>
+            <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
+            <Campo label="Equipamentos (auto)"><input readOnly value={formatarBRL(equipamentos)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Calculado a partir dos itens" /></Campo>
+            <Campo label="Total (auto = M.O + equip.)"><input readOnly value={formatarBRL(totalCalc)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -157,21 +167,28 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               </div>
               <div className="flex-1">
                 <span className="mb-1 block text-[10px] text-slate-400">Item</span>
-                <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls}>
-                  {CATALOGO_ITENS.map((it) => <option key={it} value={it}>{it}</option>)}
+                <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls} disabled={ativos.length === 0}>
+                  {ativos.map((it) => <option key={it.id} value={it.id}>{it.descricao} — {formatarBRL(it.preco)}</option>)}
                 </select>
               </div>
-              <button type="button" onClick={addItem} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700">Adicionar</button>
+              <button type="button" onClick={addItem} disabled={ativos.length === 0} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">Adicionar</button>
             </div>
+            {ativos.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Catálogo vazio — cadastre itens em “Itens”.</p>}
 
             {itens.length > 0 && (
               <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
                 {itens.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between px-3 py-1.5 text-sm">
-                    <span className="text-slate-700 dark:text-slate-200"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
-                    <button type="button" onClick={() => removeItem(m.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
+                  <li key={m.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                    <span className="min-w-0 truncate text-slate-700 dark:text-slate-200"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-slate-400">{formatarBRL((m.precoUnitario ?? 0) * m.quantidade)}</span>
+                      <button type="button" onClick={() => removeItem(m.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
+                    </span>
                   </li>
                 ))}
+                <li className="flex justify-between px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span>Equipamentos</span><span>{formatarBRL(equipamentos)}</span>
+                </li>
               </ul>
             )}
           </div>

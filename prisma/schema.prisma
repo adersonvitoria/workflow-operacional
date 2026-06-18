@@ -53,6 +53,16 @@ enum Natureza {
   ESTOQUE
 }
 
+model Item {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  unidade   String   @default("un")
+  preco     Float    @default(0)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Usuario {
   id        String   @id @default(cuid())
   nome      String
