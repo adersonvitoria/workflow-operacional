@@ -57,22 +57,22 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
   },
   ALMOXARIFADO: {
     rotulo: "Almoxarifado",
-    descricao: "Nas demandas de Venda, confere o estoque físico e aponta a lista do que falta.",
-    etapas: ["SUPRIMENTOS"],
+    descricao: "Nas Vendas, confere item a item o que há em estoque e o que falta, enviando os faltantes ao Suprimentos.",
+    etapas: ["ALMOXARIFADO"],
     acoes: [
-      "Conferir estoque físico (modalidade Venda)",
-      'Preencher a "lista do que falta"',
-      "Liberar para o Monitoramento",
+      "Conferir estoque item a item (Venda)",
+      "Marcar itens em estoque x faltantes",
+      "Enviar os faltantes para o Suprimentos comprar",
     ],
     classe: "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-500/30",
     cor: "bg-purple-500",
   },
   SUPRIMENTOS: {
     rotulo: "Suprimentos",
-    descricao: "Recebe as demandas de Locação vindas da Coordenação e adquire 100% dos itens.",
+    descricao: "Compra os itens faltantes apontados pelo Almoxarifado (Venda) e adquire 100% dos itens na Locação.",
     etapas: ["SUPRIMENTOS"],
     acoes: [
-      "Receber demandas de Locação aprovadas pela Coordenação",
+      "Comprar os itens faltantes (Venda)",
       "Adquirir 100% dos itens (Locação)",
       "Liberar para o Monitoramento",
     ],
@@ -127,14 +127,11 @@ export const PERFIS: Perfil[] = [
   "ADMINISTRATIVO",
 ];
 
-/**
- * Qual perfil é dono (executor) de cada etapa do gate.
- * SUPRIMENTOS é resolvido à parte por `donoDaEtapa` (depende da modalidade):
- * Venda → Almoxarifado (conferência); Locação → Suprimentos (aquisição).
- */
+/** Qual perfil é dono (executor) de cada etapa do gate. */
 const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   COMERCIAL: "COMERCIAL",
   COORDENACAO_APROVACAO: "COORDENADOR",
+  ALMOXARIFADO: "ALMOXARIFADO",
   SUPRIMENTOS: "SUPRIMENTOS",
   MONITORAMENTO: "SUPERVISOR_MONITORAMENTO",
   TECNICA: "SUPERVISOR_TECNICO",
@@ -153,14 +150,8 @@ export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, mod
   return donoDaEtapa(etapa, modalidade) === perfil;
 }
 
-/**
- * Dono da etapa. Em SUPRIMENTOS a posse depende da modalidade:
- * Venda → Almoxarifado (confere estoque); Locação → Suprimentos (compra 100%).
- */
-export function donoDaEtapa(etapa: string, modalidade?: Modalidade): Perfil | undefined {
-  if (etapa === "SUPRIMENTOS") {
-    return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
-  }
+/** Dono da etapa (o parâmetro modalidade é mantido por compatibilidade). */
+export function donoDaEtapa(etapa: string, _modalidade?: Modalidade): Perfil | undefined {
   return DONO_DA_ETAPA[etapa as EtapaImplantacao];
 }
 

@@ -22,6 +22,7 @@ import type { Card, EtapaImplantacao, Modalidade } from "@/types";
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
   "COORDENACAO_APROVACAO",
+  "ALMOXARIFADO",
   "SUPRIMENTOS",
   "MONITORAMENTO",
   "TECNICA",
@@ -29,14 +30,33 @@ export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "MEDICAO",
 ];
 
-/** Próxima etapa segundo a regra de negócio (sequência linear de 7 colunas). */
+/**
+ * Próxima etapa segundo a regra de negócio. Bifurcação após a aprovação:
+ * VENDA passa pelo Almoxarifado (conferência de estoque); LOCAÇÃO vai direto
+ * para Suprimentos.
+ */
 export function proximaEtapa(
   etapa: EtapaImplantacao,
-  _modalidade: Modalidade | undefined,
+  modalidade: Modalidade | undefined,
 ): EtapaImplantacao | null {
-  const i = ORDEM_IMPLANTACAO.indexOf(etapa);
-  if (i === -1 || i === ORDEM_IMPLANTACAO.length - 1) return null;
-  return ORDEM_IMPLANTACAO[i + 1];
+  switch (etapa) {
+    case "COMERCIAL":
+      return "COORDENACAO_APROVACAO";
+    case "COORDENACAO_APROVACAO":
+      return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
+    case "ALMOXARIFADO":
+      return "SUPRIMENTOS";
+    case "SUPRIMENTOS":
+      return "MONITORAMENTO";
+    case "MONITORAMENTO":
+      return "TECNICA";
+    case "TECNICA":
+      return "COORDENACAO_AUDITORIA";
+    case "COORDENACAO_AUDITORIA":
+      return "MEDICAO";
+    case "MEDICAO":
+      return null;
+  }
 }
 
 export interface ResultadoTransicao {
@@ -71,26 +91,20 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       }
       break;
 
-    case "SUPRIMENTOS": {
-      // Bifurcação: a Venda passa pela conferência do Almoxarifado.
-      if (card.modalidade === "VENDA") {
-        const a = card.almoxarifado;
-        if (!a?.verificado) {
-          return { ok: false, motivo: "Almoxarifado ainda não conferiu o estoque (Venda)." };
-        }
-        if (!a.temTudoEmEstoque && a.listaDoQueFalta.trim().length === 0) {
-          return {
-            ok: false,
-            motivo: 'Preencha a "lista do que falta" ou marque que há tudo em estoque.',
-          };
-        }
-      }
-      // Locação e Venda: Compras precisa ter resolvido os itens.
-      if (card.materiais.some((m) => m.statusAlmox === "PENDENTE" || m.statusAlmox === "EM_COMPRAS")) {
-        return { ok: false, motivo: "Ainda há itens pendentes de compra/separação." };
+    case "ALMOXARIFADO":
+      // Só Venda chega aqui. O Almoxarifado precisa conferir todos os itens
+      // (cada um marcado como em estoque ou faltante).
+      if (card.materiais.some((m) => m.statusAlmox === "PENDENTE")) {
+        return { ok: false, motivo: "Confira cada item: em estoque ou faltante." };
       }
       break;
-    }
+
+    case "SUPRIMENTOS":
+      // Os faltantes precisam ter sido adquiridos (nada PENDENTE/EM_COMPRAS).
+      if (card.materiais.some((m) => m.statusAlmox === "PENDENTE" || m.statusAlmox === "EM_COMPRAS")) {
+        return { ok: false, motivo: "Há itens faltantes a adquirir." };
+      }
+      break;
 
     case "MONITORAMENTO":
       if (!card.sigma?.contaCriada) {
@@ -139,6 +153,7 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
   const mapa: Record<string, string> = {
     COMERCIAL: "Comercial",
     COORDENACAO_APROVACAO: "Coordenação · Aprovação",
+    ALMOXARIFADO: "Almoxarifado",
     SUPRIMENTOS: "Suprimentos",
     MONITORAMENTO: "Monitoramento",
     TECNICA: "Técnica",

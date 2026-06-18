@@ -175,11 +175,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
 
 function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const etapa = card.etapa as EtapaImplantacao;
-  const [almox, setAlmox] = useState(card.almoxarifado ?? { verificado: false, temTudoEmEstoque: false, listaDoQueFalta: "" });
   const [sigma, setSigma] = useState(card.sigma ?? { contaCriada: false });
-  // Re-sincroniza os rascunhos ao trocar de card.
+  // Re-sincroniza o rascunho ao trocar de card.
   useEffect(() => {
-    setAlmox(card.almoxarifado ?? { verificado: false, temTudoEmEstoque: false, listaDoQueFalta: "" });
     setSigma(card.sigma ?? { contaCriada: false });
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -205,28 +203,17 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
     );
   }
 
-  if (etapa === "SUPRIMENTOS" && card.modalidade === "VENDA") {
-    return (
-      <Gate titulo="Almoxarifado · conferência de estoque (Venda)">
-        <textarea value={almox.listaDoQueFalta} onChange={(e) => setAlmox({ ...almox, listaDoQueFalta: e.target.value })} placeholder="Lista do que falta comprar…" rows={3} className="w-full resize-none rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
-        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-          <input type="checkbox" checked={almox.temTudoEmEstoque} onChange={(e) => setAlmox({ ...almox, temTudoEmEstoque: e.target.checked })} />
-          Tenho tudo em estoque (não precisa comprar)
-        </label>
-        <button onClick={() => patch({ almoxarifado: { ...almox, verificado: true } })} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
-          Salvar conferência
-        </button>
-        {card.almoxarifado?.verificado && <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">✓ Conferência registrada</p>}
-        <ItensGate card={card} patch={patch} />
-      </Gate>
-    );
+  if (etapa === "ALMOXARIFADO") {
+    return <ConferenciaAlmox card={card} patch={patch} />;
   }
 
-  if (etapa === "SUPRIMENTOS" && card.modalidade !== "VENDA") {
+  if (etapa === "SUPRIMENTOS") {
     return (
-      <Gate titulo="Suprimentos · aquisição (Locação)">
+      <Gate titulo="Suprimentos · compra dos itens">
         <p className="text-xs text-slate-600 dark:text-slate-300">
-          Demanda de <strong>Locação</strong> recebida da Coordenação. Adquira 100% dos itens e avance para o Monitoramento.
+          {card.modalidade === "VENDA"
+            ? "Compre os itens marcados como faltantes pelo Almoxarifado."
+            : "Locação: adquira 100% dos itens e avance para o Monitoramento."}
         </p>
         <ItensGate card={card} patch={patch} />
       </Gate>
@@ -256,6 +243,43 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   return null;
+}
+
+/** Conferência do Almoxarifado (Venda): marca cada item em estoque x faltante. */
+function ConferenciaAlmox({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const itens = card.materiais;
+  const setStatus = (id: string, st: "SEPARADO" | "EM_COMPRAS") =>
+    patch({ materiais: itens.map((m) => (m.id === id ? { ...m, statusAlmox: st } : m)) });
+  const emEstoque = itens.filter((m) => m.statusAlmox === "SEPARADO").length;
+  const faltantes = itens.filter((m) => m.statusAlmox === "EM_COMPRAS").length;
+  const base = "rounded px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset";
+  const neutro = "bg-white text-slate-500 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700";
+
+  return (
+    <Gate titulo="Almoxarifado · conferência de estoque (Venda)">
+      {itens.length === 0 ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum item cadastrado pelo Comercial.</p>
+      ) : (
+        <>
+          <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+            Marque cada item: <strong>em estoque</strong> ou <strong>faltante</strong> (os faltantes vão para o Suprimentos comprar).
+          </p>
+          <ul className="space-y-1.5">
+            {itens.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-slate-700 dark:text-slate-200"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
+                <span className="flex shrink-0 gap-1">
+                  <button onClick={() => setStatus(m.id, "SEPARADO")} className={`${base} ${m.statusAlmox === "SEPARADO" ? "bg-emerald-600 text-white ring-emerald-600" : neutro}`}>Em estoque</button>
+                  <button onClick={() => setStatus(m.id, "EM_COMPRAS")} className={`${base} ${m.statusAlmox === "EM_COMPRAS" ? "bg-amber-500 text-white ring-amber-500" : neutro}`}>Falta</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">{emEstoque} em estoque · {faltantes} faltante(s)</p>
+        </>
+      )}
+    </Gate>
+  );
 }
 
 /** Lista os itens do projeto no gate de Suprimentos + ação de "adquirir". */

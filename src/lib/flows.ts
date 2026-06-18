@@ -36,11 +36,18 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
     accent: "bg-amber-500",
   },
   {
+    id: "ALMOXARIFADO",
+    titulo: "Almoxarifado",
+    setorResponsavel: "ALMOXARIFADO",
+    descricao: "Somente Venda · confere item a item (em estoque x faltante)",
+    accent: "bg-purple-500",
+  },
+  {
     id: "SUPRIMENTOS",
     titulo: "Suprimentos",
     setorResponsavel: "COMPRAS",
-    descricao: "Venda passa pelo Almoxarifado; Locação vai direto a Compras",
-    accent: "bg-purple-500",
+    descricao: "Compra os faltantes (Venda) / 100% dos itens (Locação)",
+    accent: "bg-indigo-500",
   },
   {
     id: "MONITORAMENTO",

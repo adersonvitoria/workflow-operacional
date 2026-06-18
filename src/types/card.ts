@@ -36,11 +36,12 @@ export type Modalidade = "LOCACAO" | "VENDA";
 export type EtapaImplantacao =
   | "COMERCIAL" // 1. Start: cadastro + modalidade
   | "COORDENACAO_APROVACAO" // 2. Aprovação inicial do escopo
-  | "SUPRIMENTOS" // 3. Bifurcação: VENDA passa pelo Almoxarifado; LOCAÇÃO vai direto a Compras
-  | "MONITORAMENTO" // 4. Cria conta no software central + dados de conexão
-  | "TECNICA" // 5. Execução da instalação e teste de conexão
-  | "COORDENACAO_AUDITORIA" // 6. OK de qualidade / checklist de obra
-  | "MEDICAO"; // 7. Faturamento
+  | "ALMOXARIFADO" // 3. (só VENDA) confere item a item: em estoque x faltante
+  | "SUPRIMENTOS" // 4. Compra os faltantes (Venda) / 100% dos itens (Locação)
+  | "MONITORAMENTO" // 5. Cria conta no software central + dados de conexão
+  | "TECNICA" // 6. Execução da instalação e teste de conexão
+  | "COORDENACAO_AUDITORIA" // 7. OK de qualidade / checklist de obra
+  | "MEDICAO"; // 8. Faturamento
 
 /** Etapas do Fluxo de Manutenção (serviços extras / orçamentos). */
 export type EtapaManutencao =

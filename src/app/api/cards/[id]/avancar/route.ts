@@ -9,6 +9,7 @@ import type { CardStatus, EtapaId, Setor } from "@/types";
 const SETOR_DA_ETAPA: Record<string, Setor> = {
   COMERCIAL: "COMERCIAL",
   COORDENACAO_APROVACAO: "COORDENACAO",
+  ALMOXARIFADO: "ALMOXARIFADO",
   SUPRIMENTOS: "COMPRAS",
   MONITORAMENTO: "MONITORAMENTO",
   TECNICA: "TECNICA",
