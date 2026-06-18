@@ -89,7 +89,7 @@ export function RelatoriosView() {
 function Cabecalho({ subtitulo }: { subtitulo: string }) {
   return (
     <div className="mb-4 border-b border-slate-200 pb-3 dark:border-slate-700">
-      <p className="text-base font-bold text-brand-navy dark:text-white">WorkflowOP — Segurança Eletrônica</p>
+      <p className="text-base font-bold text-brand-navy dark:text-white">GPSTec-POA — Segurança Eletrônica</p>
       <p className="text-sm text-slate-500 dark:text-slate-400">{subtitulo}</p>
     </div>
   );

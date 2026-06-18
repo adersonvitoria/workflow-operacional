@@ -19,6 +19,7 @@ interface CardSlideOverProps {
   onPatch: (patch: Partial<Card>) => void;
   onAvancar: () => void;
   onEditar: () => void;
+  onExcluir: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -27,7 +28,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -57,6 +58,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
                 </div>
                 <div className="flex items-center gap-1">
                   {podeEditar && <button onClick={onEditar} className="rounded-lg px-2 py-1 text-xs font-medium text-brand hover:bg-brand/10">Editar</button>}
+                  {podeEditar && <button onClick={onExcluir} className="rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15">Excluir</button>}
                   <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar">✕</button>
                 </div>
               </div>

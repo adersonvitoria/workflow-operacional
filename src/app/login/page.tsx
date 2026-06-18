@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
           <div className="mb-5 text-center">
             <span className="text-xl font-bold tracking-tight text-brand-navy dark:text-white">
-              Workflow<span className="text-brand-600">OP</span>
+GPSTec<span className="text-brand-600">-POA</span>
             </span>
             <p className="mt-1 text-xs text-slate-400">Gestão operacional · Segurança eletrônica</p>
           </div>

@@ -14,11 +14,11 @@ import {
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { colunasDoFluxo } from "@/lib/flows";
-import type { CardResumo, EtapaId, Fluxo } from "@/types";
+import type { Card, EtapaId, Fluxo } from "@/types";
 
 interface KanbanBoardProps {
   fluxo: Fluxo;
-  cards: CardResumo[];
+  cards: Card[];
   onAbrirCard: (id: string) => void;
   /** Persiste a mudança de etapa (validação fica no store/rota). */
   onMoverCard?: (cardId: string, novaEtapa: EtapaId) => void;
@@ -41,7 +41,7 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
   );
 
   const cardsPorEtapa = useMemo(() => {
-    const mapa = new Map<EtapaId, CardResumo[]>();
+    const mapa = new Map<EtapaId, Card[]>();
     for (const col of colunas) mapa.set(col.id, []);
     for (const card of cards) mapa.get(card.etapa)?.push(card);
     return mapa;

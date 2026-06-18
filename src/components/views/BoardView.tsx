@@ -25,7 +25,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, atualizar, avancar } = useCards();
+  const { porFluxo, obter, criar, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const podeCriar = podeCriarCard(atual?.perfil);
@@ -103,6 +103,14 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           if (!r.ok) setToast(r.motivo ?? "Não foi possível avançar.");
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
+        onExcluir={() => {
+          if (!abertoId) return;
+          const c = obter(abertoId);
+          if (window.confirm(`Excluir o card "${c?.cliente.nome ?? ""}"? Esta ação não pode ser desfeita.`)) {
+            void remover(abertoId);
+            setAbertoId(null);
+          }
+        }}
       />
 
       <CardForm

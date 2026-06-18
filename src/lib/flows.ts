@@ -4,12 +4,30 @@
  */
 
 import type {
+  Card,
   CardStatus,
   EtapaId,
   Fluxo,
   Modalidade,
   Setor,
 } from "@/types";
+
+/** Limite (horas) que um card pode ficar parado na mesma coluna. */
+export const LIMITE_PARADO_HORAS = 96;
+
+/** Momento (ms) em que o card entrou na etapa atual (último evento do histórico). */
+export function entrouNaEtapaEm(card: Pick<Card, "etapa" | "historico" | "datas">): number {
+  const evs = card.historico?.filter((e) => e.para === card.etapa) ?? [];
+  const iso = evs[evs.length - 1]?.data ?? card.datas?.abertura;
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? Date.now() : t;
+}
+
+/** True se o card está parado há mais que o limite (e ainda não encerrado). */
+export function cardParado(card: Pick<Card, "etapa" | "historico" | "datas" | "status">): boolean {
+  if (card.status === "CONCLUIDO" || card.status === "FINALIZADO") return false;
+  return Date.now() - entrouNaEtapaEm(card) > LIMITE_PARADO_HORAS * 3_600_000;
+}
 
 export interface ColunaConfig {
   id: EtapaId;

@@ -46,7 +46,7 @@ export function Sidebar() {
       <div className="flex items-center justify-between px-4 py-4">
         {!recolhido && (
           <span className="text-sm font-bold tracking-tight text-white">
-            Workflow<span className="text-brand-600">OP</span>
+GPSTec<span className="text-brand-600">-POA</span>
           </span>
         )}
         <button onClick={() => setRecolhido((v) => !v)} className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Recolher menu">

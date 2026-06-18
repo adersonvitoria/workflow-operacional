@@ -2,11 +2,11 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { formatarBRL, MODALIDADE_META, STATUS_META } from "@/lib/flows";
-import type { CardResumo } from "@/types";
+import { cardParado, formatarBRL, MODALIDADE_META, STATUS_META } from "@/lib/flows";
+import type { Card } from "@/types";
 
 interface KanbanCardProps {
-  card: CardResumo;
+  card: Card;
   onAbrir: (id: string) => void;
   /** Quando true, é o "overlay" arrastado — sem listeners, com sombra forte. */
   arrastando?: boolean;
@@ -21,6 +21,7 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
     useSortable({ id: card.id, data: { etapa: card.etapa } });
 
   const status = STATUS_META[card.status];
+  const parado = cardParado(card);
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -34,8 +35,10 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       {...listeners}
       onClick={() => onAbrir(card.id)}
       className={[
-        "group cursor-grab rounded-card border border-slate-200 bg-surface-card p-3 dark:border-slate-700 dark:bg-slate-800",
-        "shadow-card transition hover:border-brand/40 hover:shadow-md active:cursor-grabbing",
+        "group cursor-grab rounded-card border bg-surface-card p-3 shadow-card transition hover:shadow-md active:cursor-grabbing dark:bg-slate-800",
+        parado
+          ? "border-rose-400 ring-1 ring-rose-300 dark:border-rose-500/60 dark:ring-rose-500/40"
+          : "border-slate-200 hover:border-brand/40 dark:border-slate-700",
         isDragging ? "opacity-40" : "",
         arrastando ? "rotate-1 shadow-card-drag ring-2 ring-brand/30" : "",
       ].join(" ")}
@@ -75,6 +78,11 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
         {card.prioridade === "URGENTE" && (
           <span className="rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-600">
             Urgente
+          </span>
+        )}
+        {parado && (
+          <span className="rounded bg-rose-500 px-1.5 py-0.5 font-semibold text-white" title="Parado há mais de 96h nesta coluna">
+            ⏱ +96h parado
           </span>
         )}
       </div>

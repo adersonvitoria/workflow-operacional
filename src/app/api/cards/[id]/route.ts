@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
-import { podeCriarCard, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
+import { podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
 import { rowToCard } from "@/lib/mappers";
 import type { Card } from "@/types";
 
@@ -71,11 +71,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
-  if (!podeCriarCard(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
-  try {
-    await prisma.card.delete({ where: { id: params.id } });
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
+
+  const existente = await prisma.card.findUnique({ where: { id: params.id } });
+  if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
+
+  // Excluir: perfis com acesso de criação/edição do card (Coordenador em
+  // qualquer etapa; Comercial apenas na etapa Comercial).
+  if (!podeEditarCard(s.perfil, existente.etapa)) {
+    return NextResponse.json({ erro: "Sem permissão para excluir este card." }, { status: 403 });
   }
+  await prisma.card.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
 }

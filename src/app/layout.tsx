@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Workflow Operacional — Segurança Eletrônica",
+  title: "GPSTec-POA — Segurança Eletrônica",
   description:
     "Esteira de produção (Kanban) integrando Comercial, Compras, Almoxarifado, Monitoramento, Técnica e Faturamento.",
 };

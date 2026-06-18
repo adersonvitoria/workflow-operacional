@@ -8,11 +8,11 @@ import {
 import { KanbanCard } from "./KanbanCard";
 import { formatarBRL } from "@/lib/flows";
 import type { ColunaConfig } from "@/lib/flows";
-import type { CardResumo } from "@/types";
+import type { Card } from "@/types";
 
 interface KanbanColumnProps {
   coluna: ColunaConfig;
-  cards: CardResumo[];
+  cards: Card[];
   onAbrirCard: (id: string) => void;
 }
 
