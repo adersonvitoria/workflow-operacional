@@ -87,6 +87,15 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
                     )
                   )}
 
+                  <Secao titulo="Identificação">
+                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
+                      <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
+                      <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
+                      <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
+                    </dl>
+                  </Secao>
+
                   <Secao titulo="Financeiro">
                     <dl className="grid grid-cols-2 gap-3 text-sm">
                       <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
