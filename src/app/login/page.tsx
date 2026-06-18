@@ -10,15 +10,22 @@ export default function LoginPage() {
   const router = useRouter();
   const { entrar, entrarComoPerfil } = useAuth();
   const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
 
-  function login() {
-    const r = entrar(email);
+  async function login() {
+    setOcupado(true);
+    const r = await entrar(email, senha);
+    setOcupado(false);
     if (!r.ok) return setErro(r.motivo ?? "Falha no login.");
     router.push("/dashboard");
   }
-  function loginPerfil(p: Perfil) {
-    entrarComoPerfil(p);
+  async function loginPerfil(p: Perfil) {
+    setOcupado(true);
+    const r = await entrarComoPerfil(p);
+    setOcupado(false);
+    if (!r.ok) return setErro(r.motivo ?? "Falha no login.");
     router.push("/dashboard");
   }
 
@@ -49,15 +56,17 @@ export default function LoginPage() {
           <label className="mb-1 mt-3 block text-xs font-medium text-slate-500 dark:text-slate-400">Senha</label>
           <input
             type="password"
+            value={senha}
+            onChange={(e) => { setSenha(e.target.value); setErro(null); }}
             placeholder="••••••••"
             onKeyDown={(e) => e.key === "Enter" && login()}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           />
           {erro && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{erro}</p>}
-          <button onClick={login} className="mt-4 w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">
-            Entrar
+          <button onClick={login} disabled={ocupado} className="mt-4 w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
+            {ocupado ? "Entrando…" : "Entrar"}
           </button>
-          <p className="mt-2 text-center text-[11px] text-slate-400">Demo: clique num perfil abaixo para entrar direto.</p>
+          <p className="mt-2 text-center text-[11px] text-slate-400">Demo: clique num perfil abaixo (senha padrão <strong>123456</strong>).</p>
         </div>
 
         {/* Perfis */}

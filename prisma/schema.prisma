@@ -1,0 +1,115 @@
+// Schema do Workflow Operacional — PostgreSQL (Neon)
+// Campos de consulta ficam em colunas; estruturas aninhadas (materiais,
+// checklist, histórico, gates) ficam em JSON (jsonb), espelhando os modelos
+// de `src/types`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Perfil {
+  COORDENADOR
+  SUPERVISOR_TECNICO
+  SUPERVISOR_MONITORAMENTO
+  COMERCIAL
+  ADMINISTRATIVO
+  ALMOXARIFADO
+}
+
+enum Fluxo {
+  IMPLANTACAO
+  MANUTENCAO
+}
+
+enum CardStatus {
+  EM_ANDAMENTO
+  AGUARDANDO_APROVACAO
+  CONCLUIDO
+  TRAVADO
+}
+
+enum Prioridade {
+  BAIXA
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+enum Modalidade {
+  LOCACAO
+  VENDA
+}
+
+enum Natureza {
+  INVESTIMENTO
+  DESPESA
+  ESTOQUE
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  perfil    Perfil
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Card {
+  id     String     @id @default(cuid())
+  codigo String
+  fluxo  Fluxo
+  etapa  String
+  status CardStatus @default(EM_ANDAMENTO)
+
+  prioridade Prioridade  @default(NORMAL)
+  modalidade Modalidade?
+  natureza   Natureza?
+
+  clienteNome      String
+  clienteDocumento String?
+  clienteContato   String?
+  clienteEndereco  String?
+
+  cr              String?
+  cc              String?
+  chamado         String?
+  numeroOrcamento String?
+
+  valorMaoDeObra    Float?
+  valorEquipamentos Float?
+  valorTotal        Float?
+  valorMensal       Float?
+  pagamento         Json?
+
+  responsavelSetor   String?
+  responsavelPessoa  String?
+
+  dataAbertura           DateTime @default(now())
+  dataAprovacao          DateTime?
+  dataPrevisaoInstalacao DateTime?
+  dataConclusao          DateTime?
+
+  // Gates e estruturas aninhadas (jsonb)
+  aprovacaoInicial Json?
+  auditoriaFinal   Json?
+  almoxarifado     Json?
+  sigma            Json?
+  materiais        Json @default("[]")
+  checklist        Json @default("[]")
+  historico        Json @default("[]")
+
+  observacoes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fluxo, etapa])
+}

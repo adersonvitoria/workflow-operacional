@@ -8,10 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { Perfil } from "@/lib/perfis";
-
-const STORAGE_USERS = "workflow-operacional:usuarios:v1";
-const STORAGE_SESSAO = "workflow-operacional:sessao:v1";
+import { podeGerenciarUsuarios, type Perfil } from "@/lib/perfis";
 
 export interface Usuario {
   id: string;
@@ -26,89 +23,93 @@ export interface NovoUsuario {
   email: string;
   perfil: Perfil;
   ativo?: boolean;
+  senha?: string;
 }
 
-const SEED_USUARIOS: Usuario[] = [
-  { id: "u-coord", nome: "Carla Coordenação", email: "coordenacao@empresa.com", perfil: "COORDENADOR", ativo: true },
-  { id: "u-com", nome: "Daniela Zimiani", email: "comercial@empresa.com", perfil: "COMERCIAL", ativo: true },
-  { id: "u-alm", nome: "Murilo Souza", email: "almoxarifado@empresa.com", perfil: "ALMOXARIFADO", ativo: true },
-  { id: "u-mon", nome: "Felipe Saldanha", email: "monitoramento@empresa.com", perfil: "SUPERVISOR_MONITORAMENTO", ativo: true },
-  { id: "u-tec", nome: "Jessi Diemes", email: "tecnica@empresa.com", perfil: "SUPERVISOR_TECNICO", ativo: true },
-  { id: "u-adm", nome: "Samya Cruz", email: "admin@empresa.com", perfil: "ADMINISTRATIVO", ativo: true },
-];
+/** Demo: acesso rápido por perfil usa o e-mail semente + senha padrão. */
+const EMAIL_PADRAO: Record<Perfil, string> = {
+  COORDENADOR: "coordenacao@empresa.com",
+  COMERCIAL: "comercial@empresa.com",
+  ALMOXARIFADO: "almoxarifado@empresa.com",
+  SUPERVISOR_MONITORAMENTO: "monitoramento@empresa.com",
+  SUPERVISOR_TECNICO: "tecnica@empresa.com",
+  ADMINISTRATIVO: "admin@empresa.com",
+};
+const SENHA_PADRAO = "123456";
 
 interface AuthContextValue {
   carregado: boolean;
   atual: Usuario | null;
   usuarios: Usuario[];
-  entrar: (email: string) => { ok: boolean; motivo?: string };
-  entrarComoPerfil: (perfil: Perfil) => void;
-  sair: () => void;
-  criarUsuario: (u: NovoUsuario) => void;
-  atualizarUsuario: (id: string, patch: Partial<Usuario>) => void;
-  removerUsuario: (id: string) => void;
+  entrar: (email: string, senha: string) => Promise<{ ok: boolean; motivo?: string }>;
+  entrarComoPerfil: (perfil: Perfil) => Promise<{ ok: boolean; motivo?: string }>;
+  sair: () => Promise<void>;
+  criarUsuario: (u: NovoUsuario) => Promise<{ ok: boolean; motivo?: string }>;
+  atualizarUsuario: (id: string, patch: Partial<Usuario> & { senha?: string }) => Promise<void>;
+  removerUsuario: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function api(url: string, init?: RequestInit) {
+  const res = await fetch(url, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...init });
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [usuarios, setUsuarios] = useState<Usuario[]>(SEED_USUARIOS);
-  const [atualId, setAtualId] = useState<string | null>(null);
+  const [atual, setAtual] = useState<Usuario | null>(null);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregado, setCarregado] = useState(false);
 
+  // Restaura a sessão a partir do cookie.
   useEffect(() => {
-    try {
-      const u = window.localStorage.getItem(STORAGE_USERS);
-      if (u) setUsuarios(JSON.parse(u) as Usuario[]);
-      const s = window.localStorage.getItem(STORAGE_SESSAO);
-      if (s) setAtualId(s);
-    } catch {
-      /* ignore */
-    }
-    setCarregado(true);
+    (async () => {
+      const { json } = await api("/api/auth/me");
+      setAtual((json.usuario as Usuario) ?? null);
+      setCarregado(true);
+    })();
   }, []);
 
-  useEffect(() => {
-    if (!carregado) return;
-    window.localStorage.setItem(STORAGE_USERS, JSON.stringify(usuarios));
-  }, [usuarios, carregado]);
+  const recarregarUsuarios = useCallback(async () => {
+    if (!podeGerenciarUsuarios(atual?.perfil)) { setUsuarios([]); return; }
+    const { ok, json } = await api("/api/usuarios");
+    if (ok) setUsuarios(json.usuarios as Usuario[]);
+  }, [atual]);
 
-  useEffect(() => {
-    if (!carregado) return;
-    if (atualId) window.localStorage.setItem(STORAGE_SESSAO, atualId);
-    else window.localStorage.removeItem(STORAGE_SESSAO);
-  }, [atualId, carregado]);
+  useEffect(() => { void recarregarUsuarios(); }, [recarregarUsuarios]);
 
-  const atual = useMemo(() => usuarios.find((u) => u.id === atualId) ?? null, [usuarios, atualId]);
-
-  const entrar = useCallback((email: string) => {
-    const u = usuarios.find((x) => x.email.toLowerCase() === email.trim().toLowerCase());
-    if (!u) return { ok: false, motivo: "E-mail não encontrado." };
-    if (!u.ativo) return { ok: false, motivo: "Usuário inativo." };
-    setAtualId(u.id);
+  const entrar = useCallback(async (email: string, senha: string) => {
+    const { ok, json } = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) });
+    if (!ok) return { ok: false, motivo: (json.erro as string) ?? "Falha no login." };
+    setAtual(json.usuario as Usuario);
     return { ok: true };
-  }, [usuarios]);
-
-  const entrarComoPerfil = useCallback((perfil: Perfil) => {
-    const u = usuarios.find((x) => x.perfil === perfil && x.ativo);
-    if (u) setAtualId(u.id);
-  }, [usuarios]);
-
-  const sair = useCallback(() => setAtualId(null), []);
-
-  const criarUsuario = useCallback((u: NovoUsuario) => {
-    const id = `u-${u.email.replace(/[^a-z0-9]/gi, "").slice(0, 10)}-${Math.abs(hash(u.email))}`;
-    setUsuarios((prev) => [{ id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo ?? true }, ...prev]);
   }, []);
 
-  const atualizarUsuario = useCallback((id: string, patch: Partial<Usuario>) => {
-    setUsuarios((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  const entrarComoPerfil = useCallback((perfil: Perfil) => entrar(EMAIL_PADRAO[perfil], SENHA_PADRAO), [entrar]);
+
+  const sair = useCallback(async () => {
+    await api("/api/auth/logout", { method: "POST" });
+    setAtual(null);
+    setUsuarios([]);
   }, []);
 
-  const removerUsuario = useCallback((id: string) => {
-    setUsuarios((prev) => prev.filter((u) => u.id !== id));
-    setAtualId((cur) => (cur === id ? null : cur));
-  }, []);
+  const criarUsuario = useCallback(async (u: NovoUsuario) => {
+    const { ok, json } = await api("/api/usuarios", { method: "POST", body: JSON.stringify(u) });
+    if (!ok) return { ok: false, motivo: (json.erro as string) ?? "Falha ao cadastrar." };
+    await recarregarUsuarios();
+    return { ok: true };
+  }, [recarregarUsuarios]);
+
+  const atualizarUsuario = useCallback(async (id: string, patch: Partial<Usuario> & { senha?: string }) => {
+    await api(`/api/usuarios/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await recarregarUsuarios();
+  }, [recarregarUsuarios]);
+
+  const removerUsuario = useCallback(async (id: string) => {
+    await api(`/api/usuarios/${id}`, { method: "DELETE" });
+    await recarregarUsuarios();
+  }, [recarregarUsuarios]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ carregado, atual, usuarios, entrar, entrarComoPerfil, sair, criarUsuario, atualizarUsuario, removerUsuario }),
@@ -122,10 +123,4 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
   return ctx;
-}
-
-function hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return h;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   formatarBRL,
   MODALIDADE_META,
@@ -165,6 +165,13 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar }: 
 
 function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const etapa = card.etapa as EtapaImplantacao;
+  const [almox, setAlmox] = useState(card.almoxarifado ?? { verificado: false, temTudoEmEstoque: false, listaDoQueFalta: "" });
+  const [sigma, setSigma] = useState(card.sigma ?? { contaCriada: false });
+  // Re-sincroniza os rascunhos ao trocar de card.
+  useEffect(() => {
+    setAlmox(card.almoxarifado ?? { verificado: false, temTudoEmEstoque: false, listaDoQueFalta: "" });
+    setSigma(card.sigma ?? { contaCriada: false });
+  }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (etapa === "COMERCIAL" && !card.modalidade) {
     return (
@@ -189,26 +196,28 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   if (etapa === "SUPRIMENTOS" && card.modalidade === "VENDA") {
-    const a = card.almoxarifado ?? { verificado: false, temTudoEmEstoque: false, listaDoQueFalta: "" };
     return (
       <Gate titulo="Almoxarifado · conferência de estoque (Venda)">
-        <textarea value={a.listaDoQueFalta} onChange={(e) => patch({ almoxarifado: { ...a, listaDoQueFalta: e.target.value, verificado: true } })} placeholder="Lista do que falta comprar…" rows={3} className="w-full resize-none rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
-        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-          <input type="checkbox" checked={a.temTudoEmEstoque} onChange={(e) => patch({ almoxarifado: { ...a, temTudoEmEstoque: e.target.checked, verificado: true } })} />
+        <textarea value={almox.listaDoQueFalta} onChange={(e) => setAlmox({ ...almox, listaDoQueFalta: e.target.value })} placeholder="Lista do que falta comprar…" rows={3} className="w-full resize-none rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+          <input type="checkbox" checked={almox.temTudoEmEstoque} onChange={(e) => setAlmox({ ...almox, temTudoEmEstoque: e.target.checked })} />
           Tenho tudo em estoque (não precisa comprar)
         </label>
+        <button onClick={() => patch({ almoxarifado: { ...almox, verificado: true } })} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
+          Salvar conferência
+        </button>
+        {card.almoxarifado?.verificado && <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">✓ Conferência registrada</p>}
       </Gate>
     );
   }
 
   if (etapa === "MONITORAMENTO") {
-    const s = card.sigma ?? { contaCriada: false };
     return (
       <Gate titulo="Criação de conta no software central">
-        <input value={s.contaSigma ?? ""} onChange={(e) => patch({ sigma: { ...s, contaSigma: e.target.value } })} placeholder="Nº da conta (Sigma)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
-        <input value={s.dadosConexao ?? ""} onChange={(e) => patch({ sigma: { ...s, dadosConexao: e.target.value } })} placeholder="Dados de conexão (IP, portas, serial)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
-        <button onClick={() => patch({ sigma: { ...s, contaCriada: true, statusSync: "SINCRONIZADO" } })} disabled={s.contaCriada} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-200">
-          {s.contaCriada ? "✓ Conta criada" : "Confirmar criação da conta"}
+        <input value={sigma.contaSigma ?? ""} onChange={(e) => setSigma({ ...sigma, contaSigma: e.target.value })} placeholder="Nº da conta (Sigma)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+        <input value={sigma.dadosConexao ?? ""} onChange={(e) => setSigma({ ...sigma, dadosConexao: e.target.value })} placeholder="Dados de conexão (IP, portas, serial)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+        <button onClick={() => patch({ sigma: { ...sigma, contaCriada: true, statusSync: "SINCRONIZADO" } })} disabled={card.sigma?.contaCriada} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-200">
+          {card.sigma?.contaCriada ? "✓ Conta criada" : "Confirmar criação da conta"}
         </button>
       </Gate>
     );

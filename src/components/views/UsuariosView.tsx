@@ -12,9 +12,9 @@ export function UsuariosView() {
 
   const pode = podeGerenciarUsuarios(atual?.perfil);
 
-  function salvar(u: NovoUsuario) {
-    if (editId) atualizarUsuario(editId, u);
-    else criarUsuario(u);
+  async function salvar(u: NovoUsuario) {
+    if (editId) await atualizarUsuario(editId, u);
+    else await criarUsuario(u);
     setFormAberto(false);
     setEditId(null);
   }

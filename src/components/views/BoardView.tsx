@@ -42,9 +42,9 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
 
   const aberto = abertoId ? obter(abertoId) ?? null : null;
 
-  function handleMover(id: string, destino: EtapaId) {
+  async function handleMover(id: string, destino: EtapaId) {
     if (fluxo === "MANUTENCAO") {
-      atualizar(id, { etapa: destino });
+      await atualizar(id, { etapa: destino });
       return;
     }
     const card = obter(id);
@@ -54,15 +54,13 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
       setToast(v.motivo ?? "Movimento não permitido.");
       return;
     }
-    avancar(id);
+    const r = await avancar(id);
+    if (!r.ok) setToast(r.motivo ?? "Não foi possível avançar.");
   }
 
-  function handleSubmit(values: NovoCardInput) {
-    if (editId) {
-      atualizar(editId, paraPatch(values));
-    } else {
-      criar({ ...values, fluxo });
-    }
+  async function handleSubmit(values: NovoCardInput) {
+    if (editId) await atualizar(editId, paraPatch(values));
+    else await criar({ ...values, fluxo });
     setFormAberto(false);
     setEditId(null);
   }
@@ -91,10 +89,10 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
       <CardSlideOver
         card={aberto}
         onFechar={() => setAbertoId(null)}
-        onPatch={(p) => abertoId && atualizar(abertoId, p)}
-        onAvancar={() => {
+        onPatch={(p) => { if (abertoId) void atualizar(abertoId, p); }}
+        onAvancar={async () => {
           if (!abertoId) return;
-          const r = avancar(abertoId);
+          const r = await avancar(abertoId);
           if (!r.ok) setToast(r.motivo ?? "Não foi possível avançar.");
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
