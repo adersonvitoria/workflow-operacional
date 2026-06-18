@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { cardParado, COLUNAS_IMPLANTACAO, formatarBRL, MODALIDADE_META } from "@/lib/flows";
 import { useCards } from "@/lib/store";
@@ -95,7 +96,47 @@ function Gestao({ imp }: { imp: Card[] }) {
           <Barra rotulo="Venda" qtd={venda} pct={(venda / totalMod) * 100} cor="bg-purple-500" />
         </Painel>
       </div>
+
+      <AnaliseIA />
     </>
+  );
+}
+
+function AnaliseIA() {
+  const [analise, setAnalise] = useState<string | null>(null);
+  const [fonte, setFonte] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(false);
+
+  async function analisar() {
+    setCarregando(true);
+    try {
+      const res = await fetch("/api/analise", { method: "POST", credentials: "same-origin" });
+      const json = await res.json();
+      setAnalise(json.analise ?? "Não foi possível gerar a análise.");
+      setFonte(json.fonte ?? null);
+    } catch {
+      setAnalise("Falha ao gerar a análise.");
+    }
+    setCarregando(false);
+  }
+
+  return (
+    <section className="rounded-card border border-brand/30 bg-brand/5 p-5 shadow-card dark:border-brand/40 dark:bg-brand/10">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">🤖 Análise da Coordenação (IA)</h2>
+        <button onClick={analisar} disabled={carregando} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
+          {carregando ? "Analisando…" : analise ? "Reanalisar" : "Analisar problemas"}
+        </button>
+      </div>
+      {analise ? (
+        <>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-200">{analise}</p>
+          {fonte === "heuristica" && <p className="mt-2 text-[11px] text-slate-400">Análise baseada em regras (defina ANTHROPIC_API_KEY para usar a IA da Claude).</p>}
+        </>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Gere uma análise dos cards parados (SLA) e pendentes de aprovação, com as ações recomendadas.</p>
+      )}
+    </section>
   );
 }
 

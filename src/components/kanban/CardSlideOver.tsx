@@ -113,8 +113,13 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
                         {card.materiais.map((m) => (
                           <li key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                            <span className="text-slate-700 dark:text-slate-300"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">{m.statusAlmox}</span>
+                            <span className="min-w-0">
+                              <span className="block text-slate-700 dark:text-slate-300"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
+                              {(m.alocacao || m.cr) && (
+                                <span className="block text-[11px] text-slate-400">{m.alocacao ? `Alocação: ${m.alocacao}` : ""}{m.alocacao && m.cr ? " · " : ""}{m.cr ? `CR ${m.cr}` : ""}</span>
+                              )}
+                            </span>
+                            <span className="ml-2 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">{m.statusAlmox}</span>
                           </li>
                         ))}
                       </ul>
@@ -197,13 +202,7 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   if (etapa === "COORDENACAO_APROVACAO") {
-    return (
-      <Gate titulo="Aprovação inicial da Coordenação">
-        <button onClick={() => patch({ aprovacaoInicial: { aprovado: true, por: "Coordenação", em: new Date().toISOString() }, status: "EM_ANDAMENTO" })} disabled={card.aprovacaoInicial?.aprovado} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-200">
-          {card.aprovacaoInicial?.aprovado ? "✓ Aprovado" : "Aprovar escopo"}
-        </button>
-      </Gate>
-    );
+    return <AprovacaoCoordenacao card={card} patch={patch} />;
   }
 
   if (etapa === "ALMOXARIFADO") {
@@ -342,6 +341,46 @@ function Campito({ label, children }: { label: string; children: React.ReactNode
       <span className="mb-0.5 block text-[10px] text-slate-400">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** Aprovação da Coordenação: define Alocação + CR de cada item (obrigatório). */
+function AprovacaoCoordenacao({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const [itens, setItens] = useState(card.materiais);
+  useEffect(() => setItens(card.materiais), [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const aprovado = !!card.aprovacaoInicial?.aprovado;
+  const faltam = itens.some((m) => !m.alocacao?.trim() || !m.cr?.trim());
+  const inp = "w-full rounded border border-slate-200 px-2 py-1 text-xs focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+  const set = (id: string, campo: "alocacao" | "cr", val: string) =>
+    setItens((prev) => prev.map((m) => (m.id === id ? { ...m, [campo]: val } : m)));
+
+  return (
+    <Gate titulo="Aprovação inicial da Coordenação">
+      {itens.length > 0 && (
+        <>
+          <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">Defina a <strong>Alocação</strong> e o <strong>CR</strong> de cada item (obrigatório para aprovar).</p>
+          <ul className="mb-2 space-y-2">
+            {itens.map((m) => (
+              <li key={m.id}>
+                <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{m.quantidade}x {m.descricao}</p>
+                <div className="mt-1 flex gap-2">
+                  <input value={m.alocacao ?? ""} onChange={(e) => set(m.id, "alocacao", e.target.value)} placeholder="Alocação" className={inp} disabled={aprovado} />
+                  <input value={m.cr ?? ""} onChange={(e) => set(m.id, "cr", e.target.value)} placeholder="CR" className={inp} disabled={aprovado} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <button
+        onClick={() => patch({ materiais: itens, aprovacaoInicial: { aprovado: true, por: "Coordenação", em: new Date().toISOString() }, status: "EM_ANDAMENTO" })}
+        disabled={aprovado || (itens.length > 0 && faltam)}
+        className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300 dark:disabled:bg-emerald-800"
+      >
+        {aprovado ? "✓ Aprovado" : "Aprovar escopo"}
+      </button>
+      {!aprovado && itens.length > 0 && faltam && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Preencha Alocação e CR de todos os itens.</p>}
+    </Gate>
   );
 }
 

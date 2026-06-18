@@ -102,6 +102,8 @@ export interface ItemMaterial {
   natureza: Natureza;
   statusAlmox: StatusMaterial;
   precoUnitario?: number; // preço do catálogo no momento da seleção
+  alocacao?: string; // preenchido pela Coordenação (obrigatório p/ aprovar)
+  cr?: string; // CR do item, preenchido pela Coordenação (obrigatório)
   fornecedor?: string;
   sc?: string; // nº Solicitação de Compra
   pc?: string; // nº Pedido de Compra

@@ -23,10 +23,39 @@ export function entrouNaEtapaEm(card: Pick<Card, "etapa" | "historico" | "datas"
   return Number.isNaN(t) ? Date.now() : t;
 }
 
-/** True se o card está parado há mais que o limite (e ainda não encerrado). */
+/** Horas (inteiras) que o card está parado na coluna atual. */
+export function horasParado(card: Pick<Card, "etapa" | "historico" | "datas">): number {
+  return Math.floor((Date.now() - entrouNaEtapaEm(card)) / 3_600_000);
+}
+
+export type NivelSla = "normal" | "amarelo" | "vermelho" | "roxo";
+
+/**
+ * Nível de SLA por tempo parado na mesma coluna:
+ * < 48h normal · 48–96h amarelo · 96:00:01–120h vermelho · > 120h roxo.
+ * Cards encerrados (concluído/finalizado) não têm SLA.
+ */
+export function nivelSla(card: Pick<Card, "etapa" | "historico" | "datas" | "status">): NivelSla {
+  if (card.status === "CONCLUIDO" || card.status === "FINALIZADO") return "normal";
+  const h = horasParado(card);
+  if (h > 120) return "roxo";
+  if (h > 96) return "vermelho";
+  if (h >= 48) return "amarelo";
+  return "normal";
+}
+
+/** Estilo (borda/realce/selo) por nível de SLA. */
+export const SLA_META: Record<NivelSla, { borda: string; selo: string }> = {
+  normal: { borda: "border-slate-200 hover:border-brand/40 dark:border-slate-700", selo: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300" },
+  amarelo: { borda: "border-amber-400 ring-1 ring-amber-300 dark:border-amber-500/60 dark:ring-amber-500/40", selo: "bg-amber-500 text-white" },
+  vermelho: { borda: "border-rose-400 ring-1 ring-rose-300 dark:border-rose-500/60 dark:ring-rose-500/40", selo: "bg-rose-500 text-white" },
+  roxo: { borda: "border-purple-400 ring-1 ring-purple-300 dark:border-purple-500/60 dark:ring-purple-500/40", selo: "bg-purple-600 text-white" },
+};
+
+/** True se o card está parado além do limite (vermelho/roxo). */
 export function cardParado(card: Pick<Card, "etapa" | "historico" | "datas" | "status">): boolean {
-  if (card.status === "CONCLUIDO" || card.status === "FINALIZADO") return false;
-  return Date.now() - entrouNaEtapaEm(card) > LIMITE_PARADO_HORAS * 3_600_000;
+  const n = nivelSla(card);
+  return n === "vermelho" || n === "roxo";
 }
 
 export interface ColunaConfig {

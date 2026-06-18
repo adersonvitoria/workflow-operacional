@@ -89,6 +89,9 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       if (!card.aprovacaoInicial?.aprovado) {
         return { ok: false, motivo: "Aguardando aprovação da Coordenação." };
       }
+      if (card.materiais.some((m) => !m.alocacao?.trim() || !m.cr?.trim())) {
+        return { ok: false, motivo: "Defina Alocação e CR de todos os itens (Coordenação)." };
+      }
       break;
 
     case "ALMOXARIFADO":

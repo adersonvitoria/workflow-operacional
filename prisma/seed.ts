@@ -83,6 +83,35 @@ async function main() {
   } else {
     console.log(`Cards: ${total} já existentes, seed de cards ignorado.`);
   }
+
+  // Cards de demonstração do SLA (amarelo/vermelho/roxo) — idempotente por nome.
+  const hAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const SLA_DEMO = [
+    { nome: "DEMO SLA · Amarelo (72h)", etapa: "MONITORAMENTO", modalidade: "LOCACAO", horas: 72, total: 3000 },
+    { nome: "DEMO SLA · Vermelho (108h)", etapa: "TECNICA", modalidade: "VENDA", horas: 108, total: 9000 },
+    { nome: "DEMO SLA · Roxo (130h)", etapa: "SUPRIMENTOS", modalidade: "LOCACAO", horas: 130, total: 5000 },
+  ];
+  let criadosSla = 0;
+  for (const d of SLA_DEMO) {
+    const existe = await prisma.card.findFirst({ where: { clienteNome: d.nome } });
+    if (existe) continue;
+    await prisma.card.create({
+      data: {
+        codigo: "SLA",
+        fluxo: "IMPLANTACAO",
+        etapa: d.etapa,
+        status: "EM_ANDAMENTO",
+        prioridade: "NORMAL",
+        modalidade: d.modalidade as never,
+        clienteNome: d.nome,
+        valorTotal: d.total,
+        dataAbertura: new Date(hAgo(d.horas)),
+        historico: [{ id: "h0", data: hAgo(d.horas), setor: "COMERCIAL", autor: "Seed", acao: "Entrou na etapa (demo SLA)", para: d.etapa }],
+      } as never,
+    });
+    criadosSla++;
+  }
+  console.log(`Cards demo de SLA: ${criadosSla} criados (já existentes ignorados).`);
 }
 
 main()

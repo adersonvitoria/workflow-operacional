@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cardParado, formatarBRL, MODALIDADE_META, STATUS_META } from "@/lib/flows";
+import { formatarBRL, horasParado, MODALIDADE_META, nivelSla, SLA_META, STATUS_META } from "@/lib/flows";
 import type { Card } from "@/types";
 
 interface KanbanCardProps {
@@ -21,7 +21,9 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
     useSortable({ id: card.id, data: { etapa: card.etapa } });
 
   const status = STATUS_META[card.status];
-  const parado = cardParado(card);
+  const sla = nivelSla(card);
+  const encerrado = card.status === "CONCLUIDO" || card.status === "FINALIZADO";
+  const horas = horasParado(card);
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -36,9 +38,7 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       onClick={() => onAbrir(card.id)}
       className={[
         "group cursor-grab rounded-card border bg-surface-card p-3 shadow-card transition hover:shadow-md active:cursor-grabbing dark:bg-slate-800",
-        parado
-          ? "border-rose-400 ring-1 ring-rose-300 dark:border-rose-500/60 dark:ring-rose-500/40"
-          : "border-slate-200 hover:border-brand/40 dark:border-slate-700",
+        SLA_META[sla].borda,
         isDragging ? "opacity-40" : "",
         arrastando ? "rotate-1 shadow-card-drag ring-2 ring-brand/30" : "",
       ].join(" ")}
@@ -80,9 +80,9 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
             Urgente
           </span>
         )}
-        {parado && (
-          <span className="rounded bg-rose-500 px-1.5 py-0.5 font-semibold text-white" title="Parado há mais de 96h nesta coluna">
-            ⏱ +96h parado
+        {!encerrado && (
+          <span className={`rounded px-1.5 py-0.5 font-semibold ${SLA_META[sla].selo}`} title={`Parado há ${horas}h nesta coluna`}>
+            ⏱ {horas >= 24 ? `${Math.floor(horas / 24)}d ${horas % 24}h` : `${horas}h`}
           </span>
         )}
       </div>
