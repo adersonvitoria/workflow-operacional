@@ -32,14 +32,14 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
   );
 
   return (
-    <section className="flex w-80 shrink-0 flex-col rounded-xl bg-surface-board">
+    <section className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
       {/* Trilho de cor + cabeçalho */}
       <div className={`h-1 rounded-t-xl ${coluna.accent}`} />
       <header className="px-3 pb-2 pt-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">
-            {coluna.titulo}
-            <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+          <h2 className="flex items-center text-sm font-semibold text-slate-800 dark:text-slate-100">
+            <span className="truncate">{coluna.titulo}</span>
+            <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
               {cards.length}
             </span>
           </h2>
@@ -48,7 +48,7 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
           {coluna.descricao}
         </p>
         {somaTotal > 0 && (
-          <p className="mt-1 text-xs font-medium text-slate-500">
+          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
             {formatarBRL(somaTotal)}
           </p>
         )}
@@ -58,7 +58,7 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
       <div
         ref={setNodeRef}
         className={[
-          "flex-1 space-y-2 overflow-y-auto px-2 pb-3 transition-colors",
+          "flex-1 space-y-2 overflow-y-auto px-2 pb-3 transition-colors scrollbar-hide",
           isOver ? "bg-brand/5 ring-2 ring-inset ring-brand/20" : "",
         ].join(" ")}
       >

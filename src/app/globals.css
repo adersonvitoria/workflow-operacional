@@ -3,11 +3,22 @@
 @tailwind utilities;
 
 html,
-body,
-#__next {
+body {
   height: 100%;
+  overflow: hidden; /* layout full-screen: sem scroll de página */
 }
 
 body {
-  @apply bg-surface-app font-sans text-slate-900 antialiased;
+  @apply bg-surface-app font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+}
+
+/* Esconde as barras de rolagem (mantendo a rolagem por roda/arraste). */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

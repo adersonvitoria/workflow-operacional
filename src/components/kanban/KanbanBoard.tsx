@@ -66,14 +66,14 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
 
   if (!montado) {
     return (
-      <div className="flex h-full gap-3 overflow-x-auto p-4">
+      <div className="flex h-full gap-3 overflow-x-auto p-4 scrollbar-hide">
         {colunas.map((coluna) => (
-          <div key={coluna.id} className="flex w-80 shrink-0 flex-col rounded-xl bg-surface-board">
+          <div key={coluna.id} className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
             <div className={`h-1 rounded-t-xl ${coluna.accent}`} />
             <div className="px-3 pb-2 pt-3">
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {coluna.titulo}
-                <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                   {(cardsPorEtapa.get(coluna.id) ?? []).length}
                 </span>
               </h2>
@@ -91,7 +91,7 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full gap-3 overflow-x-auto p-4">
+      <div className="flex h-full gap-3 overflow-x-auto p-4 scrollbar-hide">
         {colunas.map((coluna) => (
           <KanbanColumn
             key={coluna.id}

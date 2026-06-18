@@ -97,11 +97,11 @@ export const MODALIDADE_META: Record<
 > = {
   LOCACAO: {
     rotulo: "Locação",
-    classe: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    classe: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
   },
   VENDA: {
     rotulo: "Venda",
-    classe: "bg-purple-50 text-purple-700 ring-purple-200",
+    classe: "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-500/30",
   },
 };
 
@@ -112,22 +112,22 @@ export const STATUS_META: Record<
 > = {
   EM_ANDAMENTO: {
     rotulo: "Em andamento",
-    classe: "bg-slate-100 text-slate-700 ring-slate-200",
+    classe: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600",
     ponto: "bg-slate-500",
   },
   AGUARDANDO_APROVACAO: {
     rotulo: "Aguardando aprovação",
-    classe: "bg-amber-50 text-amber-700 ring-amber-200",
+    classe: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30",
     ponto: "bg-amber-500",
   },
   CONCLUIDO: {
     rotulo: "Concluído",
-    classe: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    classe: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30",
     ponto: "bg-emerald-500",
   },
   TRAVADO: {
     rotulo: "Travado",
-    classe: "bg-rose-50 text-rose-700 ring-rose-200",
+    classe: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30",
     ponto: "bg-rose-500",
   },
 };

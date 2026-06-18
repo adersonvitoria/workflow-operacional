@@ -34,7 +34,7 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       {...listeners}
       onClick={() => onAbrir(card.id)}
       className={[
-        "group cursor-grab rounded-card border border-slate-200 bg-surface-card p-3",
+        "group cursor-grab rounded-card border border-slate-200 bg-surface-card p-3 dark:border-slate-700 dark:bg-slate-800",
         "shadow-card transition hover:border-brand/40 hover:shadow-md active:cursor-grabbing",
         isDragging ? "opacity-40" : "",
         arrastando ? "rotate-1 shadow-card-drag ring-2 ring-brand/30" : "",
@@ -54,7 +54,7 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       </header>
 
       {/* Cliente */}
-      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">
+      <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800 dark:text-slate-100">
         {card.cliente.nome}
       </h3>
 
@@ -80,8 +80,8 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
       </div>
 
       {/* Rodapé: valor + responsável */}
-      <footer className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
-        <span className="text-sm font-semibold text-slate-900">
+      <footer className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-700">
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {formatarBRL(card.valores.total ?? card.valores.mensal)}
           {card.valores.total == null && card.valores.mensal != null && (
             <span className="text-[10px] font-normal text-slate-400">/mês</span>

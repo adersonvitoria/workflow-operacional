@@ -27,12 +27,12 @@ export function Dashboard() {
 
   return (
     <>
-      <header className="border-b border-slate-200 bg-white px-6 py-3">
-        <h1 className="text-lg font-semibold text-slate-900">Dashboard</h1>
+      <header className="border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
+        <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Dashboard</h1>
         <p className="text-xs text-slate-400">Visão geral das implantações</p>
       </header>
 
-      <div className="flex-1 space-y-6 overflow-y-auto bg-surface-app p-6">
+      <div className="flex-1 space-y-6 overflow-y-auto bg-surface-app p-6 scrollbar-hide dark:bg-slate-950">
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi rotulo="Projetos ativos" valor={String(ativos.length)} hint={`${imp.length} no total`} />
@@ -47,11 +47,11 @@ export function Dashboard() {
             <ul className="space-y-2.5">
               {porEtapa.map((e) => (
                 <li key={e.titulo} className="flex items-center gap-3">
-                  <span className="w-44 shrink-0 truncate text-sm text-slate-600">{e.titulo}</span>
-                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                  <span className="w-44 shrink-0 truncate text-sm text-slate-600 dark:text-slate-300">{e.titulo}</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div className={`h-full rounded-full ${e.accent}`} style={{ width: `${(e.qtd / maxEtapa) * 100}%` }} />
                   </div>
-                  <span className="w-6 text-right text-sm font-semibold text-slate-700">{e.qtd}</span>
+                  <span className="w-6 text-right text-sm font-semibold text-slate-700 dark:text-slate-200">{e.qtd}</span>
                 </li>
               ))}
             </ul>
@@ -62,8 +62,8 @@ export function Dashboard() {
             <div className="space-y-4">
               <BarraModalidade rotulo={MODALIDADE_META.LOCACAO.rotulo} qtd={locacao} pct={(locacao / totalMod) * 100} cor="bg-emerald-500" />
               <BarraModalidade rotulo={MODALIDADE_META.VENDA.rotulo} qtd={venda} pct={(venda / totalMod) * 100} cor="bg-purple-500" />
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
-                <span className="text-slate-500">Concluídos (Medição)</span>
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Concluídos (Medição)</span>
                 <span className="font-semibold text-emerald-600">{concluidos.length}</span>
               </div>
             </div>
@@ -75,11 +75,11 @@ export function Dashboard() {
           {aguardando.length === 0 ? (
             <p className="text-sm text-slate-400">Nada pendente de aprovação. 🎉</p>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {aguardando.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2.5">
                   <div>
-                    <p className="text-sm font-medium text-slate-800">{c.cliente.nome}</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{c.cliente.nome}</p>
                     <p className="text-xs text-slate-400">#{c.codigo} · CR {c.cr ?? "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ export function Dashboard() {
                         {MODALIDADE_META[c.modalidade].rotulo}
                       </span>
                     )}
-                    <span className="text-sm font-semibold text-slate-700">{formatarBRL(c.valores.total ?? c.valores.mensal)}</span>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatarBRL(c.valores.total ?? c.valores.mensal)}</span>
                   </div>
                 </li>
               ))}
@@ -106,9 +106,9 @@ function soma(cards: Card[], get: (c: Card) => number | undefined): number {
 
 function Kpi({ rotulo, valor, hint, cor }: { rotulo: string; valor: string; hint?: string; cor?: string }) {
   return (
-    <div className="rounded-card border border-slate-200 bg-white p-4 shadow-card">
+    <div className="rounded-card border border-slate-200 bg-white p-4 shadow-card dark:border-slate-800 dark:bg-slate-900">
       <p className="text-xs font-medium text-slate-400">{rotulo}</p>
-      <p className={`mt-1 text-2xl font-bold ${cor ?? "text-slate-900"}`}>{valor}</p>
+      <p className={`mt-1 text-2xl font-bold ${cor ?? "text-slate-900 dark:text-white"}`}>{valor}</p>
       {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
     </div>
   );
@@ -116,8 +116,8 @@ function Kpi({ rotulo, valor, hint, cor }: { rotulo: string; valor: string; hint
 
 function Painel({ titulo, children, className }: { titulo: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-card border border-slate-200 bg-white p-5 shadow-card ${className ?? ""}`}>
-      <h2 className="mb-4 text-sm font-semibold text-slate-800">{titulo}</h2>
+    <section className={`rounded-card border border-slate-200 bg-white p-5 shadow-card dark:border-slate-800 dark:bg-slate-900 ${className ?? ""}`}>
+      <h2 className="mb-4 text-sm font-semibold text-slate-800 dark:text-slate-100">{titulo}</h2>
       {children}
     </section>
   );
@@ -127,10 +127,10 @@ function BarraModalidade({ rotulo, qtd, pct, cor }: { rotulo: string; qtd: numbe
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-slate-600">{rotulo}</span>
-        <span className="font-semibold text-slate-700">{qtd}</span>
+        <span className="text-slate-600 dark:text-slate-300">{rotulo}</span>
+        <span className="font-semibold text-slate-700 dark:text-slate-200">{qtd}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
         <div className={`h-full rounded-full ${cor}`} style={{ width: `${pct}%` }} />
       </div>
     </div>

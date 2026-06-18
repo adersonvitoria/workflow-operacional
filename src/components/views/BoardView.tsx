@@ -6,6 +6,8 @@ import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
 import { useCards, type NovoCardInput } from "@/lib/store";
 import { movimentoValido } from "@/lib/routing";
+import { useAuth } from "@/lib/auth";
+import { podeCriarCard } from "@/lib/perfis";
 import type { Card, EtapaId, EtapaImplantacao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
@@ -23,7 +25,9 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const { porFluxo, obter, criar, atualizar, avancar } = useCards();
+  const { atual } = useAuth();
   const cards = porFluxo(fluxo);
+  const podeCriar = podeCriarCard(atual?.perfil);
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [formAberto, setFormAberto] = useState(false);
@@ -68,14 +72,16 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">{titulo}</h1>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">{titulo}</h1>
           <p className="text-xs text-slate-400">{subtitulo} · {cards.length} cards</p>
         </div>
-        <button onClick={() => { setEditId(null); setFormAberto(true); }} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
-          + Nova entrada
-        </button>
+        {podeCriar && (
+          <button onClick={() => { setEditId(null); setFormAberto(true); }} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
+            + Nova entrada
+          </button>
+        )}
       </header>
 
       <div className="min-h-0 flex-1">

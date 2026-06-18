@@ -75,15 +75,15 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40" onClick={onFechar} />
-      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-card bg-white shadow-xl">
-        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="text-base font-semibold text-slate-900">
+      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-card bg-white shadow-xl dark:bg-slate-900">
+        <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
             {edicao ? `Editar #${inicial?.codigo}` : "Nova entrada comercial"}
           </h2>
-          <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Fechar">✕</button>
+          <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Fechar">✕</button>
         </header>
 
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4 scrollbar-hide">
           <Campo label="Cliente *">
             <input value={form.clienteNome} onChange={(e) => set("clienteNome", e.target.value)} className={inputCls} placeholder="Razão social / nome" />
           </Campo>
@@ -93,7 +93,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               <div className="flex gap-2">
                 {(["LOCACAO", "VENDA"] as Modalidade[]).map((m) => (
                   <button key={m} type="button" onClick={() => set("modalidade", m)}
-                    className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", form.modalidade === m ? MODALIDADE_META[m].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50"].join(" ")}>
+                    className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", form.modalidade === m ? MODALIDADE_META[m].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}>
                     {MODALIDADE_META[m].rotulo}
                   </button>
                 ))}
@@ -128,8 +128,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
           {erro && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-200">{erro}</p>}
         </div>
 
-        <footer className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
-          <button onClick={onFechar} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <footer className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+          <button onClick={onFechar} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</button>
           <button onClick={submeter} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">{edicao ? "Salvar alterações" : "Cadastrar"}</button>
         </footer>
       </div>
@@ -137,12 +137,12 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
   );
 }
 
-const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
+const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
       {children}
     </label>
   );
