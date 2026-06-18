@@ -7,7 +7,7 @@ import type { Card } from "../src/types";
 const prisma = new PrismaClient();
 
 const USUARIOS = [
-  { nome: "Carla Coordenação", email: "coordenacao@empresa.com", perfil: "COORDENADOR" },
+  { nome: "Jean Cardoso", email: "coordenacao@empresa.com", perfil: "COORDENADOR" },
   { nome: "Daniela Zimiani", email: "comercial@empresa.com", perfil: "COMERCIAL" },
   { nome: "Murilo Souza", email: "almoxarifado@empresa.com", perfil: "ALMOXARIFADO" },
   { nome: "Paulo Suprimentos", email: "suprimentos@empresa.com", perfil: "SUPRIMENTOS" },

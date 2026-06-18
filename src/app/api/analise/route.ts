@@ -60,7 +60,7 @@ export async function POST() {
   try {
     const client = new Anthropic();
     const msg = await client.messages.create({
-      model: "claude-opus-4-8",
+      model: "claude-sonnet-4-6",
       max_tokens: 1500,
       thinking: { type: "adaptive" },
       output_config: { effort: "medium" },
