@@ -71,6 +71,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
     }
+    // Medição → Encerrados exige o nº do chamado registrado pela Medição.
+    if (existente.etapa === "MEDICAO" && body.etapa === "ENCERRADOS") {
+      const medExistente = existente.medicao as { chamado?: string } | null;
+      const chamado = body.medicao?.chamado ?? medExistente?.chamado;
+      if (!chamado || !String(chamado).trim()) {
+        return NextResponse.json({ erro: "Informe o nº do chamado antes de encerrar." }, { status: 422 });
+      }
+    }
   }
 
   const row = await prisma.card.update({ where: { id: params.id }, data: patchToData(body) });

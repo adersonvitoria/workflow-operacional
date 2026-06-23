@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { cardParado, COLUNAS_IMPLANTACAO, formatarBRL, horasParado, mesDoCard, MODALIDADE_META, nivelSla, valorDoCard, type NivelSla } from "@/lib/flows";
 import { useCards } from "@/lib/store";
@@ -36,15 +36,7 @@ export function Dashboard() {
       </header>
 
       <div className="flex-1 space-y-6 overflow-y-auto bg-surface-app p-6 scrollbar-hide dark:bg-slate-950">
-        {/* Topo: pendências + (para gestão) análise IA automática, lado a lado */}
-        {ehGestao ? (
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-            <PendenciasPanel pendencias={pendencias} />
-            <AnaliseIA />
-          </div>
-        ) : (
-          <PendenciasPanel pendencias={pendencias} />
-        )}
+        <PendenciasPanel pendencias={pendencias} />
 
         {ehGestao && <Gestao imp={imp} manut={manut} />}
         {ehComercial && <Comercial imp={imp} />}
@@ -168,48 +160,6 @@ function PendenciasPanel({ pendencias }: { pendencias: Card[] }) {
   );
 }
 
-function AnaliseIA() {
-  const [analise, setAnalise] = useState<string | null>(null);
-  const [fonte, setFonte] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(true);
-
-  async function analisar() {
-    setCarregando(true);
-    try {
-      const res = await fetch("/api/analise", { method: "POST", credentials: "same-origin" });
-      const json = await res.json();
-      setAnalise(json.analise ?? "Não foi possível gerar a análise.");
-      setFonte(json.fonte ?? null);
-    } catch {
-      setAnalise("Falha ao gerar a análise.");
-    }
-    setCarregando(false);
-  }
-
-  // Gera a análise automaticamente ao abrir o dashboard.
-  useEffect(() => { void analisar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <section className="rounded-card border border-brand/30 bg-brand/5 p-5 shadow-card dark:border-brand/40 dark:bg-brand/10">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">🤖 Análise da Coordenação (IA)</h2>
-        <button onClick={analisar} disabled={carregando} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
-          {carregando ? "Analisando…" : "Atualizar"}
-        </button>
-      </div>
-      {carregando && !analise ? (
-        <p className="animate-pulse text-sm text-slate-500 dark:text-slate-400">Analisando os cards parados (SLA) e pendentes de aprovação…</p>
-      ) : analise ? (
-        <>
-          <p className="max-h-80 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-slate-700 scrollbar-hide dark:text-slate-200">{analise}</p>
-          {fonte === "heuristica" && <p className="mt-2 text-[11px] text-slate-400">Análise por regras (defina ANTHROPIC_API_KEY para usar o Claude Sonnet 4.6).</p>}
-        </>
-      ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Sem dados para analisar.</p>
-      )}
-    </section>
-  );
-}
 
 function Comercial({ imp }: { imp: Card[] }) {
   const ativos = imp.filter((c) => !encerrado(c.status));
