@@ -54,6 +54,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       status,
       responsavelSetor: SETOR_DA_ETAPA[destino] ?? null,
       responsavelPessoa: null,
+      // Ao encerrar, registra a data de encerramento (para relatórios por data).
+      ...(destino === "ENCERRADOS" ? { dataConclusao: new Date() } : {}),
       historico: historico as unknown as object[],
     },
   });

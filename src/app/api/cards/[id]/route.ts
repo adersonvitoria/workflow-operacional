@@ -7,7 +7,7 @@ import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaManutencao } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
-const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "numeroConta", "observacoes", "pagamento"];
+const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "numeroConta", "datas", "observacoes", "pagamento"];
 const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
@@ -31,6 +31,10 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   }
   for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "manutencao", "materiais", "checklist", "historico"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
+  }
+  if (p.datas) {
+    if (p.datas.abertura != null) d.dataAbertura = new Date(p.datas.abertura);
+    if (p.datas.conclusao != null) d.dataConclusao = new Date(p.datas.conclusao);
   }
   if (p.responsavelAtual) {
     d.responsavelSetor = p.responsavelAtual.setor;
@@ -88,7 +92,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  const row = await prisma.card.update({ where: { id: params.id }, data: patchToData(body) });
+  const data = patchToData(body);
+  // Encerramento da Manutenção: registra a data e o evento no histórico.
+  if (existente.fluxo === "MANUTENCAO" && body.etapa === "ENCERRADOS" && existente.etapa !== "ENCERRADOS") {
+    if (data.dataConclusao == null) data.dataConclusao = new Date();
+    const hist = Array.isArray(existente.historico) ? (existente.historico as unknown[]) : [];
+    const setor = existente.etapa === "MEDICAO" ? "MEDICAO" : "SUPERVISAO";
+    const evento = { id: `h${hist.length}`, data: new Date().toISOString(), setor, autor: s.nome, acao: "OS encerrada", de: existente.etapa, para: "ENCERRADOS" };
+    data.historico = [...hist, evento] as unknown as object[];
+  }
+
+  const row = await prisma.card.update({ where: { id: params.id }, data });
   return NextResponse.json({ card: rowToCard(row) });
 }
 

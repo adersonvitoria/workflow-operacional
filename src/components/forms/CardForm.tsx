@@ -57,6 +57,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         cr: inicial.cr,
         cc: inicial.cc,
         chamado: inicial.chamado,
+        numeroConta: inicial.numeroConta,
+        dataCadastro: inicial.datas?.abertura?.slice(0, 10),
         maoDeObra: inicial.valores.maoDeObra,
         equipamentos: inicial.valores.equipamentos,
         total: inicial.valores.total,
@@ -131,6 +133,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4 scrollbar-hide">
           <Campo label="Cliente *">
             <input value={form.clienteNome} onChange={(e) => set("clienteNome", e.target.value)} className={inputCls} placeholder="Razão social / nome" />
+          </Campo>
+
+          <Campo label="Data de cadastro">
+            <input type="date" value={form.dataCadastro ?? ""} onChange={(e) => set("dataCadastro", e.target.value || undefined)} className={inputCls} />
           </Campo>
 
           {fluxo === "MANUTENCAO" && (

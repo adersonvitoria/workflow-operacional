@@ -18,6 +18,12 @@ import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/
 
 const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", DIA: "Dia" };
 
+function fmtData(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR");
+}
+
 interface CardSlideOverProps {
   card: Card | null;
   onFechar: () => void;
@@ -109,6 +115,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                           <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
+                          <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
+                          {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         </dl>
                       </Secao>
 
@@ -140,6 +148,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
+                        <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
+                        {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />
                       </dl>
                     </Secao>
