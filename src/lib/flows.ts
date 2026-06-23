@@ -324,6 +324,14 @@ export function valorDoCard(c: Pick<Card, "medicao" | "valores">): number {
 }
 
 /**
+ * Competência do card para relatórios: a competência (mês/ano) informada na
+ * Medição. Cards ainda não medidos retornam "" (fora dos relatórios por competência).
+ */
+export function competenciaDoCard(c: Pick<Card, "medicao">): string {
+  return c.medicao?.competencia ?? "";
+}
+
+/**
  * Tempo total que o card ficou na esteira: do cadastro (abertura) até o
  * encerramento (conclusão). Retorna null enquanto não estiver encerrado.
  */
