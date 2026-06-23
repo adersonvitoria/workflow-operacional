@@ -3,15 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  criticidadeDoCard,
+  CRITICIDADE_META,
   formatarBRL,
   MODALIDADE_META,
   SETOR_ROTULO,
   STATUS_META,
+  TIPO_CLIENTE_META,
 } from "@/lib/flows";
 import { CHECKLIST_TECNICA, destinosManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
+
+const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", DIA: "Dia" };
 
 interface CardSlideOverProps {
   card: Card | null;
@@ -40,6 +45,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
   // Destinos válidos para avançar uma entrada de Manutenção a partir da etapa atual.
   const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencao(card.etapa as EtapaManutencao) : [];
+  const man = card?.manutencao ?? {};
+  const crit = card ? criticidadeDoCard(card) : undefined;
 
   return (
     <>
@@ -93,25 +100,50 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     )
                   ))}
 
-                  <Secao titulo="Identificação">
-                    <dl className="grid grid-cols-2 gap-3 text-sm">
-                      <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
-                      <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
-                      <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
-                      <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
-                    </dl>
-                  </Secao>
+                  {card.fluxo === "IMPLANTACAO" && (
+                    <>
+                      <Secao titulo="Identificação">
+                        <dl className="grid grid-cols-2 gap-3 text-sm">
+                          <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
+                          <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
+                          <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
+                          <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
+                        </dl>
+                      </Secao>
 
-                  <Secao titulo="Financeiro">
-                    <dl className="grid grid-cols-2 gap-3 text-sm">
-                      <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
-                      <Campo rotulo="Equipamentos" valor={formatarBRL(card.valores.equipamentos)} />
-                      <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
-                      <Campo rotulo="Mensal" valor={formatarBRL(card.valores.mensal)} />
-                    </dl>
-                  </Secao>
+                      <Secao titulo="Financeiro">
+                        <dl className="grid grid-cols-2 gap-3 text-sm">
+                          <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
+                          <Campo rotulo="Equipamentos" valor={formatarBRL(card.valores.equipamentos)} />
+                          <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
+                          <Campo rotulo="Mensal" valor={formatarBRL(card.valores.mensal)} />
+                        </dl>
+                      </Secao>
+                    </>
+                  )}
 
-                  {card.materiais.length > 0 && (
+                  {card.fluxo === "MANUTENCAO" && (
+                    <Secao titulo="Atendimento">
+                      <dl className="grid grid-cols-2 gap-3 text-sm">
+                        <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
+                        <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
+                        <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
+                        <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
+                        <Campo rotulo="Número da conta" valor={man.numeroConta ?? "—"} />
+                        <Campo rotulo="Região" valor={man.regiao ?? "—"} />
+                        <Campo rotulo="Ordem de serviço" valor={man.ordemServico ?? "—"} />
+                        <Campo rotulo="Agendado" valor={man.agendado ? "Sim" : "Não"} />
+                        <Campo rotulo="Técnico" valor={man.tecnico ?? "—"} />
+                        <Campo rotulo="Auxiliar técnico" valor={man.auxiliarTecnico ?? "—"} />
+                        <Campo rotulo="Tipo de atendimento" valor={man.tipoAtendimento ?? "—"} />
+                        <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />
+                        <Campo rotulo="Setor" valor={man.setor ?? "—"} />
+                        <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />
+                      </dl>
+                    </Secao>
+                  )}
+
+                  {card.fluxo === "IMPLANTACAO" && card.materiais.length > 0 && (
                     <Secao titulo={`Kit de instalação (${card.materiais.length})`}>
                       <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
                         {card.materiais.map((m) => (
@@ -129,7 +161,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     </Secao>
                   )}
 
-                  {card.checklist.length > 0 && (
+                  {card.fluxo === "IMPLANTACAO" && card.checklist.length > 0 && (
                     <Secao titulo="Checklist da esteira">
                       <ul className="space-y-1.5">
                         {card.checklist.map((item) => (
