@@ -32,7 +32,7 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
   );
 
   return (
-    <section className="flex w-60 flex-none flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
+    <section className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
       {/* Trilho de cor + cabeçalho (altura fixa para alinhar as listas) */}
       <div className={`h-1 rounded-t-xl ${coluna.accent}`} />
       <header className="px-3 pb-2 pt-3">

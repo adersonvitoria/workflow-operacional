@@ -54,7 +54,10 @@ function GrupoColunas({
   const todos = colunas.flatMap((c) => cardsPorEtapa.get(c.id) ?? []);
   const soma = somaCards(todos);
   return (
-    <div className="flex flex-none flex-col rounded-xl border border-slate-200 bg-slate-100/70 p-1.5 dark:border-slate-700 dark:bg-slate-800/40">
+    <div
+      className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-100/70 p-1.5 dark:border-slate-700 dark:bg-slate-800/40"
+      style={{ flexGrow: colunas.length, flexShrink: 1, flexBasis: 0 }}
+    >
       <header className="flex items-center justify-between gap-2 px-2 py-1.5">
         <h2 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{nome}</h2>
         <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -127,9 +130,9 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
 
   if (!montado) {
     return (
-      <div className="flex h-full gap-3 overflow-x-auto p-4 scrollbar-hide">
+      <div className="flex h-full gap-2 overflow-x-auto p-3 scrollbar-hide">
         {colunas.map((coluna) => (
-          <div key={coluna.id} className="flex w-60 flex-none flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
+          <div key={coluna.id} className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
             <div className={`h-1 rounded-t-xl ${coluna.accent}`} />
             <div className="flex items-start justify-between gap-2 px-3 pb-2 pt-3">
               <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{coluna.titulo}</h2>
@@ -150,7 +153,7 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full gap-3 overflow-x-auto p-4 scrollbar-hide">
+      <div className="flex h-full gap-2 overflow-x-auto p-3 scrollbar-hide">
         {itens.map((item) =>
           item.tipo === "coluna" ? (
             <KanbanColumn
