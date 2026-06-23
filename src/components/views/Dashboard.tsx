@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { cardParado, COLUNAS_IMPLANTACAO, formatarBRL, MODALIDADE_META } from "@/lib/flows";
+import { cardParado, COLUNAS_IMPLANTACAO, formatarBRL, horasParado, mesDoCard, MODALIDADE_META, nivelSla, valorDoCard, type NivelSla } from "@/lib/flows";
 import { useCards } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { PERFIL_META, podeExecutarEtapa } from "@/lib/perfis";
@@ -17,6 +17,7 @@ export function Dashboard() {
   const { atual } = useAuth();
   const perfil = atual?.perfil;
   const imp = porFluxo("IMPLANTACAO");
+  const manut = porFluxo("MANUTENCAO");
 
   const pendencias = imp.filter((c) => !encerrado(c.status) && podeExecutarEtapa(perfil, c.etapa, c.modalidade));
 
@@ -45,7 +46,7 @@ export function Dashboard() {
           <PendenciasPanel pendencias={pendencias} />
         )}
 
-        {ehGestao && <Gestao imp={imp} />}
+        {ehGestao && <Gestao imp={imp} manut={manut} />}
         {ehComercial && <Comercial imp={imp} />}
         {ehMedicao && <Medicao imp={imp} />}
         {ehOperacional && <Operacional pendencias={pendencias} />}
@@ -56,7 +57,62 @@ export function Dashboard() {
 
 // --- Visões por perfil -----------------------------------------------------
 
-function Gestao({ imp }: { imp: Card[] }) {
+const NIVEL_ORDEM: Record<NivelSla, number> = { normal: 0, amarelo: 1, vermelho: 2, roxo: 3 };
+const NIVEL_ROTULO: Record<NivelSla, string> = { normal: "Normal", amarelo: "Amarelo", vermelho: "Vermelho", roxo: "Roxo" };
+const NIVEL_COR: Record<NivelSla, string> = {
+  normal: "text-slate-600 dark:text-slate-300",
+  amarelo: "text-amber-600 dark:text-amber-400",
+  vermelho: "text-rose-600 dark:text-rose-400",
+  roxo: "text-purple-600 dark:text-purple-400",
+};
+
+type SlaInfo = { card: Card; nivel: NivelSla; horas: number };
+
+/** Maior índice de SLA (pior nível, desempate por horas) entre os cards ativos. */
+function piorSla(cards: Card[]): SlaInfo | null {
+  let best: SlaInfo | null = null;
+  let bestScore = -1;
+  for (const c of cards) {
+    if (encerrado(c.status)) continue;
+    const nivel = nivelSla(c);
+    const horas = horasParado(c);
+    const score = NIVEL_ORDEM[nivel] * 1_000_000 + horas;
+    if (score > bestScore) { bestScore = score; best = { card: c, nivel, horas }; }
+  }
+  return best;
+}
+
+function KpiSla({ rotulo, pior }: { rotulo: string; pior: SlaInfo | null }) {
+  if (!pior) return <Kpi rotulo={rotulo} valor="—" hint="sem cards ativos" />;
+  return <Kpi rotulo={rotulo} valor={`${pior.horas}h`} hint={`${NIVEL_ROTULO[pior.nivel]} · ${pior.card.cliente.nome}`} cor={NIVEL_COR[pior.nivel]} />;
+}
+
+function KpisCoordenacao({ imp, manut }: { imp: Card[]; manut: Card[] }) {
+  const [mes, setMes] = useState<string>(() => {
+    const h = new Date();
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const noMes = (cs: Card[]) => cs.filter((c) => mesDoCard(c) === mes);
+  const impM = noMes(imp);
+  const manM = noMes(manut);
+
+  return (
+    <Painel titulo="Indicadores por competência">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+        <Link href={`/relatorios?mes=${mes}`} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">Gerar relatório →</Link>
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Kpi rotulo="Implantação no mês" valor={String(impM.length)} hint={formatarBRL(soma(impM, valorDoCard))} />
+        <Kpi rotulo="Manutenção no mês" valor={String(manM.length)} hint={formatarBRL(soma(manM, valorDoCard))} />
+        <KpiSla rotulo="Maior SLA · Implantação" pior={piorSla(impM)} />
+        <KpiSla rotulo="Maior SLA · Manutenção" pior={piorSla(manM)} />
+      </div>
+    </Painel>
+  );
+}
+
+function Gestao({ imp, manut }: { imp: Card[]; manut: Card[] }) {
   const ativos = imp.filter((c) => !encerrado(c.status));
   const aguardando = imp.filter((c) => c.status === "AGUARDANDO_APROVACAO");
   const porEtapa = COLUNAS_IMPLANTACAO.map((col) => ({ titulo: col.titulo, accent: col.accent, qtd: imp.filter((c) => c.etapa === col.id).length }));
@@ -67,6 +123,7 @@ function Gestao({ imp }: { imp: Card[] }) {
 
   return (
     <>
+      <KpisCoordenacao imp={imp} manut={manut} />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi rotulo="Projetos ativos" valor={String(ativos.length)} hint={`${imp.length} no total`} />
         <Kpi rotulo="Pipeline" valor={formatarBRL(soma(ativos, (c) => c.valores.total))} hint="valor em aberto" />

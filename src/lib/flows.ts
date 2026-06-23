@@ -258,6 +258,20 @@ export const SETOR_ROTULO: Record<Setor, string> = {
   MEDICAO: "Medição",
 };
 
+/** Mês de referência do card (YYYY-MM) — conclusão quando houver, senão abertura. */
+export function mesDoCard(c: Pick<Card, "datas">): string {
+  const iso = c.datas?.conclusao ?? c.datas?.abertura;
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Valor de referência do card: medição (faturado) > total > mensal. */
+export function valorDoCard(c: Pick<Card, "medicao" | "valores">): number {
+  return c.medicao?.valorMedicao ?? c.valores?.total ?? c.valores?.mensal ?? 0;
+}
+
 export function formatarBRL(valor?: number): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", {

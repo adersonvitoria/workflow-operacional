@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCards } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { podeGerarRelatorio } from "@/lib/perfis";
-import { formatarBRL, STATUS_META } from "@/lib/flows";
+import { formatarBRL, mesDoCard, STATUS_META, valorDoCard } from "@/lib/flows";
 import { rotuloEtapa } from "@/lib/routing";
 import type { Card } from "@/types";
 
@@ -15,20 +15,6 @@ function dataBR(iso?: string) {
   if (!iso) return "—";
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("pt-BR");
-}
-
-/** Mês de referência do card (YYYY-MM) — conclusão quando houver, senão abertura. */
-function mesDoCard(c: Card): string {
-  const iso = c.datas?.conclusao ?? c.datas?.abertura;
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-/** Valor do card: medição (faturado) > total > mensal. */
-function valorDoCard(c: Card): number {
-  return c.medicao?.valorMedicao ?? c.valores?.total ?? c.valores?.mensal ?? 0;
 }
 
 function mesLabel(mes: string): string {
@@ -48,6 +34,8 @@ export function RelatoriosView() {
   const [modo, setModo] = useState<Modo>("esteiras");
   const [competencia, setCompetencia] = useState<string>("");
   const [mesRef, setMesRef] = useState<string>(() => {
+    const p = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("mes") : null;
+    if (p) return p;
     const h = new Date();
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}`;
   });
