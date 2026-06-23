@@ -83,12 +83,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         return NextResponse.json({ erro: "Conclua o checklist da Execução (Orçamento concluído e Sistema comunicando)." }, { status: 422 });
       }
     }
-    // Medição → Encerrados exige o nº do chamado registrado pela Medição.
+    // Medição → Encerrados exige nº do chamado e competência (mês/ano).
     if (existente.etapa === "MEDICAO" && body.etapa === "ENCERRADOS") {
-      const medExistente = existente.medicao as { chamado?: string } | null;
+      const medExistente = existente.medicao as { chamado?: string; competencia?: string } | null;
       const chamado = body.medicao?.chamado ?? medExistente?.chamado;
-      if (!chamado || !String(chamado).trim()) {
-        return NextResponse.json({ erro: "Informe o nº do chamado antes de encerrar." }, { status: 422 });
+      const competencia = body.medicao?.competencia ?? medExistente?.competencia;
+      if (!chamado || !String(chamado).trim() || !competencia || !String(competencia).trim()) {
+        return NextResponse.json({ erro: "Informe o nº do chamado e a competência antes de encerrar." }, { status: 422 });
       }
     }
   }

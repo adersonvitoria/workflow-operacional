@@ -151,6 +151,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
+                        <Campo rotulo="Competência" valor={card.medicao?.competencia ?? "—"} />
                         <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
@@ -247,9 +248,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       bloqueado = true;
                       aviso = "Conclua o checklist (Orçamento concluído e Sistema comunicando).";
                     }
-                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && !card.medicao?.chamado?.trim()) {
+                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && (!card.medicao?.chamado?.trim() || !card.medicao?.competencia?.trim())) {
                       bloqueado = true;
-                      aviso = "Informe o nº do chamado para encerrar.";
+                      aviso = "Informe o nº do chamado e a competência para encerrar.";
                     }
                     return (
                       <div key={d}>
@@ -493,31 +494,50 @@ function ChecklistExecucaoManutencao({ card, patch }: { card: Card; patch: (p: P
   );
 }
 
+/** "06/2026" -> "2026-06" (para o input type=month). */
+function compParaInput(c?: string): string {
+  if (!c) return "";
+  const m = c.match(/^(\d{2})\/(\d{4})$/);
+  return m ? `${m[2]}-${m[1]}` : c;
+}
+/** "2026-06" -> "06/2026" (padrão de competência). */
+function inputParaComp(v: string): string {
+  const m = v.match(/^(\d{4})-(\d{2})$/);
+  return m ? `${m[2]}/${m[1]}` : v;
+}
+
 /**
  * Gate da Medição na Manutenção: o perfil Medição registra o Número do Chamado
- * antes de encerrar a OS. O valor é salvo em `medicao.chamado` (campo de gate,
- * que o perfil Medição tem permissão de gravar nesta etapa).
+ * e a Competência (mês/ano) antes de encerrar a OS. Salvos em `medicao` (campo
+ * de gate que o perfil Medição tem permissão de gravar nesta etapa).
  */
 function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const [chamado, setChamado] = useState(card.medicao?.chamado ?? card.chamado ?? "");
+  const [comp, setComp] = useState(compParaInput(card.medicao?.competencia));
   useEffect(() => {
     setChamado(card.medicao?.chamado ?? card.chamado ?? "");
+    setComp(compParaInput(card.medicao?.competencia));
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
   function salvar() {
-    const v = chamado.trim();
-    if (v === (card.medicao?.chamado ?? "")) return;
-    patch({ medicao: { ...card.medicao, chamado: v || undefined } });
+    const c = chamado.trim();
+    const comper = comp ? inputParaComp(comp) : undefined;
+    patch({ medicao: { ...card.medicao, chamado: c || undefined, competencia: comper } });
   }
 
+  const completo = !!chamado.trim() && !!comp;
+
   return (
-    <Gate titulo="Medição · Nº do chamado">
-      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o número do chamado para encerrar a OS.</p>
-      <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={salvar} placeholder="Nº do chamado" className={`mt-2 ${inp}`} />
-      <button onClick={salvar} disabled={!chamado.trim()} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
-        {card.medicao?.chamado ? "✓ Chamado salvo · atualizar" : "Salvar chamado"}
+    <Gate titulo="Medição · Dados para encerrar">
+      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o nº do chamado e a competência para encerrar a OS.</p>
+      <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
+      <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={salvar} placeholder="Nº do chamado" className={inp} />
+      <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
+      <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={salvar} className={inp} />
+      <button onClick={salvar} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+        {card.medicao?.chamado && card.medicao?.competencia ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
   );
