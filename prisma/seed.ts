@@ -15,7 +15,8 @@ const USUARIOS = [
   { nome: "Jessi Diemes", email: "tecnica@empresa.com", perfil: "SUPERVISOR_TECNICO" },
   { nome: "Patrícia Medição", email: "medicao@empresa.com", perfil: "MEDICAO" },
   { nome: "Samya Cruz", email: "admin@empresa.com", perfil: "ADMINISTRATIVO" },
-  { nome: "Assistente Manutenção", email: "assistente@empresa.com", perfil: "ASSISTENTE" },
+  { nome: "Assistente 1 (Rotina)", email: "assistente1@empresa.com", perfil: "ASSISTENTE_1" },
+  { nome: "Assistente 2 (Orçamento)", email: "assistente2@empresa.com", perfil: "ASSISTENTE_2" },
 ] as const;
 
 const SENHA_PADRAO = "123456";

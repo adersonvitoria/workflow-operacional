@@ -14,7 +14,8 @@ export type Perfil =
   | "SUPERVISOR_MONITORAMENTO"
   | "COMERCIAL"
   | "ADMINISTRATIVO"
-  | "ASSISTENTE"
+  | "ASSISTENTE_1"
+  | "ASSISTENTE_2"
   | "ALMOXARIFADO"
   | "SUPRIMENTOS"
   | "MEDICAO";
@@ -129,24 +130,36 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
     classe: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/30",
     cor: "bg-slate-700",
   },
-  ASSISTENTE: {
-    rotulo: "Assistente",
-    descricao: "Cria e edita as rotinas de Manutenção (lançamento e ajuste das OS).",
+  ASSISTENTE_1: {
+    rotulo: "Assistente 1",
+    descricao: "Cria e edita as rotinas na coluna Rotina (Manutenção).",
     etapas: [],
     acoes: [
       "Cadastrar rotinas de Manutenção",
-      "Editar os dados das rotinas (cliente, valores, itens)",
+      "Editar os dados das rotinas na coluna Rotina",
       "Acompanhar a esteira de Manutenção",
     ],
     classe: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30",
     cor: "bg-sky-500",
+  },
+  ASSISTENTE_2: {
+    rotulo: "Assistente 2",
+    descricao: "Cria e edita os orçamentos na coluna Orçamento (Manutenção).",
+    etapas: [],
+    acoes: [
+      "Gerar e editar orçamentos na coluna Orçamento",
+      "Acompanhar a esteira de Manutenção",
+    ],
+    classe: "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30",
+    cor: "bg-indigo-500",
   },
 };
 
 export const PERFIS: Perfil[] = [
   "COORDENADOR",
   "COMERCIAL",
-  "ASSISTENTE",
+  "ASSISTENTE_1",
+  "ASSISTENTE_2",
   "ALMOXARIFADO",
   "SUPRIMENTOS",
   "SUPERVISOR_MONITORAMENTO",
@@ -190,7 +203,8 @@ export function donoDaEtapa(etapa: string, _modalidade?: Modalidade): Perfil | u
  */
 export function podeCriarCard(perfil: Perfil | undefined, fluxo?: Fluxo): boolean {
   if (perfil === "COORDENADOR" || perfil === "COMERCIAL") return true;
-  if (perfil === "ASSISTENTE") return fluxo === "MANUTENCAO";
+  // Assistente 1 cria rotinas (cards de Manutenção, que começam na coluna Rotina).
+  if (perfil === "ASSISTENTE_1") return fluxo === "MANUTENCAO";
   return false;
 }
 
@@ -198,13 +212,15 @@ export function podeCriarCard(perfil: Perfil | undefined, fluxo?: Fluxo): boolea
  * Editar os dados (comerciais/cadastrais) de um card:
  * - Coordenador: em qualquer etapa;
  * - Comercial: somente enquanto o card está na etapa Comercial;
- * - Assistente: rotinas de Manutenção (qualquer card do fluxo MANUTENCAO);
+ * - Assistente 1: rotinas na coluna Rotina (Manutenção);
+ * - Assistente 2: orçamentos na coluna Orçamento (Manutenção);
  * - demais perfis: não editam (apenas executam o gate da sua etapa).
  */
 export function podeEditarCard(perfil: Perfil | undefined, etapa: string, fluxo?: Fluxo): boolean {
   if (perfil === "COORDENADOR") return true;
   if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
-  if (perfil === "ASSISTENTE") return fluxo === "MANUTENCAO";
+  if (perfil === "ASSISTENTE_1") return fluxo === "MANUTENCAO" && etapa === "ROTINA";
+  if (perfil === "ASSISTENTE_2") return fluxo === "MANUTENCAO" && etapa === "ORCAMENTO";
   return false;
 }
 

@@ -36,7 +36,8 @@ const EMAIL_PADRAO: Record<Perfil, string> = {
   SUPERVISOR_TECNICO: "tecnica@empresa.com",
   MEDICAO: "medicao@empresa.com",
   ADMINISTRATIVO: "admin@empresa.com",
-  ASSISTENTE: "assistente@empresa.com",
+  ASSISTENTE_1: "assistente1@empresa.com",
+  ASSISTENTE_2: "assistente2@empresa.com",
 };
 const SENHA_PADRAO = "123456";
 
