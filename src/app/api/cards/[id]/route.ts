@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
+import { destinosManutencao } from "@/lib/routing";
 import { rowToCard } from "@/lib/mappers";
-import type { Card } from "@/types";
+import type { Card, EtapaManutencao } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "observacoes", "pagamento"];
@@ -63,6 +64,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa, existente.modalidade ?? undefined)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
+  }
+  // Na Manutenção, mover etapa só pelos caminhos válidos do fluxo.
+  if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO") {
+    const destinos = destinosManutencao(existente.etapa as EtapaManutencao);
+    if (!destinos.includes(body.etapa as EtapaManutencao)) {
+      return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
+    }
   }
 
   const row = await prisma.card.update({ where: { id: params.id }, data: patchToData(body) });

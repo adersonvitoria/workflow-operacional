@@ -8,10 +8,10 @@ import {
   SETOR_ROTULO,
   STATUS_META,
 } from "@/lib/flows";
-import { CHECKLIST_TECNICA, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_TECNICA, destinosManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
-import type { Card, EtapaImplantacao, FormaPagamento } from "@/types";
+import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
 
 interface CardSlideOverProps {
   card: Card | null;
@@ -38,6 +38,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const podeEditar = card ? podeEditarCard(perfil, card.etapa, card.fluxo) : false;
   const podeExcluir = card ? podeExcluirCard(perfil, card.etapa) : false;
   const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
+  // Destinos válidos para avançar uma entrada de Manutenção a partir da etapa atual.
+  const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencao(card.etapa as EtapaManutencao) : [];
 
   return (
     <>
@@ -81,7 +83,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-4">
               {aba === "detalhes" ? (
                 <>
-                  {podeAgir ? (
+                  {card.fluxo === "IMPLANTACAO" && (podeAgir ? (
                     <GateAtual card={card} patch={onPatch} />
                   ) : (
                     dono && (
@@ -89,7 +91,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         🔒 Esta etapa é do setor <strong>{PERFIL_META[dono].rotulo}</strong>. Você está logado como <strong>{perfil ? PERFIL_META[perfil].rotulo : "—"}</strong> e não pode executar a ação aqui.
                       </div>
                     )
-                  )}
+                  ))}
 
                   <Secao titulo="Identificação">
                     <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -163,18 +165,34 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
               )}
             </div>
 
-            <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-              {podeAgir && !validacao.ok && validacao.motivo && (
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {validacao.motivo}</p>
-              )}
-              <button
-                onClick={onAvancar}
-                disabled={!validacao.ok || !podeAgir}
-                className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", validacao.ok && podeAgir ? "bg-brand text-white hover:bg-brand-700" : "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"].join(" ")}
-              >
-                {validacao.ok && validacao.proxima ? `Avançar para ${rotuloEtapa(validacao.proxima)} →` : "Avançar etapa"}
-              </button>
-            </footer>
+            {card.fluxo === "IMPLANTACAO" ? (
+              <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+                {podeAgir && !validacao.ok && validacao.motivo && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {validacao.motivo}</p>
+                )}
+                <button
+                  onClick={onAvancar}
+                  disabled={!validacao.ok || !podeAgir}
+                  className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", validacao.ok && podeAgir ? "bg-brand text-white hover:bg-brand-700" : "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"].join(" ")}
+                >
+                  {validacao.ok && validacao.proxima ? `Avançar para ${rotuloEtapa(validacao.proxima)} →` : "Avançar etapa"}
+                </button>
+              </footer>
+            ) : (
+              podeAgir && destinosMan.length > 0 && (
+                <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+                  {destinosMan.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => onPatch({ etapa: d })}
+                      className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                    >
+                      Avançar para {rotuloEtapa(d)} →
+                    </button>
+                  ))}
+                </footer>
+              )
+            )}
           </>
         )}
       </aside>

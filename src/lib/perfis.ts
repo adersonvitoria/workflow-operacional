@@ -188,6 +188,8 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
 export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, modalidade?: Modalidade): boolean {
   if (!perfil) return false;
   if (perfil === "COORDENADOR") return true;
+  // Assistente 1 pode avançar a própria etapa de Rotina (Rotina -> Cheque).
+  if (perfil === "ASSISTENTE_1" && etapa === "ROTINA") return true;
   return donoDaEtapa(etapa, modalidade) === perfil;
 }
 
