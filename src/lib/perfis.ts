@@ -102,6 +102,7 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
       "Despachar equipe e executar a instalação",
       "Testar conexão e concluir checklist",
       "Devolver para auditoria da Coordenação",
+      "Dar o cheque na Manutenção (Encerrar / Medição / Orçar)",
     ],
     classe: "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:ring-teal-500/30",
     cor: "bg-teal-500",
@@ -190,6 +191,9 @@ export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, mod
   if (perfil === "COORDENADOR") return true;
   // Assistente 1 pode avançar a própria etapa de Rotina (Rotina -> Cheque).
   if (perfil === "ASSISTENTE_1" && etapa === "ROTINA") return true;
+  // Supervisão (Supervisor Técnico) dá o cheque e classifica a OS na etapa Cheque
+  // (Encerrados / Medição / Orçamento).
+  if (perfil === "SUPERVISOR_TECNICO" && etapa === "CHEQUE") return true;
   return donoDaEtapa(etapa, modalidade) === perfil;
 }
 
