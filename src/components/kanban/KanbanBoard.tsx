@@ -13,8 +13,71 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
-import { colunasDoFluxo } from "@/lib/flows";
+import { colunasDoFluxo, formatarBRL, type ColunaConfig } from "@/lib/flows";
 import type { Card, EtapaId, Fluxo } from "@/types";
+
+/** Item do board: uma coluna solta ou um grupo de colunas consecutivas. */
+type ItemBoard =
+  | { tipo: "coluna"; coluna: ColunaConfig }
+  | { tipo: "grupo"; nome: string; colunas: ColunaConfig[] };
+
+function agruparColunas(colunas: ColunaConfig[]): ItemBoard[] {
+  const itens: ItemBoard[] = [];
+  for (const coluna of colunas) {
+    const ultimo = itens[itens.length - 1];
+    if (coluna.grupo && ultimo?.tipo === "grupo" && ultimo.nome === coluna.grupo) {
+      ultimo.colunas.push(coluna);
+    } else if (coluna.grupo) {
+      itens.push({ tipo: "grupo", nome: coluna.grupo, colunas: [coluna] });
+    } else {
+      itens.push({ tipo: "coluna", coluna });
+    }
+  }
+  return itens;
+}
+
+const somaCards = (cards: Card[]) =>
+  cards.reduce((acc, c) => acc + (c.valores.total ?? c.valores.mensal ?? 0), 0);
+
+/** Container de um grupo de colunas com cabeçalho consolidado (contador + soma). */
+function GrupoColunas({
+  nome,
+  colunas,
+  cardsPorEtapa,
+  onAbrirCard,
+}: {
+  nome: string;
+  colunas: ColunaConfig[];
+  cardsPorEtapa: Map<EtapaId, Card[]>;
+  onAbrirCard: (id: string) => void;
+}) {
+  const todos = colunas.flatMap((c) => cardsPorEtapa.get(c.id) ?? []);
+  const soma = somaCards(todos);
+  return (
+    <div
+      className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-100/70 p-1.5 dark:border-slate-700 dark:bg-slate-800/40"
+      style={{ flexGrow: colunas.length, flexShrink: 1, flexBasis: 0 }}
+    >
+      <header className="flex items-center justify-between px-2 py-1.5">
+        <h2 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{nome}</h2>
+        <span className="shrink-0 pl-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {todos.length}
+          {soma > 0 ? ` · ${formatarBRL(soma)}` : ""}
+        </span>
+      </header>
+      <div className="flex min-h-0 flex-1 gap-1.5">
+        {colunas.map((coluna) => (
+          <KanbanColumn
+            key={coluna.id}
+            coluna={coluna}
+            cards={cardsPorEtapa.get(coluna.id) ?? []}
+            onAbrirCard={onAbrirCard}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface KanbanBoardProps {
   fluxo: Fluxo;
@@ -30,6 +93,7 @@ interface KanbanBoardProps {
  */
 export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBoardProps) {
   const colunas = useMemo(() => colunasDoFluxo(fluxo), [fluxo]);
+  const itens = useMemo(() => agruparColunas(colunas), [colunas]);
   const [arrastandoId, setArrastandoId] = useState<string | null>(null);
 
   // dnd-kit gera IDs de acessibilidade não-determinísticos no SSR → render só no cliente.
@@ -92,14 +156,24 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-3 overflow-x-auto p-4 scrollbar-hide">
-        {colunas.map((coluna) => (
-          <KanbanColumn
-            key={coluna.id}
-            coluna={coluna}
-            cards={cardsPorEtapa.get(coluna.id) ?? []}
-            onAbrirCard={onAbrirCard}
-          />
-        ))}
+        {itens.map((item) =>
+          item.tipo === "coluna" ? (
+            <KanbanColumn
+              key={item.coluna.id}
+              coluna={item.coluna}
+              cards={cardsPorEtapa.get(item.coluna.id) ?? []}
+              onAbrirCard={onAbrirCard}
+            />
+          ) : (
+            <GrupoColunas
+              key={item.nome}
+              nome={item.nome}
+              colunas={item.colunas}
+              cardsPorEtapa={cardsPorEtapa}
+              onAbrirCard={onAbrirCard}
+            />
+          ),
+        )}
       </div>
 
       <DragOverlay>

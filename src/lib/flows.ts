@@ -81,6 +81,8 @@ export interface ColunaConfig {
   setorResponsavel: Setor;
   descricao: string;
   accent: string; // cor do "trilho" no topo da coluna
+  /** Colunas consecutivas com o mesmo `grupo` são agrupadas sob um cabeçalho. */
+  grupo?: string;
 }
 
 /** Fluxo de Implantação (regra de negócio definitiva). */
@@ -153,9 +155,9 @@ export const COLUNAS_MANUTENCAO: ColunaConfig[] = [
   { id: "ROTINA", titulo: "Rotina", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo lança todas as OS do dia", accent: "bg-blue-600" },
   { id: "CHEQUE", titulo: "Cheque", setorResponsavel: "SUPERVISAO", descricao: "Supervisão confere cada OS: OK · RQ · Orçar", accent: "bg-amber-500" },
   { id: "ORCAMENTO", titulo: "Orçamento", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo gera o orçamento e envia ao cliente", accent: "bg-indigo-500" },
-  { id: "ORC_AGUARDANDO", titulo: "Aguardando", setorResponsavel: "ADMINISTRATIVO", descricao: "Aguardando o retorno do cliente", accent: "bg-amber-500" },
-  { id: "ORC_NAO_APROVADO", titulo: "Não Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente reprovou — volta ao Orçamento p/ renegociar", accent: "bg-rose-500" },
-  { id: "ORC_APROVADO", titulo: "Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente aprovou — libera a execução", accent: "bg-emerald-500" },
+  { id: "ORC_AGUARDANDO", titulo: "Aguardando", setorResponsavel: "ADMINISTRATIVO", descricao: "Aguardando o retorno do cliente", accent: "bg-amber-500", grupo: "Orçamentos" },
+  { id: "ORC_NAO_APROVADO", titulo: "Não Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente reprovou — volta ao Orçamento p/ renegociar", accent: "bg-rose-500", grupo: "Orçamentos" },
+  { id: "ORC_APROVADO", titulo: "Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente aprovou — libera a execução", accent: "bg-emerald-500", grupo: "Orçamentos" },
   { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado separa os itens em estoque", accent: "bg-purple-500" },
   { id: "COMPRA", titulo: "Suprimentos", setorResponsavel: "COMPRAS", descricao: "Compra os faltantes e devolve ao Almoxarifado", accent: "bg-indigo-500" },
   { id: "EXECUCAO", titulo: "Execução", setorResponsavel: "TECNICA", descricao: "Técnica executa o serviço em campo", accent: "bg-teal-500" },
