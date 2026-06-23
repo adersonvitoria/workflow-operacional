@@ -120,6 +120,7 @@ model Card {
   medicao          Json?
   almoxarifado     Json?
   sigma            Json?
+  manutencao       Json?
   materiais        Json @default("[]")
   checklist        Json @default("[]")
   historico        Json @default("[]")

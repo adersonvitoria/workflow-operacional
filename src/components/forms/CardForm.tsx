@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CRITICIDADE_META, formatarBRL, MODALIDADE_META, TIPO_CLIENTE_META } from "@/lib/flows";
 import { useCatalogo } from "@/lib/catalogo-store";
 import type { NovoCardInput } from "@/lib/store";
-import type { Card, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente } from "@/types";
+import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, Turno } from "@/types";
 
 interface CardFormProps {
   aberto: boolean;
@@ -61,6 +61,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         equipamentos: inicial.valores.equipamentos,
         total: inicial.valores.total,
         mensal: inicial.valores.mensal,
+        numeroOrcamento: inicial.numeroOrcamento,
+        manutencao: inicial.manutencao,
         observacoes: inicial.observacoes,
       });
     } else {
@@ -82,6 +84,12 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
     return Number.isFinite(n) ? n : undefined;
   }
 
+  // Dados específicos de Manutenção (objeto aninhado no card).
+  const man = form.manutencao ?? {};
+  function setM<K extends keyof DadosManutencao>(k: K, v: DadosManutencao[K]) {
+    setForm((f) => ({ ...f, manutencao: { ...(f.manutencao ?? {}), [k]: v } }));
+  }
+
   function addItem() {
     const q = parseInt(qtdSel, 10);
     const item = ativos.find((i) => i.id === itemSel);
@@ -99,9 +107,14 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
   function submeter() {
     if (!form.clienteNome.trim()) return setErro("Informe o nome do cliente.");
-    if (fluxo === "IMPLANTACAO" && !form.modalidade) return setErro("Selecione a modalidade (Locação ou Venda).");
-    if (!totalCalc && !form.mensal) return setErro("Adicione itens (Total/Equipamentos) ou informe o Mensal.");
-    onSubmit({ ...form, equipamentos, total: totalCalc, materiais: itens });
+    if (fluxo === "IMPLANTACAO") {
+      if (!form.modalidade) return setErro("Selecione a modalidade (Locação ou Venda).");
+      if (!totalCalc && !form.mensal) return setErro("Adicione itens (Total/Equipamentos) ou informe o Mensal.");
+      onSubmit({ ...form, equipamentos, total: totalCalc, materiais: itens });
+      return;
+    }
+    // Manutenção: sem valores/itens — só os campos da entrada.
+    onSubmit({ ...form });
   }
 
   return (
@@ -110,7 +123,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
       <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-card bg-white shadow-xl dark:bg-slate-900">
         <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-800">
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-            {edicao ? `Editar #${inicial?.codigo}` : "Nova entrada comercial"}
+            {edicao ? `Editar #${inicial?.codigo}` : fluxo === "MANUTENCAO" ? "Nova entrada de Manutenção" : "Nova entrada comercial"}
           </h2>
           <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Fechar">✕</button>
         </header>
@@ -155,66 +168,123 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
             </Campo>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label="CR (Centro de Resultado)"><input value={form.cr ?? ""} onChange={(e) => set("cr", e.target.value)} className={inputCls} /></Campo>
-            <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label="Mão de obra (R$)"><input inputMode="decimal" value={form.maoDeObra ?? ""} onChange={(e) => set("maoDeObra", num(e.target.value))} className={inputCls} /></Campo>
-            <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
-            <Campo label="Equipamentos (auto)"><input readOnly value={formatarBRL(equipamentos)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Calculado a partir dos itens" /></Campo>
-            <Campo label="Total (auto = M.O + equip.)"><input readOnly value={formatarBRL(totalCalc)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Campo label="Prioridade">
-              <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
-                {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
-              </select>
-            </Campo>
-            <Campo label="Chamado / OS"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
-          </div>
-
-          <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
-
-          {/* Itens do projeto (Qtd + Item) */}
-          <div>
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Itens do projeto {form.modalidade ? `(${MODALIDADE_META[form.modalidade].rotulo})` : ""}
-            </span>
-            <div className="flex items-end gap-2">
-              <div className="w-20">
-                <span className="mb-1 block text-[10px] text-slate-400">Qtd</span>
-                <input type="number" min={1} value={qtdSel} onChange={(e) => setQtdSel(e.target.value)} className={inputCls} />
+          {fluxo === "IMPLANTACAO" && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="CR (Centro de Resultado)"><input value={form.cr ?? ""} onChange={(e) => set("cr", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
               </div>
-              <div className="flex-1">
-                <span className="mb-1 block text-[10px] text-slate-400">Item</span>
-                <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls} disabled={ativos.length === 0}>
-                  {ativos.map((it) => <option key={it.id} value={it.id}>{it.descricao} — {formatarBRL(it.preco)}</option>)}
-                </select>
-              </div>
-              <button type="button" onClick={addItem} disabled={ativos.length === 0} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">Adicionar</button>
-            </div>
-            {ativos.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Catálogo vazio — cadastre itens em “Itens”.</p>}
 
-            {itens.length > 0 && (
-              <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
-                {itens.map((m) => (
-                  <li key={m.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
-                    <span className="min-w-0 truncate text-slate-700 dark:text-slate-200"><span className="font-medium">{m.quantidade}x</span> {m.descricao}</span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs text-slate-400">{formatarBRL((m.precoUnitario ?? 0) * m.quantidade)}</span>
-                      <button type="button" onClick={() => removeItem(m.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
-                    </span>
-                  </li>
-                ))}
-                <li className="flex justify-between px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  <span>Equipamentos</span><span>{formatarBRL(equipamentos)}</span>
-                </li>
-              </ul>
-            )}
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Mão de obra (R$)"><input inputMode="decimal" value={form.maoDeObra ?? ""} onChange={(e) => set("maoDeObra", num(e.target.value))} className={inputCls} /></Campo>
+                <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
+                <Campo label="Equipamentos (auto)"><input readOnly value={formatarBRL(equipamentos)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Calculado a partir dos itens" /></Campo>
+                <Campo label="Total (auto = M.O + equip.)"><input readOnly value={formatarBRL(totalCalc)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Prioridade">
+                  <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
+                    {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
+                  </select>
+                </Campo>
+                <Campo label="Chamado / OS"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
+
+              {/* Itens do projeto (Qtd + Item) */}
+              <div>
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Itens do projeto {form.modalidade ? `(${MODALIDADE_META[form.modalidade].rotulo})` : ""}
+                </span>
+                <div className="flex items-end gap-2">
+                  <div className="w-20">
+                    <span className="mb-1 block text-[10px] text-slate-400">Qtd</span>
+                    <input type="number" min={1} value={qtdSel} onChange={(e) => setQtdSel(e.target.value)} className={inputCls} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="mb-1 block text-[10px] text-slate-400">Item</span>
+                    <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls} disabled={ativos.length === 0}>
+                      {ativos.map((it) => <option key={it.id} value={it.id}>{it.descricao} — {formatarBRL(it.preco)}</option>)}
+                    </select>
+                  </div>
+                  <button type="button" onClick={addItem} disabled={ativos.length === 0} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">Adicionar</button>
+                </div>
+                {ativos.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Catálogo vazio — cadastre itens em “Itens”.</p>}
+
+                {itens.length > 0 && (
+                  <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
+                    {itens.map((it) => (
+                      <li key={it.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                        <span className="min-w-0 truncate text-slate-700 dark:text-slate-200"><span className="font-medium">{it.quantidade}x</span> {it.descricao}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="text-xs text-slate-400">{formatarBRL((it.precoUnitario ?? 0) * it.quantidade)}</span>
+                          <button type="button" onClick={() => removeItem(it.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
+                        </span>
+                      </li>
+                    ))}
+                    <li className="flex justify-between px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span>Equipamentos</span><span>{formatarBRL(equipamentos)}</span>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+
+          {fluxo === "MANUTENCAO" && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Visita cobrada">
+                  <select value={man.visitaCobrada ? "sim" : "nao"} onChange={(e) => setM("visitaCobrada", e.target.value === "sim")} className={inputCls}>
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </Campo>
+                <Campo label="Turno">
+                  <select value={man.turno ?? ""} onChange={(e) => setM("turno", (e.target.value || undefined) as Turno | undefined)} className={inputCls}>
+                    <option value="">—</option>
+                    <option value="MANHA">Manhã</option>
+                    <option value="TARDE">Tarde</option>
+                    <option value="DIA">Dia</option>
+                  </select>
+                </Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Número da conta"><input value={man.numeroConta ?? ""} onChange={(e) => setM("numeroConta", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Região"><input value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Ordem de serviço">
+                  <select value={man.ordemServico ? "sim" : "nao"} onChange={(e) => setM("ordemServico", e.target.value === "sim")} className={inputCls}>
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </Campo>
+                <Campo label="Agendado">
+                  <select value={man.agendado ? "sim" : "nao"} onChange={(e) => setM("agendado", e.target.value === "sim")} className={inputCls}>
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Técnico"><input value={man.tecnico ?? ""} onChange={(e) => setM("tecnico", e.target.value)} className={inputCls} placeholder="Nome do técnico" /></Campo>
+                <Campo label="Auxiliar técnico"><input value={man.auxiliarTecnico ?? ""} onChange={(e) => setM("auxiliarTecnico", e.target.value)} className={inputCls} placeholder="Nome do auxiliar" /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Tipo de atendimento"><input value={man.tipoAtendimento ?? ""} onChange={(e) => setM("tipoAtendimento", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Número do orçamento"><input value={form.numeroOrcamento ?? ""} onChange={(e) => set("numeroOrcamento", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <Campo label="Setor"><input value={man.setor ?? ""} onChange={(e) => setM("setor", e.target.value)} className={inputCls} /></Campo>
+            </>
+          )}
 
           <Campo label="Observações"><textarea rows={2} value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} className={`${inputCls} resize-none`} /></Campo>
 

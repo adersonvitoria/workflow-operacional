@@ -54,6 +54,7 @@ export function rowToCard(r: PrismaCard): Card {
     medicao: (r.medicao as unknown as Card["medicao"]) ?? undefined,
     almoxarifado: (r.almoxarifado as unknown as Card["almoxarifado"]) ?? undefined,
     sigma: (r.sigma as unknown as Card["sigma"]) ?? undefined,
+    manutencao: (r.manutencao as unknown as Card["manutencao"]) ?? undefined,
     materiais: (r.materiais as unknown as ItemMaterial[]) ?? [],
     checklist: (r.checklist as unknown as ItemChecklist[]) ?? [],
     historico: (r.historico as unknown as EventoHistorico[]) ?? [],

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "@/lib/auth";
-import type { Card, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente } from "@/types";
+import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente } from "@/types";
 
 /** Campos mínimos para cadastrar um novo card pelo Comercial. */
 export interface NovoCardInput {
@@ -24,6 +24,8 @@ export interface NovoCardInput {
   cr?: string;
   cc?: string;
   chamado?: string;
+  numeroOrcamento?: string;
+  manutencao?: DadosManutencao;
   maoDeObra?: number;
   equipamentos?: number;
   total?: number;

@@ -28,7 +28,7 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   for (const k of ["modalidade", "natureza", "prioridade", "status", "etapa", "cr", "cc", "chamado", "numeroOrcamento", "observacoes"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
   }
-  for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "materiais", "checklist", "historico"] as const) {
+  for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "manutencao", "materiais", "checklist", "historico"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
   }
   if (p.responsavelAtual) {

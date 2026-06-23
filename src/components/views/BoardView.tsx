@@ -13,12 +13,14 @@ import type { Card, Criticidade, EtapaId, EtapaImplantacao, EtapaManutencao, Flu
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
   return {
-    cliente: { nome: v.clienteNome, documento: v.documento, contato: v.contato, endereco: v.endereco },
+    cliente: { nome: v.clienteNome, documento: v.documento, contato: v.contato, endereco: v.endereco, tipo: v.tipoCliente },
     modalidade: v.modalidade,
     prioridade: v.prioridade,
     cr: v.cr,
     cc: v.cc,
     chamado: v.chamado,
+    numeroOrcamento: v.numeroOrcamento,
+    manutencao: v.manutencao,
     valores: { maoDeObra: v.maoDeObra, equipamentos: v.equipamentos, total: v.total, mensal: v.mensal },
     observacoes: v.observacoes,
     materiais: v.materiais,

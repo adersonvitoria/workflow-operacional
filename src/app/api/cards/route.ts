@@ -47,6 +47,8 @@ export async function POST(req: Request) {
       cr: b.cr ?? null,
       cc: b.cc ?? null,
       chamado: b.chamado ?? null,
+      numeroOrcamento: b.numeroOrcamento ?? null,
+      manutencao: b.manutencao ?? undefined,
       valorMaoDeObra: b.maoDeObra ?? null,
       valorEquipamentos: b.equipamentos ?? null,
       valorTotal: b.total ?? null,

@@ -86,6 +86,23 @@ export type Prioridade = "BAIXA" | "NORMAL" | "ALTA" | "URGENTE";
 export type Natureza = "INVESTIMENTO" | "DESPESA" | "ESTOQUE";
 export type FormaPagamento = "A_VISTA" | "PARCELADO";
 
+/** Turno da visita (Manutenção). */
+export type Turno = "MANHA" | "TARDE" | "DIA";
+
+/** Dados específicos de uma entrada de Manutenção. */
+export interface DadosManutencao {
+  visitaCobrada?: boolean;
+  turno?: Turno;
+  numeroConta?: string;
+  regiao?: string;
+  ordemServico?: boolean;
+  tecnico?: string;
+  auxiliarTecnico?: string;
+  tipoAtendimento?: string;
+  setor?: string;
+  agendado?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Sub-entidades
 // ---------------------------------------------------------------------------
@@ -247,6 +264,7 @@ export interface Card {
   historico: EventoHistorico[];
 
   sigma?: SigmaSync;
+  manutencao?: DadosManutencao;
   observacoes?: string;
 }
 
