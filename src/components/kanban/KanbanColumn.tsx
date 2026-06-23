@@ -1,12 +1,13 @@
 "use client";
 
+import { Fragment } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { KanbanCard } from "./KanbanCard";
-import { formatarBRL } from "@/lib/flows";
+import { diaVisita, formatarBRL, rotuloDiaVisita } from "@/lib/flows";
 import type { ColunaConfig } from "@/lib/flows";
 import type { Card } from "@/types";
 
@@ -30,6 +31,9 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
     (acc, c) => acc + (c.valores.total ?? c.valores.mensal ?? 0),
     0,
   );
+
+  // A Rotina é segregada por dia da visita (cabeçalho antes de cada novo dia).
+  const agruparPorDia = coluna.id === "ROTINA";
 
   return (
     <section className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
@@ -64,9 +68,20 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
           items={cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
         >
-          {cards.map((card) => (
-            <KanbanCard key={card.id} card={card} onAbrir={onAbrirCard} />
-          ))}
+          {cards.map((card, i) => {
+            const novoDia = agruparPorDia && (i === 0 || diaVisita(cards[i - 1]) !== diaVisita(card));
+            return (
+              <Fragment key={card.id}>
+                {novoDia && (
+                  <div className="sticky top-0 z-[1] flex items-center gap-1.5 rounded-md bg-slate-200/85 px-2 py-1 text-[11px] font-semibold text-slate-600 backdrop-blur dark:bg-slate-700/85 dark:text-slate-200">
+                    <span aria-hidden>📅</span>
+                    {rotuloDiaVisita(diaVisita(card))}
+                  </div>
+                )}
+                <KanbanCard card={card} onAbrir={onAbrirCard} />
+              </Fragment>
+            );
+          })}
         </SortableContext>
 
         {cards.length === 0 && (

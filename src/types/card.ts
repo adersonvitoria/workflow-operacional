@@ -94,6 +94,8 @@ export type Turno = "MANHA" | "TARDE" | "DIA";
 export interface DadosManutencao {
   visitaCobrada?: boolean;
   turno?: Turno;
+  /** Data agendada da visita (YYYY-MM-DD) — ordena/segrega a coluna Rotina. */
+  dataVisita?: string;
   regiao?: string;
   ordemServico?: string;
   tecnico?: string;

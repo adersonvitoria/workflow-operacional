@@ -213,6 +213,34 @@ export function ordemTurno(t?: Turno): number {
   return t ? TURNO_META[t].ordem : 99;
 }
 
+/** Dia da visita (YYYY-MM-DD) do card de manutenção; "" se não houver. */
+export function diaVisita(c: Pick<Card, "manutencao">): string {
+  return c.manutencao?.dataVisita ? c.manutencao.dataVisita.slice(0, 10) : "";
+}
+
+/**
+ * Ordena a coluna Rotina: visita mais próxima primeiro; sem data por último;
+ * dentro do mesmo dia, prioridade por turno (Manhã → Tarde → Dia).
+ */
+export function compararRotina(a: Pick<Card, "manutencao">, b: Pick<Card, "manutencao">): number {
+  const da = diaVisita(a), db = diaVisita(b);
+  if (da !== db) {
+    if (!da) return 1;
+    if (!db) return -1;
+    return da < db ? -1 : 1;
+  }
+  return ordemTurno(a.manutencao?.turno) - ordemTurno(b.manutencao?.turno);
+}
+
+/** Rótulo do cabeçalho de dia (ex.: "Seg, 23/06"); "Sem data de visita" se vazio. */
+export function rotuloDiaVisita(dia: string): string {
+  if (!dia) return "Sem data de visita";
+  const d = new Date(`${dia}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dia;
+  const s = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 /** Criticidade derivada do tipo de cliente (Corporativo→Alta, etc.). */
 export const CRITICIDADE_POR_TIPO: Record<TipoCliente, Criticidade> = {
   CORPORATIVO: "ALTA",

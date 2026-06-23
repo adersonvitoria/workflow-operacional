@@ -243,6 +243,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
           {fluxo === "MANUTENCAO" && (
             <>
+              <Campo label="Data da visita">
+                <input type="date" value={man.dataVisita ?? ""} onChange={(e) => setM("dataVisita", e.target.value || undefined)} className={inputCls} />
+              </Campo>
+
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Visita cobrada">
                   <select value={man.visitaCobrada ? "sim" : "nao"} onChange={(e) => setM("visitaCobrada", e.target.value === "sim")} className={inputCls}>

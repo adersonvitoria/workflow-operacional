@@ -13,7 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
-import { colunasDoFluxo, formatarBRL, ordemTurno, type ColunaConfig } from "@/lib/flows";
+import { colunasDoFluxo, compararRotina, formatarBRL, type ColunaConfig } from "@/lib/flows";
 import type { Card, EtapaId, Fluxo } from "@/types";
 
 /** Item do board: uma coluna solta ou um grupo de colunas consecutivas. */
@@ -108,8 +108,8 @@ export function KanbanBoard({ fluxo, cards, onAbrirCard, onMoverCard }: KanbanBo
     const mapa = new Map<EtapaId, Card[]>();
     for (const col of colunas) mapa.set(col.id, []);
     for (const card of cards) mapa.get(card.etapa)?.push(card);
-    // Na Rotina (Manutenção), ordem cronológica por turno: Manhã → Tarde → Dia.
-    mapa.get("ROTINA")?.sort((a, b) => ordemTurno(a.manutencao?.turno) - ordemTurno(b.manutencao?.turno));
+    // Na Rotina (Manutenção): visita mais próxima primeiro; desempate por turno.
+    mapa.get("ROTINA")?.sort(compararRotina);
     return mapa;
   }, [colunas, cards]);
 
