@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { formatarBRL, horasParado, MODALIDADE_META, nivelSla, SLA_META, STATUS_META } from "@/lib/flows";
+import { criticidadeDoCard, CRITICIDADE_META, formatarBRL, horasParado, MODALIDADE_META, nivelSla, SLA_META, STATUS_META } from "@/lib/flows";
 import type { Card } from "@/types";
 
 interface KanbanCardProps {
@@ -21,6 +21,7 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
     useSortable({ id: card.id, data: { etapa: card.etapa } });
 
   const status = STATUS_META[card.status];
+  const criticidade = criticidadeDoCard(card);
   const sla = nivelSla(card);
   const encerrado = card.status === "CONCLUIDO" || card.status === "FINALIZADO";
   const horas = horasParado(card);
@@ -63,6 +64,15 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
 
       {/* Metadados */}
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+        {criticidade && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${CRITICIDADE_META[criticidade].classe}`}
+            title={`Criticidade ${CRITICIDADE_META[criticidade].rotulo}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${CRITICIDADE_META[criticidade].ponto}`} />
+            {CRITICIDADE_META[criticidade].rotulo}
+          </span>
+        )}
         {card.modalidade && (
           <span
             className={`rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${MODALIDADE_META[card.modalidade].classe}`}

@@ -91,6 +91,7 @@ model Card {
   clienteDocumento String?
   clienteContato   String?
   clienteEndereco  String?
+  clienteTipo      String?
 
   cr              String?
   cc              String?

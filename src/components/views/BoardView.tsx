@@ -6,9 +6,10 @@ import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
 import { useCards, type NovoCardInput } from "@/lib/store";
 import { movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
+import { criticidadeDoCard, CRITICIDADE_META } from "@/lib/flows";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
-import type { Card, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
+import type { Card, Criticidade, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
   return {
@@ -28,6 +29,8 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const { porFluxo, obter, criar, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
+  const [filtroCrit, setFiltroCrit] = useState<Criticidade | null>(null);
+  const cardsVisiveis = filtroCrit ? cards.filter((c) => criticidadeDoCard(c) === filtroCrit) : cards;
   const podeCriar = podeCriarCard(atual?.perfil);
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
@@ -84,20 +87,48 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
+      <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">{titulo}</h1>
-          <p className="text-xs text-slate-400">{subtitulo} · {cards.length} cards</p>
+          <p className="text-xs text-slate-400">
+            {subtitulo} · {cardsVisiveis.length}{filtroCrit ? ` de ${cards.length}` : ""} cards
+          </p>
         </div>
-        {podeCriar && (
-          <button onClick={() => { setEditId(null); setFormAberto(true); }} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
-            + Nova entrada
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-slate-400">Criticidade</span>
+            {([null, "ALTA", "MEDIA", "BAIXA"] as (Criticidade | null)[]).map((c) => {
+              const ativo = filtroCrit === c;
+              const rotulo = c ? CRITICIDADE_META[c].rotulo : "Todas";
+              return (
+                <button
+                  key={c ?? "todas"}
+                  type="button"
+                  onClick={() => setFiltroCrit(c)}
+                  className={[
+                    "rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset transition",
+                    ativo
+                      ? c
+                        ? CRITICIDADE_META[c].classe
+                        : "bg-brand text-white ring-brand"
+                      : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700",
+                  ].join(" ")}
+                >
+                  {rotulo}
+                </button>
+              );
+            })}
+          </div>
+          {podeCriar && (
+            <button onClick={() => { setEditId(null); setFormAberto(true); }} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
+              + Nova entrada
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="min-h-0 flex-1">
-        <KanbanBoard fluxo={fluxo} cards={cards} onAbrirCard={setAbertoId} onMoverCard={handleMover} />
+        <KanbanBoard fluxo={fluxo} cards={cardsVisiveis} onAbrirCard={setAbertoId} onMoverCard={handleMover} />
       </div>
 
       <CardSlideOver

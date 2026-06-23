@@ -27,6 +27,7 @@ export function rowToCard(r: PrismaCard): Card {
       documento: r.clienteDocumento ?? undefined,
       contato: r.clienteContato ?? undefined,
       endereco: r.clienteEndereco ?? undefined,
+      tipo: (r.clienteTipo as Card["cliente"]["tipo"]) ?? undefined,
     },
     cr: r.cr ?? undefined,
     cc: r.cc ?? undefined,

@@ -17,6 +17,7 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
     d.clienteDocumento = p.cliente.documento ?? null;
     d.clienteContato = p.cliente.contato ?? null;
     d.clienteEndereco = p.cliente.endereco ?? null;
+    d.clienteTipo = p.cliente.tipo ?? null;
   }
   if (p.valores) {
     d.valorMaoDeObra = p.valores.maoDeObra ?? null;

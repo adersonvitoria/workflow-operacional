@@ -6,10 +6,12 @@
 import type {
   Card,
   CardStatus,
+  Criticidade,
   EtapaId,
   Fluxo,
   Modalidade,
   Setor,
+  TipoCliente,
 } from "@/types";
 
 /** Limite (horas) que um card pode ficar parado na mesma coluna. */
@@ -187,6 +189,30 @@ export const MODALIDADE_META: Record<
     classe: "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-500/30",
   },
 };
+
+/** Criticidade derivada do tipo de cliente (Corporativo→Alta, etc.). */
+export const CRITICIDADE_POR_TIPO: Record<TipoCliente, Criticidade> = {
+  CORPORATIVO: "ALTA",
+  COMERCIAL: "MEDIA",
+  VAREJO: "BAIXA",
+};
+
+export const TIPO_CLIENTE_META: Record<TipoCliente, { rotulo: string; criticidade: Criticidade }> = {
+  CORPORATIVO: { rotulo: "Corporativo", criticidade: "ALTA" },
+  COMERCIAL: { rotulo: "Comercial", criticidade: "MEDIA" },
+  VAREJO: { rotulo: "Varejo", criticidade: "BAIXA" },
+};
+
+export const CRITICIDADE_META: Record<Criticidade, { rotulo: string; classe: string; ponto: string }> = {
+  ALTA: { rotulo: "Alta", classe: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30", ponto: "bg-rose-500" },
+  MEDIA: { rotulo: "Média", classe: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30", ponto: "bg-amber-500" },
+  BAIXA: { rotulo: "Baixa", classe: "bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:ring-slate-600", ponto: "bg-slate-400" },
+};
+
+/** Criticidade de um card a partir do tipo do cliente (undefined se não definido). */
+export function criticidadeDoCard(card: Pick<Card, "cliente">): Criticidade | undefined {
+  return card.cliente.tipo ? CRITICIDADE_POR_TIPO[card.cliente.tipo] : undefined;
+}
 
 /** Tag de STATUS — âmbar para "Aguardando aprovação". */
 export const STATUS_META: Record<

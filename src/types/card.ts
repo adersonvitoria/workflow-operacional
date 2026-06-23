@@ -90,11 +90,18 @@ export type FormaPagamento = "A_VISTA" | "PARCELADO";
 // Sub-entidades
 // ---------------------------------------------------------------------------
 
+/** Tipo de cliente — define a criticidade do atendimento. */
+export type TipoCliente = "CORPORATIVO" | "COMERCIAL" | "VAREJO";
+
+/** Criticidade derivada do tipo de cliente. */
+export type Criticidade = "ALTA" | "MEDIA" | "BAIXA";
+
 export interface Cliente {
   nome: string;
   documento?: string; // CNPJ ou CPF
   contato?: string;
   endereco?: string;
+  tipo?: TipoCliente; // Corporativo=Alta · Comercial=Média · Varejo=Baixa
 }
 
 export interface Valores {

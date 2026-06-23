@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       clienteDocumento: b.documento ?? null,
       clienteContato: b.contato ?? null,
       clienteEndereco: b.endereco ?? null,
+      clienteTipo: b.tipoCliente ?? null,
       cr: b.cr ?? null,
       cc: b.cc ?? null,
       chamado: b.chamado ?? null,
