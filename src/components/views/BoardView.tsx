@@ -21,7 +21,6 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
     chamado: v.chamado,
     numeroOrcamento: v.numeroOrcamento,
     numeroConta: v.numeroConta,
-    datas: v.dataCadastro ? { abertura: new Date(`${v.dataCadastro}T12:00:00`).toISOString() } : undefined,
     manutencao: v.manutencao,
     valores: { maoDeObra: v.maoDeObra, equipamentos: v.equipamentos, total: v.total, mensal: v.mensal },
     observacoes: v.observacoes,

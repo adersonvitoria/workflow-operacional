@@ -15,6 +15,12 @@ interface CardFormProps {
   onSubmit: (values: NovoCardInput) => void;
 }
 
+/** Data de hoje em YYYY-MM-DD (horário local). */
+function hojeISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const VAZIO = (fluxo: Fluxo): NovoCardInput => ({
   fluxo,
   clienteNome: "",
@@ -68,7 +74,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         observacoes: inicial.observacoes,
       });
     } else {
-      setForm(VAZIO(fluxo));
+      setForm({ ...VAZIO(fluxo), dataCadastro: hojeISO() });
     }
     setItens(inicial?.materiais ?? []);
     setQtdSel("1");
@@ -136,7 +142,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
           </Campo>
 
           <Campo label="Data de cadastro">
-            <input type="date" value={form.dataCadastro ?? ""} onChange={(e) => set("dataCadastro", e.target.value || undefined)} className={inputCls} />
+            <input readOnly value={form.dataCadastro ? form.dataCadastro.split("-").reverse().join("/") : ""} className={`${inputCls} cursor-default bg-slate-50 text-slate-500 dark:bg-slate-800/60`} title="Preenchida automaticamente" />
+            <span className="mt-0.5 block text-[10px] text-slate-400">Preenchida automaticamente — não editável.</span>
           </Campo>
 
           {fluxo === "MANUTENCAO" && (
