@@ -295,6 +295,22 @@ export function valorDoCard(c: Pick<Card, "medicao" | "valores">): number {
   return c.medicao?.valorMedicao ?? c.valores?.total ?? c.valores?.mensal ?? 0;
 }
 
+/**
+ * Tempo total que o card ficou na esteira: do cadastro (abertura) até o
+ * encerramento (conclusão). Retorna null enquanto não estiver encerrado.
+ */
+export function duracaoAteEncerrar(c: Pick<Card, "datas">): string | null {
+  const ini = c.datas?.abertura ? Date.parse(c.datas.abertura) : NaN;
+  const fim = c.datas?.conclusao ? Date.parse(c.datas.conclusao) : NaN;
+  if (Number.isNaN(ini) || Number.isNaN(fim) || fim < ini) return null;
+  const ms = fim - ini;
+  const dias = Math.floor(ms / 86_400_000);
+  const horas = Math.floor((ms % 86_400_000) / 3_600_000);
+  if (dias > 0) return `${dias}d ${horas}h`;
+  const min = Math.floor((ms % 3_600_000) / 60_000);
+  return horas > 0 ? `${horas}h ${min}min` : `${min}min`;
+}
+
 export function formatarBRL(valor?: number): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", {

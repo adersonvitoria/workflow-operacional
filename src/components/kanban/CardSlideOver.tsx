@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   criticidadeDoCard,
   CRITICIDADE_META,
+  duracaoAteEncerrar,
   formatarBRL,
   MODALIDADE_META,
   SETOR_ROTULO,
@@ -117,6 +118,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                           <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                           {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
+                          {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
                         </dl>
                       </Secao>
 
@@ -150,6 +152,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
                         <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
+                        {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
                         <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />
                       </dl>
                     </Secao>

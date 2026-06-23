@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
-import { destinosManutencao, execucaoManutencaoCompleta } from "@/lib/routing";
+import { destinosManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
+import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
-import type { Card, EtapaManutencao } from "@/types";
+import type { Card, EtapaManutencao, Fluxo } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "numeroConta", "datas", "observacoes", "pagamento"];
@@ -93,13 +94,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const data = patchToData(body);
-  // Encerramento da Manutenção: registra a data e o evento no histórico.
-  if (existente.fluxo === "MANUTENCAO" && body.etapa === "ENCERRADOS" && existente.etapa !== "ENCERRADOS") {
-    if (data.dataConclusao == null) data.dataConclusao = new Date();
+  // Histórico de movimentações: toda mudança de etapa via PATCH é registrada.
+  if (body.etapa != null && body.etapa !== existente.etapa) {
     const hist = Array.isArray(existente.historico) ? (existente.historico as unknown[]) : [];
-    const setor = existente.etapa === "MEDICAO" ? "MEDICAO" : "SUPERVISAO";
-    const evento = { id: `h${hist.length}`, data: new Date().toISOString(), setor, autor: s.nome, acao: "OS encerrada", de: existente.etapa, para: "ENCERRADOS" };
+    const encerrando = body.etapa === "ENCERRADOS";
+    const col = colunasDoFluxo(existente.fluxo as Fluxo).find((c) => c.id === body.etapa);
+    const evento = {
+      id: `h${hist.length}`,
+      data: new Date().toISOString(),
+      setor: col?.setorResponsavel ?? "ADMINISTRATIVO",
+      autor: s.nome,
+      acao: encerrando ? "OS encerrada" : `Movido para ${rotuloEtapa(body.etapa)}`,
+      de: existente.etapa,
+      para: body.etapa,
+    };
     data.historico = [...hist, evento] as unknown as object[];
+    if (encerrando && data.dataConclusao == null) data.dataConclusao = new Date();
   }
 
   const row = await prisma.card.update({ where: { id: params.id }, data });
