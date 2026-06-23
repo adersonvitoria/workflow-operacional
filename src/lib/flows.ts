@@ -15,6 +15,19 @@ import type {
 /** Limite (horas) que um card pode ficar parado na mesma coluna. */
 export const LIMITE_PARADO_HORAS = 96;
 
+/**
+ * SLA específico por etapa (horas), sobrepondo o limite padrão.
+ * "Aguardando" o retorno do cliente tem 5 dias (120h) antes de estourar.
+ */
+export const SLA_ETAPA_HORAS: Partial<Record<string, number>> = {
+  ORC_AGUARDANDO: 120,
+};
+
+/** Limite de horas da etapa (override por etapa ou o padrão). */
+export function limiteEtapaHoras(etapa: string): number {
+  return SLA_ETAPA_HORAS[etapa] ?? LIMITE_PARADO_HORAS;
+}
+
 /** Momento (ms) em que o card entrou na etapa atual (último evento do histórico). */
 export function entrouNaEtapaEm(card: Pick<Card, "etapa" | "historico" | "datas">): number {
   const evs = card.historico?.filter((e) => e.para === card.etapa) ?? [];
@@ -37,10 +50,11 @@ export type NivelSla = "normal" | "amarelo" | "vermelho" | "roxo";
  */
 export function nivelSla(card: Pick<Card, "etapa" | "historico" | "datas" | "status">): NivelSla {
   if (card.status === "CONCLUIDO" || card.status === "FINALIZADO") return "normal";
+  const limite = limiteEtapaHoras(card.etapa);
   const h = horasParado(card);
-  if (h > 120) return "roxo";
-  if (h > 96) return "vermelho";
-  if (h >= 48) return "amarelo";
+  if (h > limite * 1.25) return "roxo";
+  if (h > limite) return "vermelho";
+  if (h >= limite * 0.5) return "amarelo";
   return "normal";
 }
 
@@ -129,14 +143,24 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
   },
 ];
 
-/** Fluxo de Manutenção (serviços extras / orçamentos). */
+/**
+ * Fluxo de Manutenção (rotina + RQ + orçamentos).
+ * O CHEQUE é o gate: a Supervisão classifica cada OS em Encerrados (OK),
+ * Medição (RQ) ou Orçamento (reparo maior). As três colunas de orçamento
+ * ficam explícitas para dar visão de distribuição (contador + soma por estado).
+ */
 export const COLUNAS_MANUTENCAO: ColunaConfig[] = [
-  { id: "APONTAMENTO", titulo: "Apontamento de Campo", setorResponsavel: "TECNICA", descricao: "Técnico aponta a necessidade", accent: "bg-blue-600" },
-  { id: "ORCAMENTACAO", titulo: "Orçamentação", setorResponsavel: "COMERCIAL", descricao: "Orçamentista gera a proposta", accent: "bg-indigo-500" },
-  { id: "APROVACAO_CLIENTE", titulo: "Aprovação", setorResponsavel: "COMERCIAL", descricao: "Aguardando OK do cliente", accent: "bg-amber-500" },
-  { id: "COMPRAS_ALMOX", titulo: "Compras / Almoxarifado", setorResponsavel: "COMPRAS", descricao: "Separação do material", accent: "bg-purple-500" },
-  { id: "EXECUCAO", titulo: "Execução", setorResponsavel: "TECNICA", descricao: "Retorno à fila técnica", accent: "bg-teal-500" },
-  { id: "MEDICAO", titulo: "Medição", setorResponsavel: "MEDICAO", descricao: "Faturamento do serviço extra", accent: "bg-emerald-600" },
+  { id: "ROTINA", titulo: "Rotina", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo lança todas as OS do dia", accent: "bg-blue-600" },
+  { id: "CHEQUE", titulo: "Cheque", setorResponsavel: "SUPERVISAO", descricao: "Supervisão confere cada OS: OK · RQ · Orçar", accent: "bg-amber-500" },
+  { id: "ORCAMENTO", titulo: "Orçamento", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo gera o orçamento e envia ao cliente", accent: "bg-indigo-500" },
+  { id: "ORC_AGUARDANDO", titulo: "Aguardando", setorResponsavel: "ADMINISTRATIVO", descricao: "Aguardando o retorno do cliente", accent: "bg-amber-500" },
+  { id: "ORC_NAO_APROVADO", titulo: "Não Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente reprovou — volta ao Orçamento p/ renegociar", accent: "bg-rose-500" },
+  { id: "ORC_APROVADO", titulo: "Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente aprovou — libera a execução", accent: "bg-emerald-500" },
+  { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado separa os itens em estoque", accent: "bg-purple-500" },
+  { id: "COMPRA", titulo: "Suprimentos", setorResponsavel: "COMPRAS", descricao: "Compra os faltantes e devolve ao Almoxarifado", accent: "bg-indigo-500" },
+  { id: "EXECUCAO", titulo: "Execução", setorResponsavel: "TECNICA", descricao: "Técnica executa o serviço em campo", accent: "bg-teal-500" },
+  { id: "MEDICAO", titulo: "Medição", setorResponsavel: "MEDICAO", descricao: "Faturamento e geração do relatório", accent: "bg-emerald-600" },
+  { id: "ENCERRADOS", titulo: "Encerrados", setorResponsavel: "SUPERVISAO", descricao: "OS de rotina encerrada no Cheque (OK)", accent: "bg-slate-500" },
 ];
 
 export function colunasDoFluxo(fluxo: Fluxo): ColunaConfig[] {
@@ -197,6 +221,8 @@ export const STATUS_META: Record<
 export const SETOR_ROTULO: Record<Setor, string> = {
   COMERCIAL: "Comercial",
   COORDENACAO: "Coordenação",
+  ADMINISTRATIVO: "Administrativo",
+  SUPERVISAO: "Supervisão",
   ALMOXARIFADO: "Almoxarifado",
   COMPRAS: "Compras",
   MONITORAMENTO: "Monitoramento",

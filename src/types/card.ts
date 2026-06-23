@@ -17,6 +17,8 @@
 export type Setor =
   | "COMERCIAL"
   | "COORDENACAO"
+  | "ADMINISTRATIVO" // Manutenção: lança rotina (Adm 1) e gera orçamento (Adm 2)
+  | "SUPERVISAO" // Manutenção: dá o "cheque" em cada OS
   | "ALMOXARIFADO"
   | "COMPRAS"
   | "MONITORAMENTO"
@@ -43,14 +45,28 @@ export type EtapaImplantacao =
   | "COORDENACAO_AUDITORIA" // 7. OK de qualidade / checklist de obra
   | "MEDICAO"; // 8. Faturamento
 
-/** Etapas do Fluxo de Manutenção (serviços extras / orçamentos). */
+/**
+ * Etapas do Fluxo de Manutenção (ordem canônica do board).
+ *
+ * O gate é o CHEQUE: a Supervisão classifica cada OS em uma de três saídas —
+ * ENCERRADOS (OK, sem serviço extra), MEDICAO (RQ, pequeno reparo já feito no
+ * ato) ou ORCAMENTO (reparo maior, vai orçar). O orçamento, depois de enviado
+ * ao cliente, fica explícito em três colunas (aguardando/não aprovado/aprovado)
+ * para dar visão de distribuição. ORC_APROVADO libera SEPARACAO ⇄ COMPRA e,
+ * com o material pronto, EXECUCAO → MEDICAO.
+ */
 export type EtapaManutencao =
-  | "APONTAMENTO"
-  | "ORCAMENTACAO"
-  | "APROVACAO_CLIENTE"
-  | "COMPRAS_ALMOX"
-  | "EXECUCAO"
-  | "MEDICAO";
+  | "ROTINA" // 1. Administrativo 1 lança todas as OS do dia
+  | "CHEQUE" // 2. Supervisão confere cada OS (gate de 3 saídas)
+  | "ORCAMENTO" // 3. Administrativo 2 gera o orçamento e envia ao cliente
+  | "ORC_AGUARDANDO" // 4. Aguardando retorno do cliente
+  | "ORC_NAO_APROVADO" // 5. Cliente reprovou (arquiva)
+  | "ORC_APROVADO" // 6. Cliente aprovou — libera a execução
+  | "SEPARACAO" // 7. Almoxarifado separa os itens
+  | "COMPRA" // 8. Suprimentos compra os faltantes e devolve ao Almox.
+  | "EXECUCAO" // 9. Técnica executa o serviço
+  | "MEDICAO" // 10. Faturamento + relatório (também recebe a RQ do Cheque)
+  | "ENCERRADOS"; // 11. OS de rotina encerrada no Cheque (OK)
 
 export type EtapaId = EtapaImplantacao | EtapaManutencao;
 

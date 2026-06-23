@@ -5,10 +5,10 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
 import { useCards, type NovoCardInput } from "@/lib/store";
-import { movimentoValido } from "@/lib/routing";
+import { movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
-import type { Card, EtapaId, EtapaImplantacao, Fluxo } from "@/types";
+import type { Card, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
   return {
@@ -51,6 +51,13 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
 
   async function handleMover(id: string, destino: EtapaId) {
     if (fluxo === "MANUTENCAO") {
+      const card = obter(id);
+      if (!card) return;
+      const v = movimentoValidoManutencao(card, destino as EtapaManutencao);
+      if (!v.ok) {
+        setToast(v.motivo ?? "Movimento não permitido.");
+        return;
+      }
       await atualizar(id, { etapa: destino });
       return;
     }

@@ -16,7 +16,7 @@
  *               → MEDICAO                  (faturamento)
  */
 
-import type { Card, EtapaImplantacao, Modalidade } from "@/types";
+import type { Card, EtapaImplantacao, EtapaManutencao, Modalidade } from "@/types";
 
 /** Itens obrigatórios do checklist da etapa Técnica · Execução. */
 export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
@@ -68,7 +68,7 @@ export function proximaEtapa(
 export interface ResultadoTransicao {
   ok: boolean;
   motivo?: string; // por que NÃO pode avançar (pronto para a UI)
-  proxima?: EtapaImplantacao | null;
+  proxima?: EtapaImplantacao | EtapaManutencao | null;
 }
 
 /**
@@ -157,6 +157,59 @@ export function movimentoValido(card: Card, destino: EtapaImplantacao): Resultad
   return r;
 }
 
+// ---------------------------------------------------------------------------
+// Fluxo de Manutenção — gate do Cheque e laço Separação ⇄ Suprimentos
+// ---------------------------------------------------------------------------
+
+/**
+ * Transições permitidas na Manutenção. O CHEQUE é o gate de 3 saídas; a
+ * SEPARACAO bifurca (COMPRA se faltar item, EXECUCAO se estiver tudo) e a
+ * COMPRA devolve à SEPARACAO. Etapas com lista vazia são finais.
+ *
+ * Regras de negócio:
+ * - ORC_NAO_APROVADO volta para ORCAMENTO (renegociar: o Administrativo refaz a proposta).
+ * - MEDICAO, depois de faturar, arquiva em ENCERRADOS.
+ * - ENCERRADOS é a única etapa final.
+ */
+export const TRANSICOES_MANUTENCAO: Record<EtapaManutencao, EtapaManutencao[]> = {
+  ROTINA: ["CHEQUE"],
+  CHEQUE: ["ENCERRADOS", "MEDICAO", "ORCAMENTO"],
+  ORCAMENTO: ["ORC_AGUARDANDO"],
+  ORC_AGUARDANDO: ["ORC_NAO_APROVADO", "ORC_APROVADO"],
+  ORC_NAO_APROVADO: ["ORCAMENTO"], // renegociar
+  ORC_APROVADO: ["SEPARACAO"],
+  SEPARACAO: ["COMPRA", "EXECUCAO"],
+  COMPRA: ["SEPARACAO"],
+  EXECUCAO: ["MEDICAO"],
+  MEDICAO: ["ENCERRADOS"], // após faturar
+  ENCERRADOS: [],
+};
+
+/** Destinos válidos a partir da etapa atual de um card de manutenção. */
+export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
+  return TRANSICOES_MANUTENCAO[etapa] ?? [];
+}
+
+/**
+ * Valida o drag-and-drop na Manutenção: o destino precisa ser uma das saídas
+ * permitidas da etapa atual. A escolha (ex.: OK/RQ/Orçar no Cheque) é feita
+ * arrastando o card para a coluna desejada.
+ */
+export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao): ResultadoTransicao {
+  if (card.fluxo !== "MANUTENCAO") {
+    return { ok: false, motivo: "Roteamento de manutenção não se aplica." };
+  }
+  const atual = card.etapa as EtapaManutencao;
+  if (destino === atual) return { ok: true, proxima: destino };
+  const permitidos = destinosManutencao(atual);
+  if (permitidos.includes(destino)) return { ok: true, proxima: destino };
+  if (permitidos.length === 0) {
+    return { ok: false, motivo: `"${rotuloEtapa(atual)}" é uma etapa final.` };
+  }
+  const lista = permitidos.map((e) => `"${rotuloEtapa(e)}"`).join(", ");
+  return { ok: false, motivo: `De "${rotuloEtapa(atual)}" só dá para mover para: ${lista}.` };
+}
+
 export function rotuloEtapa(etapa: string | null | undefined): string {
   if (!etapa) return "—";
   const mapa: Record<string, string> = {
@@ -169,11 +222,16 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
     COORDENACAO_AUDITORIA: "Coordenação · Auditoria",
     MEDICAO: "Medição",
     // Manutenção
-    APONTAMENTO: "Apontamento",
-    ORCAMENTACAO: "Orçamentação",
-    APROVACAO_CLIENTE: "Aprovação",
-    COMPRAS_ALMOX: "Compras / Almox",
+    ROTINA: "Rotina",
+    CHEQUE: "Cheque",
+    ORCAMENTO: "Orçamento",
+    ORC_AGUARDANDO: "Aguardando",
+    ORC_NAO_APROVADO: "Não Aprovado",
+    ORC_APROVADO: "Aprovado",
+    SEPARACAO: "Separação",
+    COMPRA: "Suprimentos",
     EXECUCAO: "Execução",
+    ENCERRADOS: "Encerrados",
   };
   return mapa[etapa] ?? etapa;
 }

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (!b.clienteNome) return NextResponse.json({ erro: "Informe o cliente." }, { status: 400 });
 
   const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : "IMPLANTACAO";
-  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : "APONTAMENTO";
+  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : "ROTINA";
   const qtd = await prisma.card.count({ where: { fluxo } });
   const agora = new Date().toISOString();
 
