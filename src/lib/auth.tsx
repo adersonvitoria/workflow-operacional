@@ -51,6 +51,8 @@ interface AuthContextValue {
   criarUsuario: (u: NovoUsuario) => Promise<{ ok: boolean; motivo?: string }>;
   atualizarUsuario: (id: string, patch: Partial<Usuario> & { senha?: string }) => Promise<void>;
   removerUsuario: (id: string) => Promise<void>;
+  /** Auto-serviço do usuário logado: nome de exibição e/ou senha. */
+  atualizarPerfil: (patch: { nome?: string; senhaAtual?: string; novaSenha?: string }) => Promise<{ ok: boolean; motivo?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -115,9 +117,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await recarregarUsuarios();
   }, [recarregarUsuarios]);
 
+  const atualizarPerfil = useCallback(async (patch: { nome?: string; senhaAtual?: string; novaSenha?: string }) => {
+    const { ok, json } = await api("/api/auth/me", { method: "PATCH", body: JSON.stringify(patch) });
+    if (!ok) return { ok: false, motivo: (json.erro as string) ?? "Falha ao atualizar." };
+    setAtual(json.usuario as Usuario);
+    return { ok: true };
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ carregado, atual, usuarios, entrar, entrarComoPerfil, sair, criarUsuario, atualizarUsuario, removerUsuario }),
-    [carregado, atual, usuarios, entrar, entrarComoPerfil, sair, criarUsuario, atualizarUsuario, removerUsuario],
+    () => ({ carregado, atual, usuarios, entrar, entrarComoPerfil, sair, criarUsuario, atualizarUsuario, removerUsuario, atualizarPerfil }),
+    [carregado, atual, usuarios, entrar, entrarComoPerfil, sair, criarUsuario, atualizarUsuario, removerUsuario, atualizarPerfil],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

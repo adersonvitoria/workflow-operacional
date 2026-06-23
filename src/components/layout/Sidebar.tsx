@@ -30,6 +30,7 @@ export function Sidebar() {
   if (podeGerenciarItens(atual?.perfil)) nav.push({ href: "/itens", rotulo: "Itens", icone: "◆" });
   if (podeGerarRelatorio(atual?.perfil)) nav.push({ href: "/relatorios", rotulo: "Relatórios", icone: "▧" });
   if (podeGerenciarUsuarios(atual?.perfil)) nav.push({ href: "/usuarios", rotulo: "Usuários", icone: "◍" });
+  nav.push({ href: "/configuracoes", rotulo: "Configurações", icone: "⚙" });
 
   function logout() {
     sair();
