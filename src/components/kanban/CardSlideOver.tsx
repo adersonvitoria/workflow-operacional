@@ -11,7 +11,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_TECNICA, destinosManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
@@ -145,6 +145,10 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     </Secao>
                   )}
 
+                  {card.fluxo === "MANUTENCAO" && card.etapa === "EXECUCAO" && podeAgir && (
+                    <ChecklistExecucaoManutencao card={card} patch={onPatch} />
+                  )}
+
                   {card.fluxo === "MANUTENCAO" && card.etapa === "MEDICAO" && podeAgir && (
                     <MedicaoChamadoGate card={card} patch={onPatch} />
                   )}
@@ -220,13 +224,23 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
               podeAgir && destinosMan.length > 0 && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
                   {destinosMan.map((d) => {
-                    // Medição (Manutenção): só encerra com o nº do chamado preenchido.
-                    const exigeChamado = card.etapa === "MEDICAO" && d === "ENCERRADOS";
-                    const bloqueado = exigeChamado && !card.medicao?.chamado?.trim();
+                    // Gates da Manutenção antes de avançar:
+                    // · Execução → Medição: os dois flags do checklist concluídos.
+                    // · Medição → Encerrados: nº do chamado preenchido.
+                    let bloqueado = false;
+                    let aviso = "";
+                    if (card.etapa === "EXECUCAO" && d === "MEDICAO" && !execucaoManutencaoCompleta(card)) {
+                      bloqueado = true;
+                      aviso = "Conclua o checklist (Orçamento concluído e Sistema comunicando).";
+                    }
+                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && !card.medicao?.chamado?.trim()) {
+                      bloqueado = true;
+                      aviso = "Informe o nº do chamado para encerrar.";
+                    }
                     return (
                       <div key={d}>
                         {bloqueado && (
-                          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ Informe o nº do chamado para encerrar.</p>
+                          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {aviso}</p>
                         )}
                         <button
                           onClick={() => !bloqueado && onPatch({ etapa: d })}
@@ -431,6 +445,37 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
       <button onClick={finalizar} disabled={!f.competencia.trim()} className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         Registrar e finalizar
       </button>
+    </Gate>
+  );
+}
+
+/**
+ * Checklist da Execução (Manutenção): a Técnica confirma os dois flags —
+ * "Orçamento concluído" e "Sistema comunicando" — antes de seguir para a Medição.
+ */
+function ChecklistExecucaoManutencao({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  function toggle(id: string, rotulo: string) {
+    const existe = card.checklist.find((c) => c.id === id);
+    const novo = existe
+      ? card.checklist.map((c) => (c.id === id ? { ...c, concluido: !c.concluido } : c))
+      : [...card.checklist, { id, etapa: "EXECUCAO" as const, rotulo, concluido: true, obrigatorio: true }];
+    patch({ checklist: novo });
+  }
+  return (
+    <Gate titulo="Checklist da Execução">
+      <ul className="space-y-1.5">
+        {CHECKLIST_EXECUCAO_MANUTENCAO.map((it) => {
+          const done = card.checklist.some((c) => c.id === it.id && c.concluido);
+          return (
+            <li key={it.id}>
+              <button type="button" onClick={() => toggle(it.id, it.rotulo)} className="flex w-full items-center gap-2 text-left text-sm">
+                <span className={["flex h-4 w-4 items-center justify-center rounded border text-[10px]", done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent dark:border-slate-600"].join(" ")}>✓</span>
+                <span className={done ? "text-slate-500 line-through" : "text-slate-700 dark:text-slate-200"}>{it.rotulo}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </Gate>
   );
 }

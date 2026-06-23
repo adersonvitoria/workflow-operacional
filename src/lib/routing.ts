@@ -24,6 +24,17 @@ export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
   { id: "tec-comunicando", rotulo: "Sistema comunicando" },
 ];
 
+/** Itens obrigatórios da Execução (Manutenção) antes de seguir para a Medição. */
+export const CHECKLIST_EXECUCAO_MANUTENCAO: { id: string; rotulo: string }[] = [
+  { id: "exec-orcamento", rotulo: "Orçamento concluído" },
+  { id: "exec-comunicando", rotulo: "Sistema comunicando" },
+];
+
+/** True se os dois flags da Execução (Manutenção) estão concluídos. */
+export function execucaoManutencaoCompleta(card: Pick<Card, "checklist">): boolean {
+  return CHECKLIST_EXECUCAO_MANUTENCAO.every((it) => card.checklist.some((c) => c.id === it.id && c.concluido));
+}
+
 /** Ordem visual das colunas no board de Implantação. */
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
