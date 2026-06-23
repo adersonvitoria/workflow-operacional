@@ -120,25 +120,27 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
             <input value={form.clienteNome} onChange={(e) => set("clienteNome", e.target.value)} className={inputCls} placeholder="Razão social / nome" />
           </Campo>
 
-          <Campo label="Tipo de cliente">
-            <div className="flex gap-2">
-              {(["CORPORATIVO", "COMERCIAL", "VAREJO"] as TipoCliente[]).map((t) => {
-                const ativo = form.tipoCliente === t;
-                const crit = TIPO_CLIENTE_META[t].criticidade;
-                return (
-                  <button key={t} type="button" onClick={() => set("tipoCliente", ativo ? undefined : t)}
-                    className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", ativo ? CRITICIDADE_META[crit].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}>
-                    {TIPO_CLIENTE_META[t].rotulo}
-                  </button>
-                );
-              })}
-            </div>
-            {form.tipoCliente && (
-              <p className="mt-1 text-[11px] text-slate-400">
-                Criticidade: <span className="font-semibold text-slate-500 dark:text-slate-300">{CRITICIDADE_META[TIPO_CLIENTE_META[form.tipoCliente].criticidade].rotulo}</span>
-              </p>
-            )}
-          </Campo>
+          {fluxo === "MANUTENCAO" && (
+            <Campo label="Tipo de cliente">
+              <div className="flex gap-2">
+                {(["CORPORATIVO", "COMERCIAL", "VAREJO"] as TipoCliente[]).map((t) => {
+                  const ativo = form.tipoCliente === t;
+                  const crit = TIPO_CLIENTE_META[t].criticidade;
+                  return (
+                    <button key={t} type="button" onClick={() => set("tipoCliente", ativo ? undefined : t)}
+                      className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", ativo ? CRITICIDADE_META[crit].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}>
+                      {TIPO_CLIENTE_META[t].rotulo}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.tipoCliente && (
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Criticidade: <span className="font-semibold text-slate-500 dark:text-slate-300">{CRITICIDADE_META[TIPO_CLIENTE_META[form.tipoCliente].criticidade].rotulo}</span>
+                </p>
+              )}
+            </Campo>
+          )}
 
           {fluxo === "IMPLANTACAO" && (
             <Campo label="Modalidade *">

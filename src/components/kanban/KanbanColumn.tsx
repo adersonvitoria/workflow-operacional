@@ -32,26 +32,24 @@ export function KanbanColumn({ coluna, cards, onAbrirCard }: KanbanColumnProps) 
   );
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
-      {/* Trilho de cor + cabeçalho */}
+    <section className="flex w-60 flex-none flex-col rounded-xl bg-surface-board dark:bg-slate-900/60">
+      {/* Trilho de cor + cabeçalho (altura fixa para alinhar as listas) */}
       <div className={`h-1 rounded-t-xl ${coluna.accent}`} />
       <header className="px-3 pb-2 pt-3">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center text-sm font-semibold text-slate-800 dark:text-slate-100">
-            <span className="truncate">{coluna.titulo}</span>
-            <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-              {cards.length}
-            </span>
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title={coluna.titulo}>
+            {coluna.titulo}
           </h2>
+          <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            {cards.length}
+          </span>
         </div>
-        <p className="mt-0.5 truncate text-[11px] text-slate-400" title={coluna.descricao}>
+        <p className="mt-0.5 line-clamp-2 min-h-[2rem] text-[11px] leading-tight text-slate-400" title={coluna.descricao}>
           {coluna.descricao}
         </p>
-        {somaTotal > 0 && (
-          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            {formatarBRL(somaTotal)}
-          </p>
-        )}
+        <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {somaTotal > 0 ? formatarBRL(somaTotal) : " "}
+        </p>
       </header>
 
       {/* Lista de cards (droppable) */}

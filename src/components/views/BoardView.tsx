@@ -30,7 +30,9 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtroCrit, setFiltroCrit] = useState<Criticidade | null>(null);
-  const cardsVisiveis = filtroCrit ? cards.filter((c) => criticidadeDoCard(c) === filtroCrit) : cards;
+  // Criticidade é uma frente exclusiva da Manutenção.
+  const mostrarFiltro = fluxo === "MANUTENCAO";
+  const cardsVisiveis = mostrarFiltro && filtroCrit ? cards.filter((c) => criticidadeDoCard(c) === filtroCrit) : cards;
   const podeCriar = podeCriarCard(atual?.perfil);
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
@@ -88,13 +90,14 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   return (
     <>
       <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">{titulo}</h1>
-          <p className="text-xs text-slate-400">
-            {subtitulo} · {cardsVisiveis.length}{filtroCrit ? ` de ${cards.length}` : ""} cards
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-white">{titulo}</h1>
+          <p className="truncate text-xs text-slate-400">
+            {subtitulo} · {cardsVisiveis.length}{mostrarFiltro && filtroCrit ? ` de ${cards.length}` : ""} cards
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
+          {mostrarFiltro && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-slate-400">Criticidade</span>
             {([null, "ALTA", "MEDIA", "BAIXA"] as (Criticidade | null)[]).map((c) => {
@@ -119,6 +122,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
               );
             })}
           </div>
+          )}
           {podeCriar && (
             <button onClick={() => { setEditId(null); setFormAberto(true); }} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
               + Nova entrada
