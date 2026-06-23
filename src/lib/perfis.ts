@@ -191,6 +191,9 @@ export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, mod
   if (perfil === "COORDENADOR") return true;
   // Assistente 1 pode avançar a própria etapa de Rotina (Rotina -> Cheque).
   if (perfil === "ASSISTENTE_1" && etapa === "ROTINA") return true;
+  // Assistente 2 move os cards na área de Orçamentos: Orçamento -> Aguardando,
+  // Aguardando -> Não Aprovado/Aprovado, e Não Aprovado -> Orçamento (renegociar).
+  if (perfil === "ASSISTENTE_2" && (etapa === "ORCAMENTO" || etapa === "ORC_AGUARDANDO" || etapa === "ORC_NAO_APROVADO")) return true;
   // Supervisão (Supervisor Técnico) dá o cheque e classifica a OS na etapa Cheque
   // (Encerrados / Medição / Orçamento); e conclui a Execução do serviço.
   if (perfil === "SUPERVISOR_TECNICO" && (etapa === "CHEQUE" || etapa === "EXECUCAO")) return true;
