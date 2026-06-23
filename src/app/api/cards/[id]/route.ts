@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
-import { podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
+import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { rowToCard } from "@/lib/mappers";
 import type { Card } from "@/types";
 
@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const tocaEdit = chaves.some((k) => CAMPOS_EDIT.includes(k));
   const tocaGate = chaves.some((k) => CAMPOS_GATE.includes(k));
 
-  if (tocaEdit && !podeEditarCard(s.perfil, existente.etapa)) {
+  if (tocaEdit && !podeEditarCard(s.perfil, existente.etapa, existente.fluxo)) {
     return NextResponse.json({ erro: "Seu perfil não pode editar os dados deste card nesta etapa." }, { status: 403 });
   }
   if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa, existente.modalidade ?? undefined)) {
@@ -76,9 +76,9 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   const existente = await prisma.card.findUnique({ where: { id: params.id } });
   if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
 
-  // Excluir: perfis com acesso de criação/edição do card (Coordenador em
-  // qualquer etapa; Comercial apenas na etapa Comercial).
-  if (!podeEditarCard(s.perfil, existente.etapa)) {
+  // Excluir: somente Coordenador (qualquer etapa) e Comercial (etapa Comercial).
+  // O Assistente edita rotinas de Manutenção, mas não exclui.
+  if (!podeExcluirCard(s.perfil, existente.etapa)) {
     return NextResponse.json({ erro: "Sem permissão para excluir este card." }, { status: 403 });
   }
   await prisma.card.delete({ where: { id: params.id } });

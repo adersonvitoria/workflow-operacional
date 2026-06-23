@@ -33,7 +33,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   // Criticidade é uma frente exclusiva da Manutenção.
   const mostrarFiltro = fluxo === "MANUTENCAO";
   const cardsVisiveis = mostrarFiltro && filtroCrit ? cards.filter((c) => criticidadeDoCard(c) === filtroCrit) : cards;
-  const podeCriar = podeCriarCard(atual?.perfil);
+  const podeCriar = podeCriarCard(atual?.perfil, fluxo);
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [formAberto, setFormAberto] = useState(false);

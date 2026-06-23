@@ -21,12 +21,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
-  if (!podeCriarCard(s.perfil)) return NextResponse.json({ erro: "Sem permissão para cadastrar." }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
   if (!b.clienteNome) return NextResponse.json({ erro: "Informe o cliente." }, { status: 400 });
 
   const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : "IMPLANTACAO";
+  if (!podeCriarCard(s.perfil, fluxo)) return NextResponse.json({ erro: "Sem permissão para cadastrar." }, { status: 403 });
   const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : "ROTINA";
   const qtd = await prisma.card.count({ where: { fluxo } });
   const agora = new Date().toISOString();

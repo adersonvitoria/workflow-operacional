@@ -6,7 +6,7 @@
  * perfil administrador (acesso total + gestão de usuários).
  */
 
-import type { EtapaImplantacao, Modalidade } from "@/types";
+import type { EtapaImplantacao, Fluxo, Modalidade } from "@/types";
 
 export type Perfil =
   | "COORDENADOR"
@@ -14,6 +14,7 @@ export type Perfil =
   | "SUPERVISOR_MONITORAMENTO"
   | "COMERCIAL"
   | "ADMINISTRATIVO"
+  | "ASSISTENTE"
   | "ALMOXARIFADO"
   | "SUPRIMENTOS"
   | "MEDICAO";
@@ -128,11 +129,24 @@ export const PERFIL_META: Record<Perfil, PerfilMeta> = {
     classe: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/30",
     cor: "bg-slate-700",
   },
+  ASSISTENTE: {
+    rotulo: "Assistente",
+    descricao: "Cria e edita as rotinas de Manutenção (lançamento e ajuste das OS).",
+    etapas: [],
+    acoes: [
+      "Cadastrar rotinas de Manutenção",
+      "Editar os dados das rotinas (cliente, valores, itens)",
+      "Acompanhar a esteira de Manutenção",
+    ],
+    classe: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30",
+    cor: "bg-sky-500",
+  },
 };
 
 export const PERFIS: Perfil[] = [
   "COORDENADOR",
   "COMERCIAL",
+  "ASSISTENTE",
   "ALMOXARIFADO",
   "SUPRIMENTOS",
   "SUPERVISOR_MONITORAMENTO",
@@ -169,18 +183,33 @@ export function donoDaEtapa(etapa: string, _modalidade?: Modalidade): Perfil | u
   return DONO_DA_ETAPA[etapa as EtapaImplantacao];
 }
 
-/** Cadastrar novo card: apenas Coordenador e Comercial. */
-export function podeCriarCard(perfil: Perfil | undefined): boolean {
-  return perfil === "COORDENADOR" || perfil === "COMERCIAL";
+/**
+ * Cadastrar novo card:
+ * - Coordenador e Comercial: qualquer fluxo;
+ * - Assistente: somente rotinas de Manutenção.
+ */
+export function podeCriarCard(perfil: Perfil | undefined, fluxo?: Fluxo): boolean {
+  if (perfil === "COORDENADOR" || perfil === "COMERCIAL") return true;
+  if (perfil === "ASSISTENTE") return fluxo === "MANUTENCAO";
+  return false;
 }
 
 /**
  * Editar os dados (comerciais/cadastrais) de um card:
  * - Coordenador: em qualquer etapa;
  * - Comercial: somente enquanto o card está na etapa Comercial;
+ * - Assistente: rotinas de Manutenção (qualquer card do fluxo MANUTENCAO);
  * - demais perfis: não editam (apenas executam o gate da sua etapa).
  */
-export function podeEditarCard(perfil: Perfil | undefined, etapa: string): boolean {
+export function podeEditarCard(perfil: Perfil | undefined, etapa: string, fluxo?: Fluxo): boolean {
+  if (perfil === "COORDENADOR") return true;
+  if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
+  if (perfil === "ASSISTENTE") return fluxo === "MANUTENCAO";
+  return false;
+}
+
+/** Excluir card: apenas Coordenador (qualquer etapa) e Comercial (etapa Comercial). */
+export function podeExcluirCard(perfil: Perfil | undefined, etapa: string): boolean {
   if (perfil === "COORDENADOR") return true;
   if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
   return false;

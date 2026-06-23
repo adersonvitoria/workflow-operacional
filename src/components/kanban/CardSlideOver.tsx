@@ -10,7 +10,7 @@ import {
 } from "@/lib/flows";
 import { CHECKLIST_TECNICA, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
-import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExecutarEtapa } from "@/lib/perfis";
+import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, FormaPagamento } from "@/types";
 
 interface CardSlideOverProps {
@@ -35,7 +35,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const aberto = card != null;
   const validacao = card ? podeAvancar(card) : { ok: false as const };
   const podeAgir = card ? podeExecutarEtapa(perfil, card.etapa, card.modalidade) : false;
-  const podeEditar = card ? podeEditarCard(perfil, card.etapa) : false;
+  const podeEditar = card ? podeEditarCard(perfil, card.etapa, card.fluxo) : false;
+  const podeExcluir = card ? podeExcluirCard(perfil, card.etapa) : false;
   const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
 
   return (
@@ -58,7 +59,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 </div>
                 <div className="flex items-center gap-1">
                   {podeEditar && <button onClick={onEditar} className="rounded-lg px-2 py-1 text-xs font-medium text-brand hover:bg-brand/10">Editar</button>}
-                  {podeEditar && <button onClick={onExcluir} className="rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15">Excluir</button>}
+                  {podeExcluir && <button onClick={onExcluir} className="rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/15">Excluir</button>}
                   <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar">✕</button>
                 </div>
               </div>
