@@ -16,6 +16,7 @@ export function UserForm({ aberto, inicial, onFechar, onSubmit }: UserFormProps)
   const [email, setEmail] = useState("");
   const [perfil, setPerfil] = useState<Perfil>("COMERCIAL");
   const [ativo, setAtivo] = useState(true);
+  const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const edicao = !!inicial;
 
@@ -25,6 +26,7 @@ export function UserForm({ aberto, inicial, onFechar, onSubmit }: UserFormProps)
     setEmail(inicial?.email ?? "");
     setPerfil(inicial?.perfil ?? "COMERCIAL");
     setAtivo(inicial?.ativo ?? true);
+    setSenha("");
     setErro(null);
   }, [aberto, inicial]);
 
@@ -33,7 +35,8 @@ export function UserForm({ aberto, inicial, onFechar, onSubmit }: UserFormProps)
   function submeter() {
     if (!nome.trim()) return setErro("Informe o nome.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErro("E-mail inválido.");
-    onSubmit({ nome: nome.trim(), email: email.trim(), perfil, ativo });
+    if (senha && senha.length < 6) return setErro("A senha deve ter ao menos 6 caracteres.");
+    onSubmit({ nome: nome.trim(), email: email.trim(), perfil, ativo, ...(senha ? { senha } : {}) });
   }
 
   return (
@@ -57,6 +60,16 @@ export function UserForm({ aberto, inicial, onFechar, onSubmit }: UserFormProps)
               {PERFIS.map((p) => <option key={p} value={p}>{PERFIL_META[p].rotulo}</option>)}
             </select>
             <p className="mt-1 text-[11px] text-slate-400">{PERFIL_META[perfil].descricao}</p>
+          </Campo>
+          <Campo label={edicao ? "Nova senha (opcional)" : "Senha"}>
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              className={inputCls}
+              autoComplete="new-password"
+              placeholder={edicao ? "Deixe em branco para manter a senha atual" : "Em branco usa a padrão (123456)"}
+            />
           </Campo>
           <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} /> Usuário ativo
