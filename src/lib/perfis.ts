@@ -235,6 +235,8 @@ export function podeEditarCard(perfil: Perfil | undefined, etapa: string, fluxo?
   if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
   if (perfil === "ASSISTENTE_1") return fluxo === "MANUTENCAO" && etapa === "ROTINA";
   if (perfil === "ASSISTENTE_2") return fluxo === "MANUTENCAO" && etapa === "ORCAMENTO";
+  // Medição registra CR/chamado/competência na etapa Medição da Manutenção.
+  if (perfil === "MEDICAO") return fluxo === "MANUTENCAO" && etapa === "MEDICAO";
   return false;
 }
 

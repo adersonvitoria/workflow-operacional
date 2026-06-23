@@ -151,6 +151,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
+                        <Campo rotulo="CR" valor={card.cr ?? "—"} />
                         <Campo rotulo="Competência" valor={card.medicao?.competencia ?? "—"} />
                         <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
@@ -158,6 +159,10 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />
                       </dl>
                     </Secao>
+                  )}
+
+                  {card.fluxo === "MANUTENCAO" && card.etapa === "ORCAMENTO" && podeAgir && (
+                    <OrcamentoGate card={card} patch={onPatch} />
                   )}
 
                   {card.fluxo === "MANUTENCAO" && card.etapa === "EXECUCAO" && podeAgir && (
@@ -240,17 +245,22 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
                   {destinosMan.map((d) => {
                     // Gates da Manutenção antes de avançar:
+                    // · Orçamento → Aguardando: número e valor do orçamento.
                     // · Execução → Medição: os dois flags do checklist concluídos.
-                    // · Medição → Encerrados: nº do chamado preenchido.
+                    // · Medição → Encerrados: nº do chamado, CR e competência.
                     let bloqueado = false;
                     let aviso = "";
+                    if (card.etapa === "ORCAMENTO" && d === "ORC_AGUARDANDO" && (!card.numeroOrcamento?.trim() || !card.valores.total)) {
+                      bloqueado = true;
+                      aviso = "Informe o número e o valor do orçamento antes de enviar.";
+                    }
                     if (card.etapa === "EXECUCAO" && d === "MEDICAO" && !execucaoManutencaoCompleta(card)) {
                       bloqueado = true;
                       aviso = "Conclua o checklist (Orçamento concluído e Sistema comunicando).";
                     }
-                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && (!card.medicao?.chamado?.trim() || !card.medicao?.competencia?.trim())) {
+                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && (!card.medicao?.chamado?.trim() || !card.cr?.trim() || !card.medicao?.competencia?.trim())) {
                       bloqueado = true;
-                      aviso = "Informe o nº do chamado e a competência para encerrar.";
+                      aviso = "Informe o nº do chamado, o CR e a competência para encerrar.";
                     }
                     return (
                       <div key={d}>
@@ -513,9 +523,11 @@ function inputParaComp(v: string): string {
  */
 function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const [chamado, setChamado] = useState(card.medicao?.chamado ?? card.chamado ?? "");
+  const [cr, setCr] = useState(card.cr ?? "");
   const [comp, setComp] = useState(compParaInput(card.medicao?.competencia));
   useEffect(() => {
     setChamado(card.medicao?.chamado ?? card.chamado ?? "");
+    setCr(card.cr ?? "");
     setComp(compParaInput(card.medicao?.competencia));
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -524,20 +536,58 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
   function salvar() {
     const c = chamado.trim();
     const comper = comp ? inputParaComp(comp) : undefined;
-    patch({ medicao: { ...card.medicao, chamado: c || undefined, competencia: comper } });
+    patch({ cr: cr.trim() || undefined, medicao: { ...card.medicao, chamado: c || undefined, competencia: comper } });
   }
 
-  const completo = !!chamado.trim() && !!comp;
+  const completo = !!chamado.trim() && !!cr.trim() && !!comp;
 
   return (
     <Gate titulo="Medição · Dados para encerrar">
-      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o nº do chamado e a competência para encerrar a OS.</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o nº do chamado, o CR e a competência para encerrar a OS.</p>
       <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
       <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={salvar} placeholder="Nº do chamado" className={inp} />
+      <label className="mt-2 block text-[10px] text-slate-400">CR (Centro de Resultado)</label>
+      <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={salvar} placeholder="CR" className={inp} />
       <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
       <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={salvar} className={inp} />
       <button onClick={salvar} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
-        {card.medicao?.chamado && card.medicao?.competencia ? "✓ Dados salvos · atualizar" : "Salvar dados"}
+        {card.medicao?.chamado && card.cr && card.medicao?.competencia ? "✓ Dados salvos · atualizar" : "Salvar dados"}
+      </button>
+    </Gate>
+  );
+}
+
+/**
+ * Gate do Orçamento (Manutenção): o Assistente 2 informa o número e o valor do
+ * orçamento antes de enviar para Aguardando. Os valores preenchem os campos do
+ * card (numeroOrcamento e valores.total).
+ */
+function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const [numero, setNumero] = useState(card.numeroOrcamento ?? "");
+  const [valor, setValor] = useState(card.valores.total != null ? String(card.valores.total) : "");
+  useEffect(() => {
+    setNumero(card.numeroOrcamento ?? "");
+    setValor(card.valores.total != null ? String(card.valores.total) : "");
+  }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+  function salvar() {
+    const v = valor ? Number(valor.replace(",", ".")) : undefined;
+    patch({ numeroOrcamento: numero.trim() || undefined, valores: { ...card.valores, total: v } });
+  }
+
+  const completo = !!numero.trim() && !!valor && Number(valor.replace(",", ".")) > 0;
+
+  return (
+    <Gate titulo="Orçamento · dados para enviar">
+      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o número e o valor do orçamento antes de enviar para Aguardando.</p>
+      <label className="mt-2 block text-[10px] text-slate-400">Número do orçamento</label>
+      <input value={numero} onChange={(e) => setNumero(e.target.value)} onBlur={salvar} placeholder="Nº do orçamento" className={inp} />
+      <label className="mt-2 block text-[10px] text-slate-400">Valor do orçamento (R$)</label>
+      <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={salvar} placeholder="0,00" className={inp} />
+      <button onClick={salvar} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+        {card.numeroOrcamento && card.valores.total ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
   );
