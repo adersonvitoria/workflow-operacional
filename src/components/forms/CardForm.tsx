@@ -282,7 +282,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 <Campo label="Número do orçamento"><input value={form.numeroOrcamento ?? ""} onChange={(e) => set("numeroOrcamento", e.target.value)} className={inputCls} /></Campo>
               </div>
 
-              <Campo label="Setor"><input value={man.setor ?? ""} onChange={(e) => setM("setor", e.target.value)} className={inputCls} /></Campo>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Setor"><input value={man.setor ?? ""} onChange={(e) => setM("setor", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Valor do orçamento (R$)"><input inputMode="decimal" value={form.total ?? ""} onChange={(e) => set("total", num(e.target.value))} className={inputCls} placeholder="0,00" /></Campo>
+              </div>
             </>
           )}
 
