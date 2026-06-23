@@ -192,8 +192,12 @@ export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, mod
   // Assistente 1 pode avançar a própria etapa de Rotina (Rotina -> Cheque).
   if (perfil === "ASSISTENTE_1" && etapa === "ROTINA") return true;
   // Supervisão (Supervisor Técnico) dá o cheque e classifica a OS na etapa Cheque
-  // (Encerrados / Medição / Orçamento).
-  if (perfil === "SUPERVISOR_TECNICO" && etapa === "CHEQUE") return true;
+  // (Encerrados / Medição / Orçamento); e conclui a Execução do serviço.
+  if (perfil === "SUPERVISOR_TECNICO" && (etapa === "CHEQUE" || etapa === "EXECUCAO")) return true;
+  // Almoxarifado separa os itens (Separação -> Suprimentos / Execução).
+  if (perfil === "ALMOXARIFADO" && etapa === "SEPARACAO") return true;
+  // Suprimentos compra os faltantes e devolve ao Almoxarifado (Compra -> Separação).
+  if (perfil === "SUPRIMENTOS" && etapa === "COMPRA") return true;
   return donoDaEtapa(etapa, modalidade) === perfil;
 }
 
