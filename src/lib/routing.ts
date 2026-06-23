@@ -73,9 +73,8 @@ export function proximaEtapa(
     case "COORDENACAO_AUDITORIA":
       return "MEDICAO";
     case "MEDICAO":
-      // A Medição não "avança": ao registrar o faturamento, o card é
-      // arquivado em ENCERRADOS pelo próprio gate de Medição.
-      return null;
+      // Após registrar o faturamento, Medição/Coordenação movem para Encerrados.
+      return "ENCERRADOS";
     case "ENCERRADOS":
       return null;
   }
@@ -151,7 +150,11 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       break;
 
     case "MEDICAO":
-      return { ok: false, motivo: "Registre o faturamento para encerrar o projeto.", proxima: null };
+      // Só dá para encerrar depois que a Medição registrou o faturamento.
+      if (!(card.status === "FINALIZADO" || card.medicao?.finalizadoEm)) {
+        return { ok: false, motivo: "Registre o faturamento antes de encerrar.", proxima: "ENCERRADOS" };
+      }
+      break;
 
     case "ENCERRADOS":
       return { ok: false, motivo: "Projeto encerrado.", proxima: null };

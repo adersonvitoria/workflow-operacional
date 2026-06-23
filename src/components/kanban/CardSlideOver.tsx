@@ -410,7 +410,6 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
         finalizadoPor: atual?.nome,
       },
       status: "FINALIZADO",
-      etapa: "ENCERRADOS",
     });
   }
 

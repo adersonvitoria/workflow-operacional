@@ -15,6 +15,7 @@ const SETOR_DA_ETAPA: Record<string, Setor> = {
   TECNICA: "TECNICA",
   COORDENACAO_AUDITORIA: "COORDENACAO",
   MEDICAO: "MEDICAO",
+  ENCERRADOS: "MEDICAO",
 };
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
@@ -38,8 +39,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const destino = r.proxima as EtapaId;
   // Ao chegar em Medição o card fica EM_ANDAMENTO (em medição); só vira
-  // FINALIZADO quando o setor de Medição registra os dados.
-  const status: CardStatus = "EM_ANDAMENTO";
+  // FINALIZADO quando o setor de Medição registra os dados. Ao encerrar, o
+  // card já está faturado — preserva o FINALIZADO.
+  const status: CardStatus = destino === "ENCERRADOS" ? "FINALIZADO" : "EM_ANDAMENTO";
   const historico = [
     ...card.historico,
     { id: `h${card.historico.length}`, data: new Date().toISOString(), setor: SETOR_DA_ETAPA[destino] ?? "TECNICA", autor: s.nome, acao: `Avançou para ${destino}`, de: card.etapa, para: destino },
