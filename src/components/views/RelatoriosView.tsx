@@ -65,7 +65,8 @@ export function RelatoriosView() {
   // --- Modo Esteiras (Implantação + Manutenção por mês) ---
   const noMes = useMemo(() => cards.filter((c) => mesDoCard(c) === mesRef), [cards, mesRef]);
   const implMes = noMes.filter((c) => c.fluxo === "IMPLANTACAO");
-  const manutMes = noMes.filter((c) => c.fluxo === "MANUTENCAO");
+  // Manutenção no relatório: somente as OS encerradas.
+  const manutMes = noMes.filter((c) => c.fluxo === "MANUTENCAO" && c.etapa === "ENCERRADOS");
 
   // --- Modo Cliente (todos os serviços por número da conta) ---
   const contas = useMemo(() => Array.from(new Set(cards.map((c) => c.numeroConta).filter(Boolean) as string[])).sort(), [cards]);
@@ -213,11 +214,11 @@ function RelatorioEsteiras({ mes, impl, manut }: { mes: string; impl: Card[]; ma
       <Cabecalho subtitulo={`Resultados das esteiras · Competência ${mesLabel(mes)}`} />
       <div className="grid grid-cols-3 gap-3">
         <ResumoBox titulo="Implantação" qtd={impl.length} valor={totImpl} />
-        <ResumoBox titulo="Manutenção" qtd={manut.length} valor={totManut} />
+        <ResumoBox titulo="Manutenção (encerrados)" qtd={manut.length} valor={totManut} />
         <ResumoBox titulo="Total geral" qtd={impl.length + manut.length} valor={totImpl + totManut} destaque />
       </div>
       <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
-      <SecaoEsteira titulo="Manutenção" cards={manut} total={totManut} />
+      <SecaoEsteira titulo="Manutenção · Encerrados" cards={manut} total={totManut} />
     </>
   );
 }
