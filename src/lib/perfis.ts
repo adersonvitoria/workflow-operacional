@@ -179,6 +179,7 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   TECNICA: "SUPERVISOR_TECNICO",
   COORDENACAO_AUDITORIA: "COORDENADOR",
   MEDICAO: "MEDICAO",
+  ENCERRADOS: "MEDICAO", // etapa final (arquivo) — sem gate a executar
 };
 
 /**

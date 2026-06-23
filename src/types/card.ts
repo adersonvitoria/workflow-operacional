@@ -43,7 +43,8 @@ export type EtapaImplantacao =
   | "MONITORAMENTO" // 5. Cria conta no software central + dados de conexão
   | "TECNICA" // 6. Execução da instalação e teste de conexão
   | "COORDENACAO_AUDITORIA" // 7. OK de qualidade / checklist de obra
-  | "MEDICAO"; // 8. Faturamento
+  | "MEDICAO" // 8. Faturamento
+  | "ENCERRADOS"; // 9. Projetos faturados e concluídos (arquivo)
 
 /**
  * Etapas do Fluxo de Manutenção (ordem canônica do board).

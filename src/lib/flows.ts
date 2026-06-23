@@ -12,6 +12,7 @@ import type {
   Modalidade,
   Setor,
   TipoCliente,
+  Turno,
 } from "@/types";
 
 /** Limite (horas) que um card pode ficar parado na mesma coluna. */
@@ -145,6 +146,13 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
     descricao: "Faturamento do cliente",
     accent: "bg-emerald-600",
   },
+  {
+    id: "ENCERRADOS",
+    titulo: "Encerrados",
+    setorResponsavel: "MEDICAO",
+    descricao: "Projetos faturados e concluídos",
+    accent: "bg-slate-500",
+  },
 ];
 
 /**
@@ -189,6 +197,21 @@ export const MODALIDADE_META: Record<
     classe: "bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:ring-purple-500/30",
   },
 };
+
+/**
+ * Tag de TURNO (Manutenção) — cada turno tem cor própria e uma ordem
+ * cronológica de prioridade: Manhã (1º) → Tarde (2º) → Dia (3º).
+ */
+export const TURNO_META: Record<Turno, { rotulo: string; ordem: number; classe: string; ponto: string }> = {
+  MANHA: { rotulo: "Manhã", ordem: 0, classe: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30", ponto: "bg-amber-500" },
+  TARDE: { rotulo: "Tarde", ordem: 1, classe: "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-500/30", ponto: "bg-orange-500" },
+  DIA: { rotulo: "Dia", ordem: 2, classe: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30", ponto: "bg-sky-500" },
+};
+
+/** Ordem de prioridade do turno (menor = primeiro). Sem turno vai para o fim. */
+export function ordemTurno(t?: Turno): number {
+  return t ? TURNO_META[t].ordem : 99;
+}
 
 /** Criticidade derivada do tipo de cliente (Corporativo→Alta, etc.). */
 export const CRITICIDADE_POR_TIPO: Record<TipoCliente, Criticidade> = {

@@ -34,6 +34,7 @@ export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "TECNICA",
   "COORDENACAO_AUDITORIA",
   "MEDICAO",
+  "ENCERRADOS",
 ];
 
 /**
@@ -61,6 +62,10 @@ export function proximaEtapa(
     case "COORDENACAO_AUDITORIA":
       return "MEDICAO";
     case "MEDICAO":
+      // A Medição não "avança": ao registrar o faturamento, o card é
+      // arquivado em ENCERRADOS pelo próprio gate de Medição.
+      return null;
+    case "ENCERRADOS":
       return null;
   }
 }
@@ -135,7 +140,10 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       break;
 
     case "MEDICAO":
-      return { ok: false, motivo: "Card no fim do fluxo.", proxima: null };
+      return { ok: false, motivo: "Registre o faturamento para encerrar o projeto.", proxima: null };
+
+    case "ENCERRADOS":
+      return { ok: false, motivo: "Projeto encerrado.", proxima: null };
   }
 
   return { ok: true, proxima: proximaEtapa(etapa, card.modalidade) };
