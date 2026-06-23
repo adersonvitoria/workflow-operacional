@@ -7,7 +7,7 @@ import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaManutencao } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
-const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "observacoes", "pagamento"];
+const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "chamado", "numeroOrcamento", "numeroConta", "observacoes", "pagamento"];
 const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
@@ -26,7 +26,7 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
     d.valorTotal = p.valores.total ?? null;
     d.valorMensal = p.valores.mensal ?? null;
   }
-  for (const k of ["modalidade", "natureza", "prioridade", "status", "etapa", "cr", "cc", "chamado", "numeroOrcamento", "observacoes"] as const) {
+  for (const k of ["modalidade", "natureza", "prioridade", "status", "etapa", "cr", "cc", "chamado", "numeroOrcamento", "numeroConta", "observacoes"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
   }
   for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "manutencao", "materiais", "checklist", "historico"] as const) {

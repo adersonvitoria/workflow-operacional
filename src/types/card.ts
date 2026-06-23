@@ -93,7 +93,6 @@ export type Turno = "MANHA" | "TARDE" | "DIA";
 export interface DadosManutencao {
   visitaCobrada?: boolean;
   turno?: Turno;
-  numeroConta?: string;
   regiao?: string;
   ordemServico?: string;
   tecnico?: string;
@@ -234,6 +233,8 @@ export interface Card {
   cc?: string;
   chamado?: string;
   numeroOrcamento?: string;
+  /** Número da conta — identificador do cliente (ambas as esteiras). */
+  numeroConta?: string;
 
   /** Bifurcação de suprimentos. Obrigatória quando fluxo === "IMPLANTACAO". */
   modalidade?: Modalidade;

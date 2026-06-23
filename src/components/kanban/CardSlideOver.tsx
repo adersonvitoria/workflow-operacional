@@ -106,6 +106,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <dl className="grid grid-cols-2 gap-3 text-sm">
                           <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
                           <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
+                          <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                           <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                         </dl>
@@ -129,7 +130,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                         <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
-                        <Campo rotulo="Número da conta" valor={man.numeroConta ?? "—"} />
+                        <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                         <Campo rotulo="Região" valor={man.regiao ?? "—"} />
                         <Campo rotulo="Ordem de serviço" valor={man.ordemServico ?? "—"} />
                         <Campo rotulo="Agendado" valor={man.agendado ? "Sim" : "Não"} />

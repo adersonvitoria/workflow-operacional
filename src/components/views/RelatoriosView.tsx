@@ -23,7 +23,7 @@ function mesLabel(mes: string): string {
   return MESES[i] ? `${MESES[i]}/${a}` : mes || "—";
 }
 
-type Modo = "esteiras" | "medicao";
+type Modo = "esteiras" | "medicao" | "cliente";
 
 export function RelatoriosView() {
   const { cards } = useCards();
@@ -33,6 +33,7 @@ export function RelatoriosView() {
   const [cardId, setCardId] = useState<string | null>(null);
   const [modo, setModo] = useState<Modo>("esteiras");
   const [competencia, setCompetencia] = useState<string>("");
+  const [conta, setConta] = useState<string>("");
   const [mesRef, setMesRef] = useState<string>(() => {
     const p = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("mes") : null;
     if (p) return p;
@@ -66,6 +67,14 @@ export function RelatoriosView() {
   const implMes = noMes.filter((c) => c.fluxo === "IMPLANTACAO");
   const manutMes = noMes.filter((c) => c.fluxo === "MANUTENCAO");
 
+  // --- Modo Cliente (todos os serviços por número da conta) ---
+  const contas = useMemo(() => Array.from(new Set(cards.map((c) => c.numeroConta).filter(Boolean) as string[])).sort(), [cards]);
+  const resultadosCliente = useMemo(() => {
+    const q = conta.trim().toLowerCase();
+    if (!q) return [];
+    return cards.filter((c) => (c.numeroConta ?? "").toLowerCase().includes(q));
+  }, [cards, conta]);
+
   const cardUnico = cardId ? cards.find((c) => c.id === cardId) : null;
 
   if (!pode) {
@@ -82,7 +91,7 @@ export function RelatoriosView() {
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Relatórios</h1>
           <p className="text-xs text-slate-400">
-            {cardUnico ? "Relatório do card" : modo === "esteiras" ? "Esteiras por mês (Implantação + Manutenção)" : "Medição por competência"}
+            {cardUnico ? "Relatório do card" : modo === "esteiras" ? "Esteiras por mês (Implantação + Manutenção)" : modo === "cliente" ? "Serviços por cliente (número da conta)" : "Medição por competência"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -93,7 +102,7 @@ export function RelatoriosView() {
           ) : (
             <>
               <div className="flex rounded-lg border border-slate-200 p-0.5 text-sm dark:border-slate-700">
-                {([["esteiras", "Esteiras (mês)"], ["medicao", "Medição (competência)"]] as [Modo, string][]).map(([m, rot]) => (
+                {([["esteiras", "Esteiras (mês)"], ["cliente", "Por cliente"], ["medicao", "Medição (competência)"]] as [Modo, string][]).map(([m, rot]) => (
                   <button key={m} onClick={() => setModo(m)} className={["rounded-md px-3 py-1 font-medium transition", modo === m ? "bg-brand text-white" : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"].join(" ")}>
                     {rot}
                   </button>
@@ -101,6 +110,11 @@ export function RelatoriosView() {
               </div>
               {modo === "esteiras" ? (
                 <input type="month" value={mesRef} onChange={(e) => setMesRef(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+              ) : modo === "cliente" ? (
+                <>
+                  <input list="contas-datalist" value={conta} onChange={(e) => setConta(e.target.value)} placeholder="Número da conta" className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+                  <datalist id="contas-datalist">{contas.map((c) => <option key={c} value={c} />)}</datalist>
+                </>
               ) : (
                 <select value={competencia} onChange={(e) => setCompetencia(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                   {competencias.length === 0 && <option value="">Sem competências</option>}
@@ -121,6 +135,8 @@ export function RelatoriosView() {
             <RelatorioCard card={cardUnico} />
           ) : modo === "esteiras" ? (
             <RelatorioEsteiras mes={mesRef} impl={implMes} manut={manutMes} />
+          ) : modo === "cliente" ? (
+            <RelatorioCliente conta={conta} cards={resultadosCliente} />
           ) : (
             <RelatorioCompetencia competencia={competencia} cards={daComp} total={totalComp} />
           )}
@@ -202,6 +218,54 @@ function RelatorioEsteiras({ mes, impl, manut }: { mes: string; impl: Card[]; ma
       </div>
       <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
       <SecaoEsteira titulo="Manutenção" cards={manut} total={totManut} />
+    </>
+  );
+}
+
+function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
+  const total = cards.reduce((s, c) => s + valorDoCard(c), 0);
+  const cliente = cards[0]?.cliente.nome;
+  return (
+    <>
+      <Cabecalho subtitulo={`Serviços por cliente · Conta ${conta.trim() || "—"}${cliente ? " · " + cliente : ""} · ${cards.length} serviço(s)`} />
+      {!conta.trim() ? (
+        <p className="text-sm text-slate-400">Informe o número da conta para consultar os serviços do cliente.</p>
+      ) : cards.length === 0 ? (
+        <p className="text-sm text-slate-400">Nenhum serviço encontrado para a conta “{conta.trim()}”.</p>
+      ) : (
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            <tr>
+              <th className="py-1.5 pr-2 font-medium">Código</th>
+              <th className="py-1.5 pr-2 font-medium">Esteira</th>
+              <th className="py-1.5 pr-2 font-medium">Cliente</th>
+              <th className="py-1.5 pr-2 font-medium">Etapa</th>
+              <th className="py-1.5 pr-2 font-medium">Status</th>
+              <th className="py-1.5 pr-2 font-medium">Abertura</th>
+              <th className="py-1.5 pr-2 text-right font-medium">Valor</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {cards.map((c) => (
+              <tr key={c.id} className="text-slate-700 dark:text-slate-200">
+                <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
+                <td className="py-1.5 pr-2">{c.fluxo === "IMPLANTACAO" ? "Implantação" : "Manutenção"}</td>
+                <td className="py-1.5 pr-2">{c.cliente.nome}</td>
+                <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
+                <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
+                <td className="py-1.5 pr-2">{dataBR(c.datas?.abertura)}</td>
+                <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(valorDoCard(c))}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
+              <td className="py-2" colSpan={6}>Total</td>
+              <td className="py-2 text-right">{formatarBRL(total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
     </>
   );
 }

@@ -99,6 +99,7 @@ model Card {
   cc              String?
   chamado         String?
   numeroOrcamento String?
+  numeroConta     String?
 
   valorMaoDeObra    Float?
   valorEquipamentos Float?

@@ -25,6 +25,7 @@ export interface NovoCardInput {
   cc?: string;
   chamado?: string;
   numeroOrcamento?: string;
+  numeroConta?: string;
   manutencao?: DadosManutencao;
   maoDeObra?: number;
   equipamentos?: number;

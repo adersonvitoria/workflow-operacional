@@ -175,6 +175,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
               </div>
 
+              <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
+
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Mão de obra (R$)"><input inputMode="decimal" value={form.maoDeObra ?? ""} onChange={(e) => set("maoDeObra", num(e.target.value))} className={inputCls} /></Campo>
                 <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
@@ -253,7 +255,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="Número da conta"><input value={man.numeroConta ?? ""} onChange={(e) => setM("numeroConta", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
                 <Campo label="Região"><input value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} /></Campo>
               </div>
 

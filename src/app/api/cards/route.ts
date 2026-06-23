@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       cc: b.cc ?? null,
       chamado: b.chamado ?? null,
       numeroOrcamento: b.numeroOrcamento ?? null,
+      numeroConta: b.numeroConta ?? null,
       manutencao: b.manutencao ?? undefined,
       valorMaoDeObra: b.maoDeObra ?? null,
       valorEquipamentos: b.equipamentos ?? null,
