@@ -259,10 +259,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Ordem de serviço">
-                  <select value={man.ordemServico ? "sim" : "nao"} onChange={(e) => setM("ordemServico", e.target.value === "sim")} className={inputCls}>
-                    <option value="nao">Não</option>
-                    <option value="sim">Sim</option>
-                  </select>
+                  <input value={man.ordemServico ?? ""} onChange={(e) => setM("ordemServico", e.target.value)} className={inputCls} />
                 </Campo>
                 <Campo label="Agendado">
                   <select value={man.agendado ? "sim" : "nao"} onChange={(e) => setM("agendado", e.target.value === "sim")} className={inputCls}>

@@ -95,7 +95,7 @@ export interface DadosManutencao {
   turno?: Turno;
   numeroConta?: string;
   regiao?: string;
-  ordemServico?: boolean;
+  ordemServico?: string;
   tecnico?: string;
   auxiliarTecnico?: string;
   tipoAtendimento?: string;
