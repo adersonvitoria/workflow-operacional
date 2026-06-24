@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeExecutarEtapa } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { podeAvancar } from "@/lib/routing";
 import { rowToCard } from "@/lib/mappers";
 import type { CardStatus, EtapaId, Setor } from "@/types";
@@ -27,7 +28,8 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const card = rowToCard(row);
 
-  // RBAC: só o setor dono da etapa (ou ADMINISTRATIVO) pode avançar.
+  await carregarConfigPerfis();
+  // RBAC: só quem pode executar a etapa avança.
   if (!podeExecutarEtapa(s.perfil, card.etapa, card.modalidade)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar esta etapa." }, { status: 403 });
   }

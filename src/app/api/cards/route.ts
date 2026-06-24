@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeCriarCard } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { rowToCard } from "@/lib/mappers";
 import type { Fluxo } from "@/types";
 
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   if (!b.clienteNome) return NextResponse.json({ erro: "Informe o cliente." }, { status: 400 });
 
   const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : "IMPLANTACAO";
+  await carregarConfigPerfis();
   if (!podeCriarCard(s.perfil, fluxo)) return NextResponse.json({ erro: "Sem permissão para cadastrar." }, { status: 403 });
   const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : "ROTINA";
   const qtd = await prisma.card.count({ where: { fluxo } });

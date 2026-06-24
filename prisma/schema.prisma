@@ -67,6 +67,16 @@ model Item {
   updatedAt DateTime @updatedAt
 }
 
+// Permissões editáveis por perfil (somente Coordenador edita). Quando um perfil
+// não tem linha aqui, valem os padrões em código (CONFIG_PADRAO de lib/perfis).
+model PerfilConfig {
+  perfil      Perfil   @id
+  etapas      Json     @default("[]") // EtapaId[] que o perfil executa/edita
+  capacidades Json     @default("{}") // flags: criar/editar/excluir cards, relatórios, itens, usuários
+  acoes       Json     @default("[]") // string[] de ações descritivas
+  updatedAt   DateTime @updatedAt
+}
+
 model Usuario {
   id        String   @id @default(cuid())
   nome      String

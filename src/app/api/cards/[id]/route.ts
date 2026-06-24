@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { destinosManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
@@ -55,6 +56,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
 
   const existente = await prisma.card.findUnique({ where: { id: params.id } });
   if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
@@ -129,6 +131,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
 
   const existente = await prisma.card.findUnique({ where: { id: params.id } });
   if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });

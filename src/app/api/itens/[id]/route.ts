@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarItens } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarItens(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
@@ -26,6 +28,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarItens(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   try {
     await prisma.item.delete({ where: { id: params.id } });

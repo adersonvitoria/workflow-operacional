@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarUsuarios } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 
 const SENHA_PADRAO = "123456";
 
@@ -13,6 +14,7 @@ function publico(u: { id: string; nome: string; email: string; perfil: string; a
 export async function GET() {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarUsuarios(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   const us = await prisma.usuario.findMany({ orderBy: { createdAt: "desc" } });
   return NextResponse.json({ usuarios: us.map(publico) });
@@ -21,6 +23,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarUsuarios(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));

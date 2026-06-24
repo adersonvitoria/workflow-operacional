@@ -6,7 +6,7 @@
  * perfil administrador (acesso total + gestão de usuários).
  */
 
-import type { EtapaImplantacao, Fluxo, Modalidade } from "@/types";
+import type { EtapaId, EtapaImplantacao, Fluxo, Modalidade } from "@/types";
 
 export type Perfil =
   | "COORDENADOR"
@@ -182,81 +182,138 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   ENCERRADOS: "MEDICAO", // etapa final (arquivo) — sem gate a executar
 };
 
-/**
- * Executar o GATE de uma etapa (aprovar/checar para seguir o fluxo).
- * O Coordenador supervisiona e pode agir em qualquer etapa; os demais perfis
- * só executam o gate da etapa que lhes pertence.
- */
-export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, modalidade?: Modalidade): boolean {
-  if (!perfil) return false;
-  if (perfil === "COORDENADOR") return true;
-  // Assistente 1 pode avançar a própria etapa de Rotina (Rotina -> Cheque).
-  if (perfil === "ASSISTENTE_1" && etapa === "ROTINA") return true;
-  // Assistente 2 move os cards na área de Orçamentos: Orçamento -> Aguardando,
-  // Aguardando -> Não Aprovado/Aprovado, e Não Aprovado -> Orçamento (renegociar).
-  if (perfil === "ASSISTENTE_2" && (etapa === "ORCAMENTO" || etapa === "ORC_AGUARDANDO" || etapa === "ORC_NAO_APROVADO")) return true;
-  // Supervisão (Supervisor Técnico) dá o cheque e classifica a OS na etapa Cheque
-  // (Encerrados / Medição / Orçamento); e conclui a Execução do serviço.
-  if (perfil === "SUPERVISOR_TECNICO" && (etapa === "CHEQUE" || etapa === "EXECUCAO")) return true;
-  // Almoxarifado separa os itens (Separação -> Suprimentos / Execução).
-  if (perfil === "ALMOXARIFADO" && etapa === "SEPARACAO") return true;
-  // Suprimentos compra os faltantes e devolve ao Almoxarifado (Compra -> Separação).
-  if (perfil === "SUPRIMENTOS" && etapa === "COMPRA") return true;
-  return donoDaEtapa(etapa, modalidade) === perfil;
-}
-
-/** Dono da etapa (o parâmetro modalidade é mantido por compatibilidade). */
+/** Dono da etapa — usado apenas para o rótulo "Esta etapa é do setor X". */
 export function donoDaEtapa(etapa: string, _modalidade?: Modalidade): Perfil | undefined {
   return DONO_DA_ETAPA[etapa as EtapaImplantacao];
 }
 
+// ---------------------------------------------------------------------------
+// Permissões dirigidas por dados (editáveis pelo Coordenador na tela Perfis)
+// ---------------------------------------------------------------------------
+
+/** Capacidades gerais (flags) de um perfil. */
+export interface Capacidades {
+  criarImplantacao: boolean;
+  criarManutencao: boolean;
+  editarCard: boolean;
+  excluirCard: boolean;
+  gerarRelatorio: boolean;
+  gerenciarItens: boolean;
+  gerenciarUsuarios: boolean;
+}
+
+/** Configuração editável de um perfil. */
+export interface PerfilConfig {
+  /** Etapas que o perfil executa (gates/avanço) e onde pode editar o card. */
+  etapas: EtapaId[];
+  capacidades: Capacidades;
+  /** Lista descritiva de ações do perfil. */
+  acoes: string[];
+}
+
+/** Todas as etapas das duas esteiras (MEDICAO/ENCERRADOS são compartilhadas). */
+export const TODAS_ETAPAS: EtapaId[] = [
+  "COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "COORDENACAO_AUDITORIA",
+  "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO", "SEPARACAO", "COMPRA", "EXECUCAO",
+  "MEDICAO", "ENCERRADOS",
+];
+
+const CAP_ZERO: Capacidades = {
+  criarImplantacao: false, criarManutencao: false, editarCard: false, excluirCard: false,
+  gerarRelatorio: false, gerenciarItens: false, gerenciarUsuarios: false,
+};
+function cap(p: Partial<Capacidades>): Capacidades {
+  return { ...CAP_ZERO, ...p };
+}
+
+/** Configuração padrão = comportamento atual codificado como dados. */
+export const CONFIG_PADRAO: Record<Perfil, PerfilConfig> = {
+  COORDENADOR: { etapas: [...TODAS_ETAPAS], capacidades: cap({ criarImplantacao: true, criarManutencao: true, editarCard: true, excluirCard: true, gerarRelatorio: true, gerenciarItens: true, gerenciarUsuarios: true }), acoes: PERFIL_META.COORDENADOR.acoes },
+  COMERCIAL: { etapas: ["COMERCIAL"], capacidades: cap({ criarImplantacao: true, criarManutencao: true, editarCard: true, excluirCard: true, gerenciarItens: true }), acoes: PERFIL_META.COMERCIAL.acoes },
+  ASSISTENTE_1: { etapas: ["ROTINA"], capacidades: cap({ criarManutencao: true, editarCard: true }), acoes: PERFIL_META.ASSISTENTE_1.acoes },
+  ASSISTENTE_2: { etapas: ["ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO"], capacidades: cap({ editarCard: true }), acoes: PERFIL_META.ASSISTENTE_2.acoes },
+  ALMOXARIFADO: { etapas: ["ALMOXARIFADO", "SEPARACAO"], capacidades: cap({}), acoes: PERFIL_META.ALMOXARIFADO.acoes },
+  SUPRIMENTOS: { etapas: ["SUPRIMENTOS", "COMPRA"], capacidades: cap({}), acoes: PERFIL_META.SUPRIMENTOS.acoes },
+  SUPERVISOR_MONITORAMENTO: { etapas: ["MONITORAMENTO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_MONITORAMENTO.acoes },
+  SUPERVISOR_TECNICO: { etapas: ["TECNICA", "CHEQUE", "EXECUCAO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_TECNICO.acoes },
+  MEDICAO: { etapas: ["MEDICAO", "ENCERRADOS"], capacidades: cap({ editarCard: true, gerarRelatorio: true }), acoes: PERFIL_META.MEDICAO.acoes },
+  ADMINISTRATIVO: { etapas: [], capacidades: cap({ gerarRelatorio: true, gerenciarItens: true, gerenciarUsuarios: true }), acoes: PERFIL_META.ADMINISTRATIVO.acoes },
+};
+
+// Cache de configuração efetiva (defaults + overrides do banco/cliente). Cada
+// ambiente (servidor/cliente) popula o seu via definirConfigPerfis().
+let CONFIG_ATUAL: Record<Perfil, PerfilConfig> = CONFIG_PADRAO;
+
+/** Aplica overrides sobre os padrões (parcial por perfil). */
+export function definirConfigPerfis(overrides: Partial<Record<Perfil, PerfilConfig>>): void {
+  const merged = {} as Record<Perfil, PerfilConfig>;
+  for (const p of PERFIS) merged[p] = overrides[p] ?? CONFIG_PADRAO[p];
+  CONFIG_ATUAL = merged;
+}
+
+export function obterConfigPerfis(): Record<Perfil, PerfilConfig> {
+  return CONFIG_ATUAL;
+}
+
+export function configDoPerfil(perfil: Perfil): PerfilConfig {
+  return CONFIG_ATUAL[perfil] ?? CONFIG_PADRAO[perfil];
+}
+
 /**
- * Cadastrar novo card:
- * - Coordenador e Comercial: qualquer fluxo;
- * - Assistente: somente rotinas de Manutenção.
+ * Executar o GATE de uma etapa (aprovar/checar/avançar). O Coordenador é
+ * super-usuário; os demais conforme a configuração do perfil.
  */
+export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, _modalidade?: Modalidade): boolean {
+  if (!perfil) return false;
+  if (perfil === "COORDENADOR") return true;
+  return configDoPerfil(perfil).etapas.includes(etapa as EtapaId);
+}
+
+/** Cadastrar novo card (por esteira). */
 export function podeCriarCard(perfil: Perfil | undefined, fluxo?: Fluxo): boolean {
-  if (perfil === "COORDENADOR" || perfil === "COMERCIAL") return true;
-  // Assistente 1 cria rotinas (cards de Manutenção, que começam na coluna Rotina).
-  if (perfil === "ASSISTENTE_1") return fluxo === "MANUTENCAO";
-  return false;
-}
-
-/**
- * Editar os dados (comerciais/cadastrais) de um card:
- * - Coordenador: em qualquer etapa;
- * - Comercial: somente enquanto o card está na etapa Comercial;
- * - Assistente 1: rotinas na coluna Rotina (Manutenção);
- * - Assistente 2: orçamentos na coluna Orçamento (Manutenção);
- * - demais perfis: não editam (apenas executam o gate da sua etapa).
- */
-export function podeEditarCard(perfil: Perfil | undefined, etapa: string, fluxo?: Fluxo): boolean {
+  if (!perfil) return false;
   if (perfil === "COORDENADOR") return true;
-  if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
-  if (perfil === "ASSISTENTE_1") return fluxo === "MANUTENCAO" && etapa === "ROTINA";
-  if (perfil === "ASSISTENTE_2") return fluxo === "MANUTENCAO" && etapa === "ORCAMENTO";
-  // Medição registra CR/chamado/competência na etapa Medição da Manutenção.
-  if (perfil === "MEDICAO") return fluxo === "MANUTENCAO" && etapa === "MEDICAO";
-  return false;
+  const c = configDoPerfil(perfil).capacidades;
+  if (fluxo === "MANUTENCAO") return c.criarManutencao;
+  if (fluxo === "IMPLANTACAO") return c.criarImplantacao;
+  return c.criarImplantacao || c.criarManutencao;
 }
 
-/** Excluir card: apenas Coordenador (qualquer etapa) e Comercial (etapa Comercial). */
+/** Editar os dados do card: precisa da capacidade e da etapa estar na sua lista. */
+export function podeEditarCard(perfil: Perfil | undefined, etapa: string, _fluxo?: Fluxo): boolean {
+  if (!perfil) return false;
+  if (perfil === "COORDENADOR") return true;
+  const cfg = configDoPerfil(perfil);
+  return cfg.capacidades.editarCard && cfg.etapas.includes(etapa as EtapaId);
+}
+
+/** Excluir card: precisa da capacidade e da etapa estar na sua lista. */
 export function podeExcluirCard(perfil: Perfil | undefined, etapa: string): boolean {
+  if (!perfil) return false;
   if (perfil === "COORDENADOR") return true;
-  if (perfil === "COMERCIAL") return etapa === "COMERCIAL";
-  return false;
+  const cfg = configDoPerfil(perfil);
+  return cfg.capacidades.excluirCard && cfg.etapas.includes(etapa as EtapaId);
 }
 
 export function podeGerenciarUsuarios(perfil: Perfil | undefined): boolean {
-  return perfil === "ADMINISTRATIVO" || perfil === "COORDENADOR";
+  if (!perfil) return false;
+  if (perfil === "COORDENADOR") return true;
+  return configDoPerfil(perfil).capacidades.gerenciarUsuarios;
 }
 
-/** Gerir o catálogo de itens do projeto: Comercial, Coordenador e Administrativo. */
 export function podeGerenciarItens(perfil: Perfil | undefined): boolean {
-  return perfil === "COMERCIAL" || perfil === "COORDENADOR" || perfil === "ADMINISTRATIVO";
+  if (!perfil) return false;
+  if (perfil === "COORDENADOR") return true;
+  return configDoPerfil(perfil).capacidades.gerenciarItens;
 }
 
-/** Acesso aos relatórios de medição: Medição, Coordenador e Administrativo. */
 export function podeGerarRelatorio(perfil: Perfil | undefined): boolean {
-  return perfil === "MEDICAO" || perfil === "COORDENADOR" || perfil === "ADMINISTRATIVO";
+  if (!perfil) return false;
+  if (perfil === "COORDENADOR") return true;
+  return configDoPerfil(perfil).capacidades.gerarRelatorio;
+}
+
+/** Editar a tela de Perfis: somente o Coordenador (fixo, evita lockout). */
+export function podeGerenciarPerfis(perfil: Perfil | undefined): boolean {
+  return perfil === "COORDENADOR";
 }

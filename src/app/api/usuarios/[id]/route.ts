@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarUsuarios } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 
 function publico(u: { id: string; nome: string; email: string; perfil: string; ativo: boolean }) {
   return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo };
@@ -11,6 +12,7 @@ function publico(u: { id: string; nome: string; email: string; perfil: string; a
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarUsuarios(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
@@ -32,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarUsuarios(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   if (params.id === s.userId) return NextResponse.json({ erro: "Você não pode remover a si mesmo." }, { status: 400 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarItens } from "@/lib/perfis";
+import { carregarConfigPerfis } from "@/lib/perfis-server";
 
 export async function GET() {
   const s = await obterSessao();
@@ -13,6 +14,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+  await carregarConfigPerfis();
   if (!podeGerenciarItens(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
