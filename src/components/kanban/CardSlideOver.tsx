@@ -12,7 +12,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencao, etapaAnteriorManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
@@ -52,6 +52,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
   // Destinos válidos para avançar uma entrada de Manutenção a partir da etapa atual.
   const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencao(card.etapa as EtapaManutencao) : [];
+  const ehCoordenador = perfil === "COORDENADOR";
+  const anteriorMan = card && card.fluxo === "MANUTENCAO" ? etapaAnteriorManutencao(card.etapa as EtapaManutencao) : null;
   const man = card?.manutencao ?? {};
   const crit = card ? criticidadeDoCard(card) : undefined;
 
@@ -241,9 +243,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 </button>
               </footer>
             ) : (
-              podeAgir && destinosMan.length > 0 && (
+              ((podeAgir && destinosMan.length > 0) || (ehCoordenador && anteriorMan)) && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-                  {destinosMan.map((d) => {
+                  {podeAgir && destinosMan.map((d) => {
                     // Gates da Manutenção antes de avançar:
                     // · Orçamento → Aguardando: número e valor do orçamento.
                     // · Execução → Medição: os dois flags do checklist concluídos.
@@ -277,6 +279,15 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       </div>
                     );
                   })}
+                  {ehCoordenador && anteriorMan && (
+                    <button
+                      onClick={() => onPatch({ etapa: anteriorMan })}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      title="Retroceder o card para a raia anterior"
+                    >
+                      ↩ Retroceder para {rotuloEtapa(anteriorMan)}
+                    </button>
+                  )}
                 </footer>
               )
             )}

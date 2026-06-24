@@ -300,7 +300,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Setor"><input value={man.setor ?? ""} onChange={(e) => setM("setor", e.target.value)} className={inputCls} /></Campo>
-                <Campo label="Valor do orçamento (R$)"><input inputMode="decimal" value={form.total ?? ""} onChange={(e) => set("total", num(e.target.value))} className={inputCls} placeholder="0,00" /></Campo>
+                <Campo label="Valor do orçamento (R$)"><MoedaInput value={form.total} onChange={(v) => set("total", v)} className={inputCls} placeholder="0,00" /></Campo>
               </div>
             </>
           )}
@@ -320,6 +320,37 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 }
 
 const inputCls = "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+/** Formata número como moeda pt-BR sem símbolo: 1000 -> "1.000,00". */
+function formatMoeda(n: number): string {
+  return n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Campo de valor com máscara pt-BR (milhar com "." e decimais com ","). O usuário
+ * digita o número e ao sair vê, p.ex., 1000 -> 1.000,00. Propaga o número via onChange.
+ */
+function MoedaInput({ value, onChange, className, placeholder }: { value?: number; onChange: (v?: number) => void; className?: string; placeholder?: string }) {
+  const [txt, setTxt] = useState("");
+  const [focado, setFocado] = useState(false);
+  useEffect(() => {
+    if (!focado) setTxt(value != null ? formatMoeda(value) : "");
+  }, [value, focado]);
+  function handle(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/[^\d,]/g, "");
+    const partes = raw.split(",");
+    const inteiro = partes[0].replace(/\D/g, "");
+    const dec = partes.length > 1 ? partes[1].slice(0, 2) : null;
+    const intFmt = inteiro ? Number(inteiro).toLocaleString("pt-BR") : (dec != null ? "0" : "");
+    setTxt(dec != null ? `${intFmt},${dec}` : intFmt);
+    if (!inteiro && dec == null) { onChange(undefined); return; }
+    const num = Number(`${inteiro || "0"}.${dec ?? "0"}`);
+    onChange(Number.isFinite(num) ? num : undefined);
+  }
+  return (
+    <input inputMode="decimal" value={txt} onChange={handle} onFocus={() => setFocado(true)} onBlur={() => setFocado(false)} className={className} placeholder={placeholder} />
+  );
+}
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (

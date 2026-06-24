@@ -67,7 +67,8 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
     if (fluxo === "MANUTENCAO") {
       const card = obter(id);
       if (!card) return;
-      const v = movimentoValidoManutencao(card, destino as EtapaManutencao);
+      const podeRetroceder = atual?.perfil === "COORDENADOR";
+      const v = movimentoValidoManutencao(card, destino as EtapaManutencao, podeRetroceder);
       if (!v.ok) {
         setToast(v.motivo ?? "Movimento não permitido.");
         return;

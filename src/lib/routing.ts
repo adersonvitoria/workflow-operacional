@@ -212,17 +212,38 @@ export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
   return TRANSICOES_MANUTENCAO[etapa] ?? [];
 }
 
+/** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */
+export const ORDEM_MANUTENCAO: EtapaManutencao[] = [
+  "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO",
+  "SEPARACAO", "COMPRA", "EXECUCAO", "MEDICAO", "ENCERRADOS",
+];
+
+/** True se mover de `de` para `para` é um retrocesso (raia anterior). */
+export function ehRetrocessoManutencao(de: EtapaManutencao, para: EtapaManutencao): boolean {
+  const a = ORDEM_MANUTENCAO.indexOf(de);
+  const b = ORDEM_MANUTENCAO.indexOf(para);
+  return a >= 0 && b >= 0 && b < a;
+}
+
+/** Etapa imediatamente anterior na ordem das raias (ou null se for a primeira). */
+export function etapaAnteriorManutencao(etapa: EtapaManutencao): EtapaManutencao | null {
+  const i = ORDEM_MANUTENCAO.indexOf(etapa);
+  return i > 0 ? ORDEM_MANUTENCAO[i - 1] : null;
+}
+
 /**
  * Valida o drag-and-drop na Manutenção: o destino precisa ser uma das saídas
  * permitidas da etapa atual. A escolha (ex.: OK/RQ/Orçar no Cheque) é feita
  * arrastando o card para a coluna desejada.
  */
-export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao): ResultadoTransicao {
+export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao, retroceder = false): ResultadoTransicao {
   if (card.fluxo !== "MANUTENCAO") {
     return { ok: false, motivo: "Roteamento de manutenção não se aplica." };
   }
   const atual = card.etapa as EtapaManutencao;
   if (destino === atual) return { ok: true, proxima: destino };
+  // O Coordenador pode retroceder o card para qualquer raia anterior.
+  if (retroceder && ehRetrocessoManutencao(atual, destino)) return { ok: true, proxima: destino };
   const permitidos = destinosManutencao(atual);
   if (permitidos.includes(destino)) return { ok: true, proxima: destino };
   if (permitidos.length === 0) {

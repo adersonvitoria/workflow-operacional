@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { destinosManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
+import { destinosManutencao, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaManutencao, Fluxo } from "@/types";
@@ -73,7 +73,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
   }
   // Na Manutenção, mover etapa só pelos caminhos válidos do fluxo.
-  if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO") {
+  // Exceção: o Coordenador pode retroceder o card para qualquer raia anterior.
+  const retrocessoCoord = body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO"
+    && s.perfil === "COORDENADOR" && ehRetrocessoManutencao(existente.etapa as EtapaManutencao, body.etapa as EtapaManutencao);
+  if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
     const destinos = destinosManutencao(existente.etapa as EtapaManutencao);
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
@@ -111,17 +114,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const hist = Array.isArray(existente.historico) ? (existente.historico as unknown[]) : [];
     const encerrando = body.etapa === "ENCERRADOS";
     const col = colunasDoFluxo(existente.fluxo as Fluxo).find((c) => c.id === body.etapa);
+    const acao = encerrando
+      ? "OS encerrada"
+      : retrocessoCoord
+        ? `Retrocedido para ${rotuloEtapa(body.etapa)}`
+        : `Movido para ${rotuloEtapa(body.etapa)}`;
     const evento = {
       id: `h${hist.length}`,
       data: new Date().toISOString(),
       setor: col?.setorResponsavel ?? "ADMINISTRATIVO",
       autor: s.nome,
-      acao: encerrando ? "OS encerrada" : `Movido para ${rotuloEtapa(body.etapa)}`,
+      acao,
       de: existente.etapa,
       para: body.etapa,
     };
     data.historico = [...hist, evento] as unknown as object[];
     if (encerrando && data.dataConclusao == null) data.dataConclusao = new Date();
+    // Ao reabrir (sair de Encerrados), limpa a data de encerramento.
+    if (existente.etapa === "ENCERRADOS" && body.etapa !== "ENCERRADOS") data.dataConclusao = null;
   }
 
   const row = await prisma.card.update({ where: { id: params.id }, data });
