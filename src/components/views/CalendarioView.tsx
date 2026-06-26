@@ -11,7 +11,10 @@ const FAIXA: Record<Turno, { ini: number; fim: number; rotulo: string }> = {
   TARDE: { ini: 13, fim: 18, rotulo: "Tarde" },
   DIA: { ini: 8, fim: 18, rotulo: "Dia" },
 };
-const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+// Estilo do card quando a visita não está agendada (vermelho).
+const NAO_AGENDADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
 
 function inicioSemana(d: Date): Date {
   const x = new Date(d);
@@ -37,12 +40,8 @@ interface Evento {
   tecnico?: string;
   auxiliar?: string;
   turno: Turno;
-  /** True quando a visita NÃO está agendada (campo Agendado = Não). */
   naoAgendado: boolean;
 }
-
-// Estilo do card quando a visita não está agendada (vermelho).
-const NAO_AGENDADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
 
 function montarEventos(cards: Card[]): Evento[] {
   return cards
@@ -64,14 +63,12 @@ export function CalendarioView() {
   const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDias(semana, i)), [semana]);
   const hojeStr = ymd(new Date());
 
-  // Eventos = qualquer card de Manutenção com data de visita (independe da etapa
-  // atual). O evento permanece mesmo quando o card sai da Rotina; só some quando
-  // o card é excluído.
+  // Eventos = qualquer card de Manutenção com data de visita (independe da etapa).
+  // Permanece mesmo quando o card sai da Rotina; só some quando é excluído.
   const agendados = useMemo(
     () => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)),
     [porFluxo],
   );
-  // Rotinas ainda sem data de visita (a agendar).
   const semData = useMemo(
     () => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length,
     [porFluxo],
@@ -94,9 +91,16 @@ export function CalendarioView() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Calendário</h1>
-          <p className="text-xs text-slate-400">Agenda de visitas (Manutenção) · {totalSemana} na semana{semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
+          <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Legenda de cores por turno */}
+          <div className="mr-2 hidden items-center gap-2 text-[11px] text-slate-500 sm:flex dark:text-slate-400">
+            {(["MANHA", "TARDE", "DIA"] as Turno[]).map((t) => (
+              <span key={t} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${TURNO_META[t].ponto}`} />{FAIXA[t].rotulo}</span>
+            ))}
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Não agendado</span>
+          </div>
           <button onClick={() => setSemana((s) => addDias(s, -7))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Semana anterior">‹</button>
           <button onClick={() => setSemana(inicioSemana(new Date()))} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Hoje</button>
           <button onClick={() => setSemana((s) => addDias(s, 7))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Próxima semana">›</button>
@@ -104,32 +108,31 @@ export function CalendarioView() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
-        <div className="mx-auto max-w-5xl space-y-2">
+      {/* Visão semanal: 7 colunas (rola na horizontal quando não couber) */}
+      <div className="flex-1 overflow-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
+        <div className="flex gap-2">
           {dias.map((d) => {
             const evs = eventosPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
-              <section key={ymd(d)} className={["flex gap-3 rounded-card border bg-white p-3 shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
-                {/* Coluna do dia */}
-                <div className="w-24 shrink-0 border-r border-slate-100 pr-3 dark:border-slate-800">
-                  <p className={["text-xs font-semibold uppercase", ehHoje ? "text-brand" : "text-slate-400"].join(" ")}>{DIAS_SEMANA[d.getDay()].slice(0, 3)}</p>
-                  <p className={["text-2xl font-bold leading-tight", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>{d.getDate()}</p>
-                  <p className="text-[11px] text-slate-400">{d.toLocaleDateString("pt-BR", { month: "short" })}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">{evs.length} {evs.length === 1 ? "visita" : "visitas"}</p>
-                </div>
+              <div key={ymd(d)} className={["flex w-56 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
+                <header className={["rounded-t-card border-b border-slate-200 px-3 py-2 text-center dark:border-slate-800", ehHoje ? "bg-brand/5" : ""].join(" ")}>
+                  <p className={["text-[11px] font-semibold uppercase", ehHoje ? "text-brand" : "text-slate-400"].join(" ")}>{DIAS_SEMANA[d.getDay()]}</p>
+                  <p className={["text-lg font-bold leading-tight", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>
+                    {d.getDate()} <span className="text-[11px] font-normal text-slate-400">{d.toLocaleDateString("pt-BR", { month: "short" })}</span>
+                  </p>
+                </header>
 
-                {/* Cards horizontais (quebram em várias linhas) */}
-                <div className="flex min-w-0 flex-1 flex-wrap content-start gap-2">
+                <div className="flex-1 space-y-2 p-2">
                   {evs.length === 0 ? (
-                    <p className="self-center text-sm text-slate-300 dark:text-slate-600">Sem visitas</p>
+                    <p className="px-1 py-6 text-center text-xs text-slate-300 dark:text-slate-600">Sem visitas</p>
                   ) : (
                     evs.map((ev) => {
                       const f = FAIXA[ev.turno];
                       const meta = TURNO_META[ev.turno];
                       const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
                       return (
-                        <div key={ev.id} className={`w-60 max-w-full rounded-lg border px-3 py-2 text-xs ring-1 ring-inset ${classe}`}>
+                        <div key={ev.id} className={`rounded-lg border px-2.5 py-2 text-xs ring-1 ring-inset ${classe}`}>
                           <div className="mb-1 flex items-center justify-between gap-2">
                             <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
                             <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
@@ -146,7 +149,7 @@ export function CalendarioView() {
                     })
                   )}
                 </div>
-              </section>
+              </div>
             );
           })}
         </div>
