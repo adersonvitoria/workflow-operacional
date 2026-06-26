@@ -5,23 +5,18 @@ import { useCards } from "@/lib/store";
 import { diaVisita, TURNO_META } from "@/lib/flows";
 import type { Card, Turno } from "@/types";
 
-// Faixa horária por turno (horas do dia).
+// Faixa horária por turno.
 const FAIXA: Record<Turno, { ini: number; fim: number; rotulo: string }> = {
   MANHA: { ini: 8, fim: 12, rotulo: "Manhã" },
   TARDE: { ini: 13, fim: 18, rotulo: "Tarde" },
   DIA: { ini: 8, fim: 18, rotulo: "Dia" },
 };
-const DIA_INI = 8;
-const DIA_FIM = 18;
-const TOTAL_H = DIA_FIM - DIA_INI; // 10h
-const HORA_PX = 56;
-const HORAS = Array.from({ length: TOTAL_H }, (_, i) => DIA_INI + i); // 8..17
-const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 function inicioSemana(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay()); // volta ao domingo
+  x.setDate(x.getDate() - x.getDay()); // domingo
   return x;
 }
 function addDias(d: Date, n: number): Date {
@@ -42,39 +37,18 @@ interface Evento {
   tecnico?: string;
   auxiliar?: string;
   turno: Turno;
-  iniMin: number;
-  fimMin: number;
-  lane: number;
-  lanes: number;
 }
 
-/** Empacota eventos do dia em "lanes" para os que se sobrepõem ficarem lado a lado. */
 function montarEventos(cards: Card[]): Evento[] {
-  const base = cards.map((c) => {
-    const turno = (c.manutencao?.turno ?? "DIA") as Turno;
-    const f = FAIXA[turno];
-    return {
+  return cards
+    .map((c) => ({
       id: c.id,
       cliente: c.cliente.nome,
       tecnico: c.manutencao?.tecnico,
       auxiliar: c.manutencao?.auxiliarTecnico,
-      turno,
-      iniMin: (f.ini - DIA_INI) * 60,
-      fimMin: (f.fim - DIA_INI) * 60,
-      lane: 0,
-      lanes: 1,
-    } as Evento;
-  });
-  base.sort((a, b) => a.iniMin - b.iniMin || a.fimMin - b.fimMin);
-  const lanes: Evento[][] = [];
-  for (const ev of base) {
-    let idx = lanes.findIndex((l) => l.every((e) => e.fimMin <= ev.iniMin || e.iniMin >= ev.fimMin));
-    if (idx === -1) { lanes.push([ev]); idx = lanes.length - 1; }
-    else lanes[idx].push(ev);
-    ev.lane = idx;
-  }
-  for (const ev of base) ev.lanes = lanes.length;
-  return base;
+      turno: (c.manutencao?.turno ?? "DIA") as Turno,
+    }))
+    .sort((a, b) => FAIXA[a.turno].ini - FAIXA[b.turno].ini || a.cliente.localeCompare(b.cliente));
 }
 
 export function CalendarioView() {
@@ -84,11 +58,14 @@ export function CalendarioView() {
   const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDias(semana, i)), [semana]);
   const hojeStr = ymd(new Date());
 
-  // Rotinas (Manutenção) com data de visita.
-  const rotinas = useMemo(
-    () => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !!diaVisita(c)),
+  // Eventos = qualquer card de Manutenção com data de visita (independe da etapa
+  // atual). O evento permanece mesmo quando o card sai da Rotina; só some quando
+  // o card é excluído.
+  const agendados = useMemo(
+    () => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)),
     [porFluxo],
   );
+  // Rotinas ainda sem data de visita (a agendar).
   const semData = useMemo(
     () => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length,
     [porFluxo],
@@ -98,19 +75,20 @@ export function CalendarioView() {
     const mapa = new Map<string, Evento[]>();
     for (const d of dias) {
       const ds = ymd(d);
-      mapa.set(ds, montarEventos(rotinas.filter((c) => diaVisita(c) === ds)));
+      mapa.set(ds, montarEventos(agendados.filter((c) => diaVisita(c) === ds)));
     }
     return mapa;
-  }, [dias, rotinas]);
+  }, [dias, agendados]);
 
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const totalSemana = dias.reduce((s, d) => s + (eventosPorDia.get(ymd(d))?.length ?? 0), 0);
 
   return (
     <>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Calendário</h1>
-          <p className="text-xs text-slate-400">Agenda de visitas (Rotina · Manutenção){semData > 0 ? ` · ${semData} sem data de visita` : ""}</p>
+          <p className="text-xs text-slate-400">Agenda de visitas (Manutenção) · {totalSemana} na semana{semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setSemana((s) => addDias(s, -7))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Semana anterior">‹</button>
@@ -120,68 +98,48 @@ export function CalendarioView() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
-        <div className="min-w-[760px] rounded-card border border-slate-200 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900">
-          {/* Cabeçalho dos dias */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800">
-            <div className="w-14 shrink-0" />
-            {dias.map((d) => {
-              const ehHoje = ymd(d) === hojeStr;
-              return (
-                <div key={ymd(d)} className={["flex-1 border-l border-slate-200 px-2 py-2 text-center dark:border-slate-800", ehHoje ? "bg-brand/5" : ""].join(" ")}>
-                  <p className="text-[11px] font-medium uppercase text-slate-400">{DIAS_SEMANA[d.getDay()]}</p>
-                  <p className={["text-sm font-semibold", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>{d.getDate()}</p>
+      <div className="flex-1 overflow-y-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
+        <div className="mx-auto max-w-5xl space-y-2">
+          {dias.map((d) => {
+            const evs = eventosPorDia.get(ymd(d)) ?? [];
+            const ehHoje = ymd(d) === hojeStr;
+            return (
+              <section key={ymd(d)} className={["flex gap-3 rounded-card border bg-white p-3 shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
+                {/* Coluna do dia */}
+                <div className="w-24 shrink-0 border-r border-slate-100 pr-3 dark:border-slate-800">
+                  <p className={["text-xs font-semibold uppercase", ehHoje ? "text-brand" : "text-slate-400"].join(" ")}>{DIAS_SEMANA[d.getDay()].slice(0, 3)}</p>
+                  <p className={["text-2xl font-bold leading-tight", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>{d.getDate()}</p>
+                  <p className="text-[11px] text-slate-400">{d.toLocaleDateString("pt-BR", { month: "short" })}</p>
+                  <p className="mt-1 text-[11px] text-slate-400">{evs.length} {evs.length === 1 ? "visita" : "visitas"}</p>
                 </div>
-              );
-            })}
-          </div>
 
-          {/* Grade de horários */}
-          <div className="flex">
-            {/* Gutter de horas */}
-            <div className="w-14 shrink-0">
-              {HORAS.map((h) => (
-                <div key={h} style={{ height: HORA_PX }} className="relative border-b border-slate-100 dark:border-slate-800/60">
-                  <span className="absolute -top-2 right-1.5 text-[10px] text-slate-400">{hhmm(h)}</span>
+                {/* Cards horizontais (quebram em várias linhas) */}
+                <div className="flex min-w-0 flex-1 flex-wrap content-start gap-2">
+                  {evs.length === 0 ? (
+                    <p className="self-center text-sm text-slate-300 dark:text-slate-600">Sem visitas</p>
+                  ) : (
+                    evs.map((ev) => {
+                      const f = FAIXA[ev.turno];
+                      const meta = TURNO_META[ev.turno];
+                      return (
+                        <div key={ev.id} className={`w-60 max-w-full rounded-lg border px-3 py-2 text-xs ring-1 ring-inset ${meta.classe}`}>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
+                              <span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}
+                            </span>
+                          </div>
+                          <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
+                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              ))}
-              <div className="relative h-0"><span className="absolute -top-2 right-1.5 text-[10px] text-slate-400">{hhmm(DIA_FIM)}</span></div>
-            </div>
-
-            {/* Colunas dos dias */}
-            {dias.map((d) => {
-              const evs = eventosPorDia.get(ymd(d)) ?? [];
-              const ehHoje = ymd(d) === hojeStr;
-              return (
-                <div key={ymd(d)} className={["relative flex-1 border-l border-slate-200 dark:border-slate-800", ehHoje ? "bg-brand/5" : ""].join(" ")} style={{ height: HORA_PX * TOTAL_H }}>
-                  {/* Linhas de hora */}
-                  {HORAS.map((h) => (
-                    <div key={h} style={{ height: HORA_PX }} className="border-b border-slate-100 dark:border-slate-800/60" />
-                  ))}
-                  {/* Eventos */}
-                  {evs.map((ev) => {
-                    const top = (ev.iniMin / (TOTAL_H * 60)) * 100;
-                    const height = ((ev.fimMin - ev.iniMin) / (TOTAL_H * 60)) * 100;
-                    const largura = 100 / ev.lanes;
-                    const meta = TURNO_META[ev.turno];
-                    return (
-                      <div
-                        key={ev.id}
-                        className={`absolute overflow-hidden rounded-md border px-1.5 py-1 text-[11px] shadow-sm ring-1 ring-inset ${meta.classe}`}
-                        style={{ top: `${top}%`, height: `calc(${height}% - 4px)`, left: `calc(${ev.lane * largura}% + 2px)`, width: `calc(${largura}% - 4px)` }}
-                        title={`${ev.cliente} · ${meta.rotulo}\nTécnico: ${ev.tecnico ?? "—"}\nAuxiliar: ${ev.auxiliar ?? "—"}`}
-                      >
-                        <p className="truncate font-semibold">{ev.cliente}</p>
-                        <p className="truncate opacity-90">Téc.: {ev.tecnico ?? "—"}</p>
-                        <p className="truncate opacity-90">Aux.: {ev.auxiliar ?? "—"}</p>
-                        <p className="mt-0.5 text-[10px] opacity-70">{FAIXA[ev.turno].rotulo} · {hhmm(FAIXA[ev.turno].ini)}–{hhmm(FAIXA[ev.turno].fim)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+              </section>
+            );
+          })}
         </div>
       </div>
     </>
