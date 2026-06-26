@@ -37,7 +37,12 @@ interface Evento {
   tecnico?: string;
   auxiliar?: string;
   turno: Turno;
+  /** True quando a visita NÃO está agendada (campo Agendado = Não). */
+  naoAgendado: boolean;
 }
+
+// Estilo do card quando a visita não está agendada (vermelho).
+const NAO_AGENDADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
 
 function montarEventos(cards: Card[]): Evento[] {
   return cards
@@ -47,6 +52,7 @@ function montarEventos(cards: Card[]): Evento[] {
       tecnico: c.manutencao?.tecnico,
       auxiliar: c.manutencao?.auxiliarTecnico,
       turno: (c.manutencao?.turno ?? "DIA") as Turno,
+      naoAgendado: c.manutencao?.agendado !== true,
     }))
     .sort((a, b) => FAIXA[a.turno].ini - FAIXA[b.turno].ini || a.cliente.localeCompare(b.cliente));
 }
@@ -121,8 +127,9 @@ export function CalendarioView() {
                     evs.map((ev) => {
                       const f = FAIXA[ev.turno];
                       const meta = TURNO_META[ev.turno];
+                      const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
                       return (
-                        <div key={ev.id} className={`w-60 max-w-full rounded-lg border px-3 py-2 text-xs ring-1 ring-inset ${meta.classe}`}>
+                        <div key={ev.id} className={`w-60 max-w-full rounded-lg border px-3 py-2 text-xs ring-1 ring-inset ${classe}`}>
                           <div className="mb-1 flex items-center justify-between gap-2">
                             <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
                             <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
@@ -132,6 +139,8 @@ export function CalendarioView() {
                           <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
                           <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
                           <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
+                          {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
                         </div>
                       );
                     })
