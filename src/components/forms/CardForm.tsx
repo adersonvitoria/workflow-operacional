@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CRITICIDADE_META, formatarBRL, MODALIDADE_META, TIPO_CLIENTE_META } from "@/lib/flows";
 import { useCatalogo } from "@/lib/catalogo-store";
 import { useTecnicos } from "@/lib/tecnicos-store";
-import { useCidadesRS } from "@/lib/cidades-rs";
+import { REGIOES_POA } from "@/lib/regioes-poa";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import type { NovoCardInput } from "@/lib/store";
 import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, Turno } from "@/types";
@@ -36,7 +36,6 @@ const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
   const { ativos } = useCatalogo();
   const { ativos: tecnicosAtivos } = useTecnicos();
-  const cidadesRS = useCidadesRS();
   const [form, setForm] = useState<NovoCardInput>(VAZIO(fluxo));
   const [itens, setItens] = useState<ItemMaterial[]>([]);
   const [itemSel, setItemSel] = useState<string>("");
@@ -278,9 +277,9 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
-                <Campo label="Região (cidade RS)">
-                  <input list="cidades-rs-datalist" value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise a cidade" />
-                  <datalist id="cidades-rs-datalist">{cidadesRS.map((c) => <option key={c} value={c} />)}</datalist>
+                <Campo label="Região (POA, metropolitana e bairros)">
+                  <input list="regioes-poa-datalist" value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" />
+                  <datalist id="regioes-poa-datalist">{REGIOES_POA.map((c) => <option key={c} value={c} />)}</datalist>
                 </Campo>
               </div>
 

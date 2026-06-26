@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MiniMap } from "./MiniMap";
+import { SET_MUNICIPIOS_RMPA } from "@/lib/regioes-poa";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 const VERMELHO = "#ef4444"; // ponto vermelho
@@ -21,7 +22,10 @@ export function MapaRegiao({ regiao }: { regiao?: string }) {
     if (!r || !TOKEN) { setEstado("idle"); return; }
     setEstado("carregando");
     let cancel = false;
-    const q = encodeURIComponent(`${r}, Rio Grande do Sul, Brasil`);
+    // Municípios buscam direto no RS; bairros buscam dentro de Porto Alegre.
+    const ehMunicipio = SET_MUNICIPIOS_RMPA.has(r.toLowerCase());
+    const consulta = ehMunicipio ? `${r}, Rio Grande do Sul, Brasil` : `${r}, Porto Alegre, Rio Grande do Sul, Brasil`;
+    const q = encodeURIComponent(consulta);
     fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${TOKEN}&country=br&limit=1`)
       .then((res) => res.json())
       .then((j) => {
