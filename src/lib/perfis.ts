@@ -317,3 +317,8 @@ export function podeGerarRelatorio(perfil: Perfil | undefined): boolean {
 export function podeGerenciarPerfis(perfil: Perfil | undefined): boolean {
   return perfil === "COORDENADOR";
 }
+
+/** Cadastro de técnicos: somente o Coordenador. */
+export function podeGerenciarTecnicos(perfil: Perfil | undefined): boolean {
+  return perfil === "COORDENADOR";
+}

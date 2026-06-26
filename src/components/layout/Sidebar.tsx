@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { PERFIL_META, podeGerarRelatorio, podeGerenciarItens, podeGerenciarPerfis, podeGerenciarUsuarios } from "@/lib/perfis";
+import { PERFIL_META, podeGerarRelatorio, podeGerenciarItens, podeGerenciarPerfis, podeGerenciarTecnicos, podeGerenciarUsuarios } from "@/lib/perfis";
 import { ThemeToggle } from "./ThemeToggle";
 
 interface ItemNav {
@@ -31,6 +31,7 @@ export function Sidebar() {
   if (podeGerenciarItens(atual?.perfil)) nav.push({ href: "/itens", rotulo: "Itens", icone: "◆" });
   if (podeGerarRelatorio(atual?.perfil)) nav.push({ href: "/relatorios", rotulo: "Relatórios", icone: "▧" });
   if (podeGerenciarUsuarios(atual?.perfil)) nav.push({ href: "/usuarios", rotulo: "Usuários", icone: "◍" });
+  if (podeGerenciarTecnicos(atual?.perfil)) nav.push({ href: "/tecnicos", rotulo: "Técnicos", icone: "👷" });
   if (podeGerenciarPerfis(atual?.perfil)) nav.push({ href: "/perfis", rotulo: "Perfis", icone: "⛊" });
   nav.push({ href: "/configuracoes", rotulo: "Configurações", icone: "⚙" });
 

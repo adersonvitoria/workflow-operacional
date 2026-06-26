@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CRITICIDADE_META, formatarBRL, MODALIDADE_META, TIPO_CLIENTE_META } from "@/lib/flows";
 import { useCatalogo } from "@/lib/catalogo-store";
+import { useTecnicos } from "@/lib/tecnicos-store";
 import type { NovoCardInput } from "@/lib/store";
 import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, Turno } from "@/types";
 
@@ -32,6 +33,7 @@ const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 /** Modal de cadastro/edição de card. */
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
   const { ativos } = useCatalogo();
+  const { ativos: tecnicosAtivos } = useTecnicos();
   const [form, setForm] = useState<NovoCardInput>(VAZIO(fluxo));
   const [itens, setItens] = useState<ItemMaterial[]>([]);
   const [itemSel, setItemSel] = useState<string>("");
@@ -289,9 +291,12 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="Técnico"><input value={man.tecnico ?? ""} onChange={(e) => setM("tecnico", e.target.value)} className={inputCls} placeholder="Nome do técnico" /></Campo>
-                <Campo label="Auxiliar técnico"><input value={man.auxiliarTecnico ?? ""} onChange={(e) => setM("auxiliarTecnico", e.target.value)} className={inputCls} placeholder="Nome do auxiliar" /></Campo>
+                <Campo label="Técnico"><input list="tecnicos-datalist" value={man.tecnico ?? ""} onChange={(e) => setM("tecnico", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
+                <Campo label="Auxiliar técnico"><input list="tecnicos-datalist" value={man.auxiliarTecnico ?? ""} onChange={(e) => setM("auxiliarTecnico", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
               </div>
+              <datalist id="tecnicos-datalist">
+                {tecnicosAtivos.map((t) => <option key={t.id} value={t.nome} />)}
+              </datalist>
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Tipo de atendimento"><input value={man.tipoAtendimento ?? ""} onChange={(e) => setM("tipoAtendimento", e.target.value)} className={inputCls} /></Campo>

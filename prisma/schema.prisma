@@ -67,6 +67,16 @@ model Item {
   updatedAt DateTime @updatedAt
 }
 
+// Técnicos/auxiliares de campo (não acessam a plataforma). Cadastrados pelo
+// Coordenador e oferecidos como lista nos campos Técnico/Auxiliar dos cards.
+model Tecnico {
+  id        String   @id @default(cuid())
+  nome      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // Permissões editáveis por perfil (somente Coordenador edita). Quando um perfil
 // não tem linha aqui, valem os padrões em código (CONFIG_PADRAO de lib/perfis).
 model PerfilConfig {
