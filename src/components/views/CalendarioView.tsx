@@ -15,7 +15,8 @@ const FAIXA: Record<Turno, { ini: number; fim: number; rotulo: string }> = {
 };
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", DIA: "Dia" };
-const NAO_AGENDADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
+// Vermelho do card quando a visita NÃO é cobrada.
+const NAO_COBRADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
 
 function inicioSemana(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - x.getDay()); return x; }
 function addDias(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
@@ -30,6 +31,7 @@ interface Evento {
   auxiliar?: string;
   turno: Turno;
   naoAgendado: boolean;
+  cobrado: boolean;
   tipoAtendimento?: string;
   setor?: string;
   regiao?: string;
@@ -45,6 +47,7 @@ function montarEventos(cards: Card[]): Evento[] {
       auxiliar: c.manutencao?.auxiliarTecnico,
       turno: (c.manutencao?.turno ?? "DIA") as Turno,
       naoAgendado: c.manutencao?.agendado !== true,
+      cobrado: c.manutencao?.visitaCobrada === true,
       tipoAtendimento: c.manutencao?.tipoAtendimento,
       setor: c.manutencao?.setor,
       regiao: c.manutencao?.regiao,
@@ -98,7 +101,7 @@ export function CalendarioView() {
             {(["MANHA", "TARDE", "DIA"] as Turno[]).map((t) => (
               <span key={t} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${TURNO_META[t].ponto}`} />{FAIXA[t].rotulo}</span>
             ))}
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Não agendado</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Não cobrado</span>
           </div>
           <button onClick={() => setSemana((s) => addDias(s, -7))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Semana anterior">‹</button>
           <button onClick={() => setSemana(inicioSemana(new Date()))} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Hoje</button>
@@ -143,12 +146,15 @@ export function CalendarioView() {
                         {g.itens.map((ev) => {
                           const f = FAIXA[ev.turno];
                           const meta = TURNO_META[ev.turno];
-                          const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
+                          const classe = ev.cobrado ? meta.classe : NAO_COBRADO_CLASSE;
                           return (
                             <button key={ev.id} type="button" onClick={() => setSelecionado(ev.card)} className={`block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 ${classe}`}>
                               <div className="mb-1 flex items-center justify-between gap-2">
                                 <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
                                 <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}</span>
+                              </div>
+                              <div className="mb-1">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${ev.cobrado ? "bg-emerald-100 text-emerald-700 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-500/40" : "bg-rose-200 text-rose-800 ring-rose-400 dark:bg-rose-500/30 dark:text-rose-100 dark:ring-rose-500/50"}`}>{ev.cobrado ? "Cobrado" : "Não Cobrado"}</span>
                               </div>
                               <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
                               <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
@@ -157,7 +163,6 @@ export function CalendarioView() {
                               <p className="break-words"><span className="opacity-70">Setor:</span> {ev.setor || "—"}</p>
                               <p className="break-words"><span className="opacity-70">Região:</span> {ev.regiao || "—"}</p>
                               <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
-                              {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
                             </button>
                           );
                         })}
