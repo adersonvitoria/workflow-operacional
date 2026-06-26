@@ -85,6 +85,8 @@ export function CalendarioView() {
 
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
   const totalSemana = dias.reduce((s, d) => s + (eventosPorDia.get(ymd(d))?.length ?? 0), 0);
+  // Só mostra colunas de dias que têm visitas; reaparecem ao criar um evento.
+  const diasVisiveis = useMemo(() => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) > 0), [dias, eventosPorDia]);
 
   return (
     <>
@@ -111,7 +113,10 @@ export function CalendarioView() {
       {/* Visão semanal: 7 colunas (rola na horizontal quando não couber) */}
       <div className="flex-1 overflow-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
         <div className="flex gap-2">
-          {dias.map((d) => {
+          {diasVisiveis.length === 0 && (
+            <div className="mx-auto mt-12 text-center text-sm text-slate-400">Nenhuma visita agendada nesta semana.</div>
+          )}
+          {diasVisiveis.map((d) => {
             const evs = eventosPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
@@ -124,10 +129,7 @@ export function CalendarioView() {
                 </header>
 
                 <div className="flex-1 space-y-3 p-2">
-                  {evs.length === 0 ? (
-                    <p className="px-1 py-6 text-center text-xs text-slate-300 dark:text-slate-600">Sem visitas</p>
-                  ) : (
-                    (["MANHA", "TARDE", "DIA"] as Turno[])
+                  {(["MANHA", "TARDE", "DIA"] as Turno[])
                       .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
                       .filter((g) => g.itens.length > 0)
                       .map((g) => (
@@ -157,8 +159,7 @@ export function CalendarioView() {
                             );
                           })}
                         </div>
-                      ))
-                  )}
+                      ))}
                 </div>
               </div>
             );
