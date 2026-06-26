@@ -123,30 +123,41 @@ export function CalendarioView() {
                   </p>
                 </header>
 
-                <div className="flex-1 space-y-2 p-2">
+                <div className="flex-1 space-y-3 p-2">
                   {evs.length === 0 ? (
                     <p className="px-1 py-6 text-center text-xs text-slate-300 dark:text-slate-600">Sem visitas</p>
                   ) : (
-                    evs.map((ev) => {
-                      const f = FAIXA[ev.turno];
-                      const meta = TURNO_META[ev.turno];
-                      const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
-                      return (
-                        <div key={ev.id} className={`rounded-lg border px-2.5 py-2 text-xs ring-1 ring-inset ${classe}`}>
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
-                              <span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}
-                            </span>
-                          </div>
-                          <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
-                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
-                          {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
+                    (["MANHA", "TARDE", "DIA"] as Turno[])
+                      .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
+                      .filter((g) => g.itens.length > 0)
+                      .map((g) => (
+                        <div key={g.t} className="space-y-1.5">
+                          <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
+                            <span className={`h-2 w-2 rounded-full ${TURNO_META[g.t].ponto}`} />
+                            {FAIXA[g.t].rotulo} <span className="text-slate-300 dark:text-slate-600">· {g.itens.length}</span>
+                          </p>
+                          {g.itens.map((ev) => {
+                            const f = FAIXA[ev.turno];
+                            const meta = TURNO_META[ev.turno];
+                            const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
+                            return (
+                              <div key={ev.id} className={`rounded-lg border px-2.5 py-2 text-xs ring-1 ring-inset ${classe}`}>
+                                <div className="mb-1 flex items-center justify-between gap-2">
+                                  <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
+                                    <span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}
+                                  </span>
+                                </div>
+                                <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
+                                <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
+                                {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })
+                      ))
                   )}
                 </div>
               </div>
