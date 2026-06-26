@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { CRITICIDADE_META, formatarBRL, MODALIDADE_META, TIPO_CLIENTE_META } from "@/lib/flows";
 import { useCatalogo } from "@/lib/catalogo-store";
 import { useTecnicos } from "@/lib/tecnicos-store";
+import { useCidadesRS } from "@/lib/cidades-rs";
+import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import type { NovoCardInput } from "@/lib/store";
 import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, Turno } from "@/types";
 
@@ -34,6 +36,7 @@ const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
   const { ativos } = useCatalogo();
   const { ativos: tecnicosAtivos } = useTecnicos();
+  const cidadesRS = useCidadesRS();
   const [form, setForm] = useState<NovoCardInput>(VAZIO(fluxo));
   const [itens, setItens] = useState<ItemMaterial[]>([]);
   const [itemSel, setItemSel] = useState<string>("");
@@ -275,7 +278,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
-                <Campo label="Região"><input value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Região (cidade RS)">
+                  <input list="cidades-rs-datalist" value={man.regiao ?? ""} onChange={(e) => setM("regiao", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise a cidade" />
+                  <datalist id="cidades-rs-datalist">{cidadesRS.map((c) => <option key={c} value={c} />)}</datalist>
+                </Campo>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -291,12 +297,9 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="Técnico"><input list="tecnicos-datalist" value={man.tecnico ?? ""} onChange={(e) => setM("tecnico", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
-                <Campo label="Auxiliar técnico"><input list="tecnicos-datalist" value={man.auxiliarTecnico ?? ""} onChange={(e) => setM("auxiliarTecnico", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
+                <Campo label="Técnico"><ComboPessoa value={man.tecnico ?? ""} onChange={(v) => setM("tecnico", v)} opcoes={tecnicosAtivos} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
+                <Campo label="Auxiliar técnico"><ComboPessoa value={man.auxiliarTecnico ?? ""} onChange={(v) => setM("auxiliarTecnico", v)} opcoes={tecnicosAtivos} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
               </div>
-              <datalist id="tecnicos-datalist">
-                {tecnicosAtivos.map((t) => <option key={t.id} value={t.nome} />)}
-              </datalist>
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Tipo de atendimento"><input value={man.tipoAtendimento ?? ""} onChange={(e) => setM("tipoAtendimento", e.target.value)} className={inputCls} /></Campo>

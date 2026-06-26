@@ -3,9 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 
+export type TipoTecnico = "TECNICO" | "TERCEIRO";
+
 export interface Tecnico {
   id: string;
   nome: string;
+  tipo: TipoTecnico;
   ativo: boolean;
 }
 
@@ -13,7 +16,7 @@ interface TecnicosContextValue {
   tecnicos: Tecnico[];
   ativos: Tecnico[];
   carregado: boolean;
-  criar: (nome: string) => Promise<{ ok: boolean; motivo?: string }>;
+  criar: (nome: string, tipo?: TipoTecnico) => Promise<{ ok: boolean; motivo?: string }>;
   atualizar: (id: string, patch: { nome?: string; ativo?: boolean }) => Promise<void>;
   remover: (id: string) => Promise<void>;
 }
@@ -42,8 +45,8 @@ export function TecnicosProvider({ children }: { children: React.ReactNode }) {
     else { setTecnicos([]); setCarregado(true); }
   }, [atual, recarregar]);
 
-  const criar = useCallback(async (nome: string) => {
-    const { ok, json } = await api("/api/tecnicos", { method: "POST", body: JSON.stringify({ nome }) });
+  const criar = useCallback(async (nome: string, tipo: TipoTecnico = "TECNICO") => {
+    const { ok, json } = await api("/api/tecnicos", { method: "POST", body: JSON.stringify({ nome, tipo }) });
     if (!ok) return { ok: false, motivo: json.erro as string };
     await recarregar();
     return { ok: true };

@@ -67,14 +67,21 @@ model Item {
   updatedAt DateTime @updatedAt
 }
 
+enum TipoTecnico {
+  TECNICO
+  TERCEIRO // prestador de serviços
+}
+
 // Técnicos/auxiliares de campo (não acessam a plataforma). Cadastrados pelo
 // Coordenador e oferecidos como lista nos campos Técnico/Auxiliar dos cards.
+// `tipo` separa técnicos próprios de prestadores de serviços (terceiros).
 model Tecnico {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   nome      String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tipo      TipoTecnico @default(TECNICO)
+  ativo     Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 }
 
 // Permissões editáveis por perfil (somente Coordenador edita). Quando um perfil

@@ -32,6 +32,7 @@ export function Sidebar() {
   if (podeGerarRelatorio(atual?.perfil)) nav.push({ href: "/relatorios", rotulo: "Relatórios", icone: "▧" });
   if (podeGerenciarUsuarios(atual?.perfil)) nav.push({ href: "/usuarios", rotulo: "Usuários", icone: "◍" });
   if (podeGerenciarTecnicos(atual?.perfil)) nav.push({ href: "/tecnicos", rotulo: "Técnicos", icone: "👷" });
+  if (podeGerenciarTecnicos(atual?.perfil)) nav.push({ href: "/prestadores", rotulo: "Prestadores", icone: "🤝" });
   if (podeGerenciarPerfis(atual?.perfil)) nav.push({ href: "/perfis", rotulo: "Perfis", icone: "⛊" });
   nav.push({ href: "/configuracoes", rotulo: "Configurações", icone: "⚙" });
 

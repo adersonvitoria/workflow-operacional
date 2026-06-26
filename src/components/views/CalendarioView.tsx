@@ -2,37 +2,26 @@
 
 import { useMemo, useState } from "react";
 import { useCards } from "@/lib/store";
-import { diaVisita, TURNO_META } from "@/lib/flows";
+import { useTecnicos } from "@/lib/tecnicos-store";
+import { criticidadeDoCard, CRITICIDADE_META, diaVisita, formatarBRL, TIPO_CLIENTE_META, TURNO_META } from "@/lib/flows";
+import { rotuloEtapa } from "@/lib/routing";
+import { MapaRegiao } from "@/components/views/MapaRegiao";
 import type { Card, Turno } from "@/types";
 
-// Faixa horária por turno.
 const FAIXA: Record<Turno, { ini: number; fim: number; rotulo: string }> = {
   MANHA: { ini: 8, fim: 12, rotulo: "Manhã" },
   TARDE: { ini: 13, fim: 18, rotulo: "Tarde" },
   DIA: { ini: 8, fim: 18, rotulo: "Dia" },
 };
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-// Estilo do card quando a visita não está agendada (vermelho).
+const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", DIA: "Dia" };
 const NAO_AGENDADO_CLASSE = "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/40";
 
-function inicioSemana(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay()); // domingo
-  return x;
-}
-function addDias(d: Date, n: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function hhmm(h: number): string {
-  return `${String(h).padStart(2, "0")}:00`;
-}
+function inicioSemana(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - x.getDay()); return x; }
+function addDias(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function ymd(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function hhmm(h: number): string { return `${String(h).padStart(2, "0")}:00`; }
+function dataBR(iso?: string): string { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR"); }
 
 interface Evento {
   id: string;
@@ -41,6 +30,10 @@ interface Evento {
   auxiliar?: string;
   turno: Turno;
   naoAgendado: boolean;
+  tipoAtendimento?: string;
+  setor?: string;
+  regiao?: string;
+  card: Card;
 }
 
 function montarEventos(cards: Card[]): Evento[] {
@@ -52,41 +45,46 @@ function montarEventos(cards: Card[]): Evento[] {
       auxiliar: c.manutencao?.auxiliarTecnico,
       turno: (c.manutencao?.turno ?? "DIA") as Turno,
       naoAgendado: c.manutencao?.agendado !== true,
+      tipoAtendimento: c.manutencao?.tipoAtendimento,
+      setor: c.manutencao?.setor,
+      regiao: c.manutencao?.regiao,
+      card: c,
     }))
     .sort((a, b) => FAIXA[a.turno].ini - FAIXA[b.turno].ini || a.cliente.localeCompare(b.cliente));
 }
 
 export function CalendarioView() {
   const { porFluxo } = useCards();
+  const { ativos: pessoasAtivas } = useTecnicos();
   const [semana, setSemana] = useState<Date>(() => inicioSemana(new Date()));
+  const [selecionado, setSelecionado] = useState<Card | null>(null);
 
   const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => addDias(semana, i)), [semana]);
   const hojeStr = ymd(new Date());
 
-  // Eventos = qualquer card de Manutenção com data de visita (independe da etapa).
-  // Permanece mesmo quando o card sai da Rotina; só some quando é excluído.
-  const agendados = useMemo(
-    () => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)),
-    [porFluxo],
-  );
-  const semData = useMemo(
-    () => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length,
-    [porFluxo],
-  );
+  const agendados = useMemo(() => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)), [porFluxo]);
+  const semData = useMemo(() => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length, [porFluxo]);
 
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, Evento[]>();
-    for (const d of dias) {
-      const ds = ymd(d);
-      mapa.set(ds, montarEventos(agendados.filter((c) => diaVisita(c) === ds)));
-    }
+    for (const d of dias) { const ds = ymd(d); mapa.set(ds, montarEventos(agendados.filter((c) => diaVisita(c) === ds))); }
     return mapa;
   }, [dias, agendados]);
 
+  const diasVisiveis = useMemo(() => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) > 0), [dias, eventosPorDia]);
+
+  // Técnicos/prestadores sem OS hoje (não vinculados a nenhum card de hoje).
+  const semOSHoje = useMemo(() => {
+    const atribuidos = new Set<string>();
+    for (const c of agendados.filter((c) => diaVisita(c) === hojeStr)) {
+      if (c.manutencao?.tecnico) atribuidos.add(c.manutencao.tecnico.trim().toLowerCase());
+      if (c.manutencao?.auxiliarTecnico) atribuidos.add(c.manutencao.auxiliarTecnico.trim().toLowerCase());
+    }
+    return pessoasAtivas.filter((p) => !atribuidos.has(p.nome.trim().toLowerCase()));
+  }, [agendados, hojeStr, pessoasAtivas]);
+
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
   const totalSemana = dias.reduce((s, d) => s + (eventosPorDia.get(ymd(d))?.length ?? 0), 0);
-  // Só mostra colunas de dias que têm visitas; reaparecem ao criar um evento.
-  const diasVisiveis = useMemo(() => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) > 0), [dias, eventosPorDia]);
 
   return (
     <>
@@ -96,7 +94,6 @@ export function CalendarioView() {
           <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Legenda de cores por turno */}
           <div className="mr-2 hidden items-center gap-2 text-[11px] text-slate-500 sm:flex dark:text-slate-400">
             {(["MANHA", "TARDE", "DIA"] as Turno[]).map((t) => (
               <span key={t} className="inline-flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${TURNO_META[t].ponto}`} />{FAIXA[t].rotulo}</span>
@@ -110,7 +107,14 @@ export function CalendarioView() {
         </div>
       </header>
 
-      {/* Visão semanal: 7 colunas (rola na horizontal quando não couber) */}
+      {/* Alerta: técnicos sem OS hoje */}
+      {semOSHoje.length > 0 && (
+        <div className="flex items-start gap-2 border-b border-rose-300 bg-rose-600 px-6 py-2 text-sm font-semibold text-white">
+          <span aria-hidden>⚠</span>
+          <span className="min-w-0">ATENÇÃO, os técnicos {semOSHoje.map((p) => p.nome).join(", ")} estão sem OS no dia de HOJE</span>
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto bg-surface-app p-4 scrollbar-hide dark:bg-slate-950">
         <div className="flex gap-2">
           {diasVisiveis.length === 0 && (
@@ -120,51 +124,103 @@ export function CalendarioView() {
             const evs = eventosPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
-              <div key={ymd(d)} className={["flex w-56 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
+              <div key={ymd(d)} className={["flex w-60 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
                 <header className={["rounded-t-card border-b border-slate-200 px-3 py-2 text-center dark:border-slate-800", ehHoje ? "bg-brand/5" : ""].join(" ")}>
                   <p className={["text-[11px] font-semibold uppercase", ehHoje ? "text-brand" : "text-slate-400"].join(" ")}>{DIAS_SEMANA[d.getDay()]}</p>
-                  <p className={["text-lg font-bold leading-tight", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>
-                    {d.getDate()} <span className="text-[11px] font-normal text-slate-400">{d.toLocaleDateString("pt-BR", { month: "short" })}</span>
-                  </p>
+                  <p className={["text-lg font-bold leading-tight", ehHoje ? "text-brand" : "text-slate-700 dark:text-slate-200"].join(" ")}>{d.getDate()} <span className="text-[11px] font-normal text-slate-400">{d.toLocaleDateString("pt-BR", { month: "short" })}</span></p>
                 </header>
 
                 <div className="flex-1 space-y-3 p-2">
                   {(["MANHA", "TARDE", "DIA"] as Turno[])
-                      .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
-                      .filter((g) => g.itens.length > 0)
-                      .map((g) => (
-                        <div key={g.t} className="space-y-1.5">
-                          <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
-                            <span className={`h-2 w-2 rounded-full ${TURNO_META[g.t].ponto}`} />
-                            {FAIXA[g.t].rotulo} <span className="text-slate-300 dark:text-slate-600">· {g.itens.length}</span>
-                          </p>
-                          {g.itens.map((ev) => {
-                            const f = FAIXA[ev.turno];
-                            const meta = TURNO_META[ev.turno];
-                            const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
-                            return (
-                              <div key={ev.id} className={`rounded-lg border px-2.5 py-2 text-xs ring-1 ring-inset ${classe}`}>
-                                <div className="mb-1 flex items-center justify-between gap-2">
-                                  <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20">
-                                    <span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}
-                                  </span>
-                                </div>
-                                <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
-                                <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
-                                <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
-                                <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
-                                {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
+                    .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
+                    .filter((g) => g.itens.length > 0)
+                    .map((g) => (
+                      <div key={g.t} className="space-y-1.5">
+                        <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
+                          <span className={`h-2 w-2 rounded-full ${TURNO_META[g.t].ponto}`} />
+                          {FAIXA[g.t].rotulo} <span className="text-slate-300 dark:text-slate-600">· {g.itens.length}</span>
+                        </p>
+                        {g.itens.map((ev) => {
+                          const f = FAIXA[ev.turno];
+                          const meta = TURNO_META[ev.turno];
+                          const classe = ev.naoAgendado ? NAO_AGENDADO_CLASSE : meta.classe;
+                          return (
+                            <button key={ev.id} type="button" onClick={() => setSelecionado(ev.card)} className={`block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 ${classe}`}>
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <span className="font-semibold">{hhmm(f.ini)} – {hhmm(f.fim)}</span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className={`h-1.5 w-1.5 rounded-full ${meta.ponto}`} />{meta.rotulo}</span>
                               </div>
-                            );
-                          })}
-                        </div>
-                      ))}
+                              <p className="break-words text-sm font-semibold leading-snug">{ev.cliente}</p>
+                              <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {ev.tecnico || "—"}</p>
+                              <p className="break-words"><span className="opacity-70">Auxiliar:</span> {ev.auxiliar || "—"}</p>
+                              <p className="break-words"><span className="opacity-70">Tipo:</span> {ev.tipoAtendimento || "—"}</p>
+                              <p className="break-words"><span className="opacity-70">Setor:</span> {ev.setor || "—"}</p>
+                              <p className="break-words"><span className="opacity-70">Região:</span> {ev.regiao || "—"}</p>
+                              <p className="break-words"><span className="opacity-70">Agendado:</span> {ev.naoAgendado ? "Não" : "Sim"}</p>
+                              {ev.naoAgendado && <p className="mt-1 font-semibold">⚠ Não agendado</p>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
+
+      {selecionado && <DetalheCard card={selecionado} onFechar={() => setSelecionado(null)} />}
+    </>
+  );
+}
+
+function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
+  const m = card.manutencao ?? {};
+  const crit = criticidadeDoCard(card);
+  const linha = (k: string, v: React.ReactNode) => (
+    <div className="flex justify-between gap-3 border-b border-slate-100 py-1.5 text-sm dark:border-slate-800">
+      <span className="text-slate-500 dark:text-slate-400">{k}</span>
+      <span className="text-right font-medium text-slate-800 dark:text-slate-100">{v}</span>
+    </div>
+  );
+  return (
+    <>
+      <div onClick={onFechar} className="fixed inset-0 z-40 bg-slate-900/40" />
+      <div className="fixed left-1/2 top-1/2 z-50 max-h-[88vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-card bg-white p-5 shadow-xl scrollbar-hide dark:bg-slate-900">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <span className="font-mono text-xs text-slate-400">#{card.codigo} · {rotuloEtapa(card.etapa)}</span>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{card.cliente.nome}</h2>
+          </div>
+          <button onClick={onFechar} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Fechar">✕</button>
+        </div>
+
+        {/* Mapa da região (ponto vermelho) */}
+        <MapaRegiao regiao={m.regiao} />
+
+        <dl className="mt-4">
+          {linha("Tipo de cliente", card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—")}
+          {linha("Criticidade", crit ? CRITICIDADE_META[crit].rotulo : "—")}
+          {linha("Número da conta", card.numeroConta ?? "—")}
+          {linha("Data da visita", dataBR(m.dataVisita))}
+          {linha("Turno", m.turno ? (TURNO_ROTULO[m.turno] ?? m.turno) : "—")}
+          {linha("Agendado", m.agendado ? "Sim" : "Não")}
+          {linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
+          {linha("Técnico", m.tecnico ?? "—")}
+          {linha("Auxiliar técnico", m.auxiliarTecnico ?? "—")}
+          {linha("Tipo de atendimento", m.tipoAtendimento ?? "—")}
+          {linha("Setor", m.setor ?? "—")}
+          {linha("Região", m.regiao ?? "—")}
+          {linha("Ordem de serviço", m.ordemServico ?? "—")}
+          {linha("Número do orçamento", card.numeroOrcamento ?? "—")}
+          {linha("Valor do orçamento", formatarBRL(card.valores.total))}
+          {linha("CR", card.cr ?? "—")}
+          {linha("Chamado", card.medicao?.chamado ?? card.chamado ?? "—")}
+          {linha("Data de cadastro", dataBR(card.datas?.abertura))}
+          {card.datas?.conclusao && linha("Encerrado em", dataBR(card.datas.conclusao))}
+          {card.observacoes && linha("Observações", card.observacoes)}
+        </dl>
       </div>
     </>
   );

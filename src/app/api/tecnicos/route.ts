@@ -20,7 +20,8 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const nome = String(b.nome ?? "").trim();
   if (!nome) return NextResponse.json({ erro: "Informe o nome do técnico." }, { status: 400 });
+  const tipo = b.tipo === "TERCEIRO" ? "TERCEIRO" : "TECNICO";
 
-  const tecnico = await prisma.tecnico.create({ data: { nome, ativo: b.ativo ?? true } });
+  const tecnico = await prisma.tecnico.create({ data: { nome, tipo, ativo: b.ativo ?? true } });
   return NextResponse.json({ tecnico }, { status: 201 });
 }
