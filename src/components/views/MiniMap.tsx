@@ -14,8 +14,9 @@ type Props = {
 };
 
 /**
- * Mini-mapa não-interativo (sem zoom/pan/rotate). Renderiza um único pin no
- * ponto, com glow estático. Portado do projeto campanha-conectada.
+ * Mapa do ponto de atendimento. Navegável (pan/zoom) com botão para voltar ao
+ * ponto. Renderiza um pin no local com glow. Baseado no componente do projeto
+ * campanha-conectada.
  */
 export function MiniMap({ lat, lng, color, zoom = 13, pitch = 30 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -33,11 +34,11 @@ export function MiniMap({ lat, lng, color, zoom = 13, pitch = 30 }: Props) {
       zoom,
       pitch,
       bearing: -10,
-      interactive: false,
-      attributionControl: false,
+      interactive: true,
       antialias: true,
     });
     mapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
 
     const el = document.createElement("div");
     el.className = "mini-pin";
@@ -74,6 +75,10 @@ export function MiniMap({ lat, lng, color, zoom = 13, pitch = 30 }: Props) {
     return () => { ro.disconnect(); clearTimeout(t); map.remove(); };
   }, [lat, lng, color, zoom, pitch]);
 
+  function recentrar() {
+    mapRef.current?.flyTo({ center: [lng, lat], zoom, pitch, bearing: -10, duration: 700, essential: true });
+  }
+
   const tokenMissing = !TOKEN || TOKEN === "pk.demo";
 
   return (
@@ -83,6 +88,16 @@ export function MiniMap({ lat, lng, color, zoom = 13, pitch = 30 }: Props) {
         <div className="absolute inset-0 grid place-items-center rounded-lg bg-slate-100 text-[11px] text-slate-500 dark:bg-slate-800">
           Defina NEXT_PUBLIC_MAPBOX_TOKEN
         </div>
+      )}
+      {!tokenMissing && (
+        <button
+          type="button"
+          onClick={recentrar}
+          className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-md ring-1 ring-black/10 backdrop-blur transition hover:bg-white dark:bg-slate-800/90 dark:text-slate-200 dark:ring-white/10"
+          title="Voltar ao ponto do atendimento"
+        >
+          <span aria-hidden>📍</span> Voltar ao ponto
+        </button>
       )}
       <div className="pointer-events-none absolute inset-0 rounded-lg shadow-inner ring-1 ring-black/5" />
       <style jsx global>{`
