@@ -73,14 +73,14 @@ export function CalendarioView() {
 
   const diasVisiveis = useMemo(() => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) > 0), [dias, eventosPorDia]);
 
-  // Técnicos/prestadores sem OS hoje (não vinculados a nenhum card de hoje).
+  // Técnicos (somente tipo TÉCNICO, não terceiros) sem OS hoje.
   const semOSHoje = useMemo(() => {
     const atribuidos = new Set<string>();
     for (const c of agendados.filter((c) => diaVisita(c) === hojeStr)) {
       if (c.manutencao?.tecnico) atribuidos.add(c.manutencao.tecnico.trim().toLowerCase());
       if (c.manutencao?.auxiliarTecnico) atribuidos.add(c.manutencao.auxiliarTecnico.trim().toLowerCase());
     }
-    return pessoasAtivas.filter((p) => !atribuidos.has(p.nome.trim().toLowerCase()));
+    return pessoasAtivas.filter((p) => p.tipo === "TECNICO" && !atribuidos.has(p.nome.trim().toLowerCase()));
   }, [agendados, hojeStr, pessoasAtivas]);
 
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
