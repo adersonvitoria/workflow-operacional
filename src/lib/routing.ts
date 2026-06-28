@@ -48,6 +48,19 @@ export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "ENCERRADOS",
 ];
 
+/** True se mover de `de` para `para` é um retrocesso (raia anterior) na Implantação. */
+export function ehRetrocessoImplantacao(de: EtapaImplantacao, para: EtapaImplantacao): boolean {
+  const a = ORDEM_IMPLANTACAO.indexOf(de);
+  const b = ORDEM_IMPLANTACAO.indexOf(para);
+  return a >= 0 && b >= 0 && b < a;
+}
+
+/** Etapa imediatamente anterior na ordem do board de Implantação (ou null). */
+export function etapaAnteriorImplantacao(etapa: EtapaImplantacao): EtapaImplantacao | null {
+  const i = ORDEM_IMPLANTACAO.indexOf(etapa);
+  return i > 0 ? ORDEM_IMPLANTACAO[i - 1] : null;
+}
+
 /**
  * Próxima etapa segundo a regra de negócio. Bifurcação após a aprovação:
  * VENDA passa pelo Almoxarifado (conferência de estoque); LOCAÇÃO vai direto

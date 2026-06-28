@@ -5,7 +5,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
 import { useCards, type NovoCardInput } from "@/lib/store";
-import { movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
+import { ehRetrocessoImplantacao, movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
 import { criticidadeDoCard, CRITICIDADE_META, mesDoCard } from "@/lib/flows";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
@@ -84,6 +84,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
     }
     const card = obter(id);
     if (!card) return;
+    // O Coordenador pode retroceder o card para qualquer coluna anterior.
+    if (atual?.perfil === "COORDENADOR" && ehRetrocessoImplantacao(card.etapa as EtapaImplantacao, destino as EtapaImplantacao)) {
+      await atualizar(id, { etapa: destino });
+      return;
+    }
     const v = movimentoValido(card, destino as EtapaImplantacao);
     if (!v.ok) {
       setToast(v.motivo ?? "Movimento não permitido.");

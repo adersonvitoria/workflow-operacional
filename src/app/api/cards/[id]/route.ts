@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { destinosManutencaoCard, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
+import { destinosManutencaoCard, ehRetrocessoImplantacao, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
-import type { Card, EtapaManutencao, Fluxo } from "@/types";
+import type { Card, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "margemVenda", "chamado", "numeroOrcamento", "numeroConta", "regiao", "datas", "observacoes", "pagamento"];
@@ -73,10 +73,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (tocaGate && !podeExecutarEtapa(s.perfil, existente.etapa, existente.modalidade ?? undefined)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
   }
-  // Na Manutenção, mover etapa só pelos caminhos válidos do fluxo.
-  // Exceção: o Coordenador pode retroceder o card para qualquer raia anterior.
-  const retrocessoCoord = body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO"
+  // Mover etapa: na Manutenção só pelos caminhos válidos do fluxo. O Coordenador
+  // pode retroceder o card para qualquer raia anterior (Manutenção e Implantação).
+  const mudaEtapa = body.etapa != null && body.etapa !== existente.etapa;
+  const retrocessoCoord = mudaEtapa && existente.fluxo === "MANUTENCAO"
     && s.perfil === "COORDENADOR" && ehRetrocessoManutencao(existente.etapa as EtapaManutencao, body.etapa as EtapaManutencao);
+  const retrocessoCoordImpl = mudaEtapa && existente.fluxo === "IMPLANTACAO"
+    && s.perfil === "COORDENADOR" && ehRetrocessoImplantacao(existente.etapa as EtapaImplantacao, body.etapa as EtapaImplantacao);
+  // Implantação só muda de etapa via "Avançar" (endpoint dedicado); por PATCH só
+  // é permitido o retrocesso do Coordenador.
+  if (mudaEtapa && existente.fluxo === "IMPLANTACAO" && !retrocessoCoordImpl) {
+    return NextResponse.json({ erro: "Use o botão Avançar para mover o card na Implantação." }, { status: 422 });
+  }
   if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
     const destinos = destinosManutencaoCard({ etapa: existente.etapa as EtapaManutencao, complementar: existente.complementar });
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
@@ -110,6 +118,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const data = patchToData(body);
+  // Ao retroceder na Implantação, desliga a tag de conferência (rewind manual).
+  if (retrocessoCoordImpl) data.conferenciaSuprimentos = false;
   // Histórico de movimentações: toda mudança de etapa via PATCH é registrada.
   if (body.etapa != null && body.etapa !== existente.etapa) {
     const hist = Array.isArray(existente.historico) ? (existente.historico as unknown[]) : [];
@@ -117,7 +127,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const col = colunasDoFluxo(existente.fluxo as Fluxo).find((c) => c.id === body.etapa);
     const acao = encerrando
       ? "OS encerrada"
-      : retrocessoCoord
+      : (retrocessoCoord || retrocessoCoordImpl)
         ? `Retrocedido para ${rotuloEtapa(body.etapa)}`
         : `Movido para ${rotuloEtapa(body.etapa)}`;
     const evento = {

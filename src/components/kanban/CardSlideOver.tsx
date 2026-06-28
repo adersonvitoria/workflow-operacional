@@ -14,7 +14,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorImplantacao, etapaAnteriorManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
@@ -63,6 +63,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencaoCard(card) : [];
   const ehCoordenador = perfil === "COORDENADOR";
   const anteriorMan = card && card.fluxo === "MANUTENCAO" ? etapaAnteriorManutencao(card.etapa as EtapaManutencao) : null;
+  const anteriorImpl = card && card.fluxo === "IMPLANTACAO" ? etapaAnteriorImplantacao(card.etapa as EtapaImplantacao) : null;
   const man = card?.manutencao ?? {};
   const crit = card ? criticidadeDoCard(card) : undefined;
 
@@ -285,6 +286,15 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 >
                   {validacao.ok && validacao.proxima ? `Avançar para ${rotuloEtapa(validacao.proxima)} →` : "Avançar etapa"}
                 </button>
+                {ehCoordenador && anteriorImpl && (
+                  <button
+                    onClick={() => onPatch({ etapa: anteriorImpl })}
+                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    title="Retroceder o card para a coluna anterior"
+                  >
+                    ↩ Retroceder para {rotuloEtapa(anteriorImpl)}
+                  </button>
+                )}
               </footer>
             ) : (
               ((podeAgir && destinosMan.length > 0) || (ehCoordenador && anteriorMan)) && (
