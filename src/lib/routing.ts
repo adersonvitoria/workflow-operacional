@@ -70,6 +70,7 @@ export function proximaEtapa(
   etapa: EtapaImplantacao,
   modalidade: Modalidade | undefined,
   conferencia = false,
+  tudoEmEstoque = false,
 ): EtapaImplantacao | null {
   switch (etapa) {
     case "COMERCIAL":
@@ -77,9 +78,10 @@ export function proximaEtapa(
     case "COORDENACAO_APROVACAO":
       return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
     case "ALMOXARIFADO":
-      // 1ª passada (Venda): segue p/ Suprimentos. Na volta (conferência do
-      // material recebido), segue p/ Monitoramento.
-      return conferencia ? "MONITORAMENTO" : "SUPRIMENTOS";
+      // Volta da conferência (material recebido) → Monitoramento. 1ª passada:
+      // se está tudo em estoque, não há o que comprar — pula o Suprimentos e vai
+      // direto ao Monitoramento; senão, segue p/ Suprimentos comprar os faltantes.
+      return conferencia || tudoEmEstoque ? "MONITORAMENTO" : "SUPRIMENTOS";
     case "SUPRIMENTOS":
       // Após comprar, volta ao Almoxarifado p/ conferência (Locação e Venda).
       return "ALMOXARIFADO";
@@ -177,7 +179,10 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       return { ok: false, motivo: "Projeto encerrado.", proxima: null };
   }
 
-  return { ok: true, proxima: proximaEtapa(etapa, card.modalidade, card.conferenciaSuprimentos) };
+  // "Tudo em estoque": nenhum item faltante (EM_COMPRAS) nem pendente. No
+  // Almoxarifado, isso libera o atalho direto para o Monitoramento.
+  const tudoEmEstoque = !card.materiais.some((m) => m.statusAlmox === "EM_COMPRAS" || m.statusAlmox === "PENDENTE");
+  return { ok: true, proxima: proximaEtapa(etapa, card.modalidade, card.conferenciaSuprimentos, tudoEmEstoque) };
 }
 
 /**
