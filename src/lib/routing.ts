@@ -56,6 +56,7 @@ export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
 export function proximaEtapa(
   etapa: EtapaImplantacao,
   modalidade: Modalidade | undefined,
+  conferencia = false,
 ): EtapaImplantacao | null {
   switch (etapa) {
     case "COMERCIAL":
@@ -63,9 +64,12 @@ export function proximaEtapa(
     case "COORDENACAO_APROVACAO":
       return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
     case "ALMOXARIFADO":
-      return "SUPRIMENTOS";
+      // 1ª passada (Venda): segue p/ Suprimentos. Na volta (conferência do
+      // material recebido), segue p/ Monitoramento.
+      return conferencia ? "MONITORAMENTO" : "SUPRIMENTOS";
     case "SUPRIMENTOS":
-      return "MONITORAMENTO";
+      // Após comprar, volta ao Almoxarifado p/ conferência (Locação e Venda).
+      return "ALMOXARIFADO";
     case "MONITORAMENTO":
       return "TECNICA";
     case "TECNICA":
@@ -160,7 +164,7 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       return { ok: false, motivo: "Projeto encerrado.", proxima: null };
   }
 
-  return { ok: true, proxima: proximaEtapa(etapa, card.modalidade) };
+  return { ok: true, proxima: proximaEtapa(etapa, card.modalidade, card.conferenciaSuprimentos) };
 }
 
 /**

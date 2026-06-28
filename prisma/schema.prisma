@@ -120,6 +120,10 @@ model Card {
   // fluxo normal até Aprovado; depois do Aprovado só pode ir para Encerrados.
   complementar Boolean @default(false)
 
+  // Implantação: card voltou do Suprimentos para o Almoxarifado conferir o
+  // material recebido. Liga a tag "Conferência"; desliga ao ir p/ Monitoramento.
+  conferenciaSuprimentos Boolean @default(false)
+
   clienteNome      String
   clienteDocumento String?
   clienteContato   String?

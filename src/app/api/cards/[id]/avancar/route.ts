@@ -44,6 +44,12 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   // FINALIZADO quando o setor de Medição registra os dados. Ao encerrar, o
   // card já está faturado — preserva o FINALIZADO.
   const status: CardStatus = destino === "ENCERRADOS" ? "FINALIZADO" : "EM_ANDAMENTO";
+
+  // Tag "Conferência": liga quando o card volta do Suprimentos ao Almoxarifado;
+  // desliga quando segue do Almoxarifado para o Monitoramento.
+  let conferenciaSuprimentos = card.conferenciaSuprimentos ?? false;
+  if (card.etapa === "SUPRIMENTOS" && destino === "ALMOXARIFADO") conferenciaSuprimentos = true;
+  if (card.etapa === "ALMOXARIFADO" && destino === "MONITORAMENTO") conferenciaSuprimentos = false;
   const historico = [
     ...card.historico,
     { id: `h${card.historico.length}`, data: new Date().toISOString(), setor: SETOR_DA_ETAPA[destino] ?? "TECNICA", autor: s.nome, acao: `Avançou para ${destino}`, de: card.etapa, para: destino },
@@ -54,6 +60,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     data: {
       etapa: destino,
       status,
+      conferenciaSuprimentos,
       responsavelSetor: SETOR_DA_ETAPA[destino] ?? null,
       responsavelPessoa: null,
       // Ao encerrar, registra a data de encerramento (para relatórios por data).

@@ -21,6 +21,7 @@ export function rowToCard(r: PrismaCard): Card {
     status: r.status,
     prioridade: r.prioridade,
     complementar: r.complementar ?? undefined,
+    conferenciaSuprimentos: r.conferenciaSuprimentos ?? undefined,
     modalidade: r.modalidade ?? undefined,
     natureza: r.natureza ?? undefined,
     cliente: {

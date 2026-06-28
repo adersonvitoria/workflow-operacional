@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   COMPLEMENTAR_META,
+  CONFERENCIA_META,
   criticidadeDoCard,
   CRITICIDADE_META,
   duracaoAteEncerrar,
@@ -91,6 +92,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 {card.complementar && <Tag classe={COMPLEMENTAR_META.classe}>{COMPLEMENTAR_META.rotulo}</Tag>}
+                {card.conferenciaSuprimentos && <Tag classe={CONFERENCIA_META.classe}>{CONFERENCIA_META.rotulo}</Tag>}
                 {card.modalidade && <Tag classe={MODALIDADE_META[card.modalidade].classe}>{MODALIDADE_META[card.modalidade].rotulo}</Tag>}
                 <Tag classe={STATUS_META[card.status].classe}>{STATUS_META[card.status].rotulo}</Tag>
                 <Tag classe="bg-slate-100 text-slate-600 ring-slate-200">{rotuloEtapa(card.etapa)}</Tag>

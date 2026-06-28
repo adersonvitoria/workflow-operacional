@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { COMPLEMENTAR_META, criticidadeDoCard, CRITICIDADE_META, formatarBRL, horasParado, MODALIDADE_META, nivelSla, SLA_META, STATUS_META, TURNO_META } from "@/lib/flows";
+import { COMPLEMENTAR_META, CONFERENCIA_META, criticidadeDoCard, CRITICIDADE_META, formatarBRL, horasParado, MODALIDADE_META, nivelSla, SLA_META, STATUS_META, TURNO_META } from "@/lib/flows";
 import type { Card } from "@/types";
 
 interface KanbanCardProps {
@@ -72,6 +72,15 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
           >
             <span className={`h-1.5 w-1.5 rounded-full ${COMPLEMENTAR_META.ponto}`} />
             {COMPLEMENTAR_META.rotulo}
+          </span>
+        )}
+        {card.conferenciaSuprimentos && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ring-1 ring-inset ${CONFERENCIA_META.classe}`}
+            title="Voltou do Suprimentos para conferência no Almoxarifado"
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${CONFERENCIA_META.ponto}`} />
+            {CONFERENCIA_META.rotulo}
           </span>
         )}
         {card.manutencao?.turno && (

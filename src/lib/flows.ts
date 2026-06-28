@@ -205,6 +205,13 @@ export const COMPLEMENTAR_META = {
   ponto: "bg-violet-500",
 } as const;
 
+/** Tag de CONFERÊNCIA (Implantação) — card voltou do Suprimentos ao Almoxarifado. */
+export const CONFERENCIA_META = {
+  rotulo: "Conferência",
+  classe: "bg-cyan-50 text-cyan-700 ring-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-500/30",
+  ponto: "bg-cyan-500",
+} as const;
+
 /**
  * Tag de TURNO (Manutenção) — cada turno tem cor própria e uma ordem
  * cronológica de prioridade: Manhã (1º) → Tarde (2º) → Dia (3º).

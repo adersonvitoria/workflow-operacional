@@ -257,6 +257,12 @@ export interface Card {
    */
   complementar?: boolean;
 
+  /**
+   * Implantação: card voltou do Suprimentos ao Almoxarifado para conferência do
+   * material recebido. Liga a tag "Conferência"; some ao avançar p/ Monitoramento.
+   */
+  conferenciaSuprimentos?: boolean;
+
   /** Bifurcação de suprimentos. Obrigatória quando fluxo === "IMPLANTACAO". */
   modalidade?: Modalidade;
   natureza?: Natureza;
