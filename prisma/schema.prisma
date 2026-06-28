@@ -131,6 +131,7 @@ model Card {
   chamado         String?
   numeroOrcamento String?
   numeroConta     String?
+  regiao          String? // região do atendimento (Implantação) — espelha a da Manutenção
 
   // Implantação · CRs por modalidade (substituem o CR único no formulário).
   // Locação: monitoramento + locação · Venda: serviço + material.

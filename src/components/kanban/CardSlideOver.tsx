@@ -135,6 +135,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           ) : (
                             <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
                           )}
+                          <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
+                          <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
+                          <Campo rotulo="Região" valor={card.regiao ?? "—"} />
                           <Campo rotulo="Nº do chamado de investimento" valor={card.chamado ?? "—"} />
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                           <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />

@@ -248,6 +248,8 @@ export interface Card {
   numeroOrcamento?: string;
   /** Número da conta — identificador do cliente (ambas as esteiras). */
   numeroConta?: string;
+  /** Região do atendimento (Implantação) — espelha a região da Manutenção. */
+  regiao?: string;
 
   /**
    * Manutenção: card de orçamento complementar gerado a partir da Execução.

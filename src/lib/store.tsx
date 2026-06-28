@@ -32,6 +32,7 @@ export interface NovoCardInput {
   chamado?: string;
   numeroOrcamento?: string;
   numeroConta?: string;
+  regiao?: string;
   /** Data de cadastro (abertura) — YYYY-MM-DD; default é hoje. */
   dataCadastro?: string;
   manutencao?: DadosManutencao;

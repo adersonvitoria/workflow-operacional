@@ -26,6 +26,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
     chamado: v.chamado,
     numeroOrcamento: v.numeroOrcamento,
     numeroConta: v.numeroConta,
+    regiao: v.regiao,
     manutencao: v.manutencao,
     valores: { maoDeObra: v.maoDeObra, equipamentos: v.equipamentos, total: v.total, mensal: v.mensal, locacao: v.locacao },
     observacoes: v.observacoes,

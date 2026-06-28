@@ -40,6 +40,7 @@ export function rowToCard(r: PrismaCard): Card {
     chamado: r.chamado ?? undefined,
     numeroOrcamento: r.numeroOrcamento ?? undefined,
     numeroConta: r.numeroConta ?? undefined,
+    regiao: r.regiao ?? undefined,
     valores: {
       maoDeObra: r.valorMaoDeObra ?? undefined,
       equipamentos: r.valorEquipamentos ?? undefined,

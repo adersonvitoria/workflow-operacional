@@ -77,6 +77,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         margem: inicial.margemVenda,
         chamado: inicial.chamado,
         numeroConta: inicial.numeroConta,
+        regiao: inicial.regiao,
         dataCadastro: inicial.datas?.abertura?.slice(0, 10),
         maoDeObra: inicial.valores.maoDeObra,
         equipamentos: inicial.valores.equipamentos,
@@ -208,6 +209,36 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
             <p className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
               Selecione a modalidade acima para abrir os campos do cadastro.
             </p>
+          )}
+
+          {/* Implantação: tipo de cliente + região (iguais aos da Manutenção). */}
+          {fluxo === "IMPLANTACAO" && form.modalidade && (
+            <>
+              <Campo label="Tipo de cliente">
+                <div className="flex gap-2">
+                  {(["CORPORATIVO", "COMERCIAL", "VAREJO"] as TipoCliente[]).map((t) => {
+                    const ativo = form.tipoCliente === t;
+                    const crit = TIPO_CLIENTE_META[t].criticidade;
+                    return (
+                      <button key={t} type="button" onClick={() => set("tipoCliente", ativo ? undefined : t)}
+                        className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", ativo ? CRITICIDADE_META[crit].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}>
+                        {TIPO_CLIENTE_META[t].rotulo}
+                      </button>
+                    );
+                  })}
+                </div>
+                {form.tipoCliente && (
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Criticidade: <span className="font-semibold text-slate-500 dark:text-slate-300">{CRITICIDADE_META[TIPO_CLIENTE_META[form.tipoCliente].criticidade].rotulo}</span>
+                  </p>
+                )}
+              </Campo>
+
+              <Campo label="Região (POA, metropolitana e bairros)">
+                <input list="regioes-poa-datalist" value={form.regiao ?? ""} onChange={(e) => set("regiao", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" />
+                <datalist id="regioes-poa-datalist">{REGIOES_POA.map((c) => <option key={c} value={c} />)}</datalist>
+              </Campo>
+            </>
           )}
 
           {/* LOCAÇÃO */}

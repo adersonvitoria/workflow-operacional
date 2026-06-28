@@ -56,6 +56,7 @@ export async function POST(req: Request) {
       chamado: b.chamado ?? null,
       numeroOrcamento: b.numeroOrcamento ?? null,
       numeroConta: b.numeroConta ?? null,
+      regiao: b.regiao ?? null,
       dataAbertura: b.dataCadastro ? new Date(`${b.dataCadastro}T12:00:00`) : undefined,
       manutencao: b.manutencao ?? undefined,
       valorMaoDeObra: b.maoDeObra ?? null,
