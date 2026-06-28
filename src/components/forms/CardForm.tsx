@@ -49,7 +49,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
   const margem = form.margem ?? 0;
   const materialVenda = itemsCusto * (1 + margem / 100);
   const totalVenda = (form.maoDeObra ?? 0) + materialVenda;
-  const totalLocacao = (form.maoDeObra ?? 0) + (form.equipamentos ?? 0);
+  // Locação: equipamentos = soma dos itens (sem margem).
+  const totalLocacao = (form.maoDeObra ?? 0) + itemsCusto;
 
   // Seleciona o primeiro item do catálogo assim que ele carrega.
   useEffect(() => {
@@ -137,11 +138,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         onSubmit({ ...form, equipamentos: materialVenda, total: totalVenda, materiais: itens });
         return;
       }
-      // Locação: mão de obra + equipamentos manuais; mensalidade/locação recorrentes.
+      // Locação: equipamentos = soma dos itens; mensalidade/locação recorrentes.
       if (!totalLocacao && !form.mensal && !form.locacao) {
         return setErro("Informe a mensalidade, a locação ou os valores de implantação.");
       }
-      onSubmit({ ...form, total: totalLocacao, materiais: [] });
+      onSubmit({ ...form, equipamentos: itemsCusto, total: totalLocacao, materiais: itens });
       return;
     }
     // Manutenção: sem valores/itens — só os campos da entrada.
@@ -254,10 +255,48 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 <Campo label="Valor de locação (R$)"><MoedaInput value={form.locacao} onChange={(v) => set("locacao", v)} className={inputCls} placeholder="0,00" /></Campo>
               </div>
 
+              {/* Itens do projeto (Qtd + Item) — base dos equipamentos */}
+              <div>
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Itens do projeto (equipamentos)</span>
+                <div className="flex items-end gap-2">
+                  <div className="w-20">
+                    <span className="mb-1 block text-[10px] text-slate-400">Qtd</span>
+                    <input type="number" min={1} value={qtdSel} onChange={(e) => setQtdSel(e.target.value)} className={inputCls} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="mb-1 block text-[10px] text-slate-400">Item</span>
+                    <select value={itemSel} onChange={(e) => setItemSel(e.target.value)} className={inputCls} disabled={ativos.length === 0}>
+                      {ativos.map((it) => <option key={it.id} value={it.id}>{it.descricao} — {formatarBRL(it.preco)}</option>)}
+                    </select>
+                  </div>
+                  <button type="button" onClick={addItem} disabled={ativos.length === 0} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50">Adicionar</button>
+                </div>
+                {ativos.length === 0 && <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">Catálogo vazio — cadastre itens em “Itens”.</p>}
+
+                {itens.length > 0 && (
+                  <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
+                    {itens.map((it) => (
+                      <li key={it.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
+                        <span className="min-w-0 truncate text-slate-700 dark:text-slate-200"><span className="font-medium">{it.quantidade}x</span> {it.descricao}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="text-xs text-slate-400">{formatarBRL((it.precoUnitario ?? 0) * it.quantidade)}</span>
+                          <button type="button" onClick={() => removeItem(it.id)} className="text-xs font-medium text-rose-600 hover:underline">remover</button>
+                        </span>
+                      </li>
+                    ))}
+                    <li className="flex justify-between px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      <span>Equipamentos</span><span>{formatarBRL(itemsCusto)}</span>
+                    </li>
+                  </ul>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Valor de mão de obra (R$)"><MoedaInput value={form.maoDeObra} onChange={(v) => set("maoDeObra", v)} className={inputCls} placeholder="0,00" /></Campo>
-                <Campo label="Valor de equipamentos (R$)"><MoedaInput value={form.equipamentos} onChange={(v) => set("equipamentos", v)} className={inputCls} placeholder="0,00" /></Campo>
+                <Campo label="Valor de equipamentos (auto = itens)"><input readOnly value={formatarBRL(itemsCusto)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Soma dos itens do projeto" /></Campo>
               </div>
+
+              <Campo label="Total (auto = M.O + equipamentos)"><input readOnly value={formatarBRL(totalLocacao)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Prioridade">
