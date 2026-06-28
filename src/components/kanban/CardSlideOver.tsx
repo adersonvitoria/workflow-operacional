@@ -135,8 +135,6 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           ) : (
                             <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
                           )}
-                          <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
-                          <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                           <Campo rotulo="Nº do chamado de investimento" valor={card.chamado ?? "—"} />
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                           <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
