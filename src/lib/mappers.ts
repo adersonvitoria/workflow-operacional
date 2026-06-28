@@ -20,6 +20,7 @@ export function rowToCard(r: PrismaCard): Card {
     etapa: r.etapa as Card["etapa"],
     status: r.status,
     prioridade: r.prioridade,
+    complementar: r.complementar ?? undefined,
     modalidade: r.modalidade ?? undefined,
     natureza: r.natureza ?? undefined,
     cliente: {

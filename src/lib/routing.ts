@@ -212,6 +212,19 @@ export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
   return TRANSICOES_MANUTENCAO[etapa] ?? [];
 }
 
+/**
+ * Destinos válidos considerando se o card é um orçamento complementar.
+ * O complementar segue o fluxo normal até o Aprovado; depois do Aprovado o
+ * único caminho é Encerrados (não passa por Separação/Compra/Execução/Medição).
+ */
+export function destinosManutencaoCard(
+  card: Pick<Card, "etapa" | "complementar">,
+): EtapaManutencao[] {
+  const etapa = card.etapa as EtapaManutencao;
+  if (card.complementar && etapa === "ORC_APROVADO") return ["ENCERRADOS"];
+  return destinosManutencao(etapa);
+}
+
 /** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */
 export const ORDEM_MANUTENCAO: EtapaManutencao[] = [
   "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO",
@@ -244,7 +257,7 @@ export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao, 
   if (destino === atual) return { ok: true, proxima: destino };
   // O Coordenador pode retroceder o card para qualquer raia anterior.
   if (retroceder && ehRetrocessoManutencao(atual, destino)) return { ok: true, proxima: destino };
-  const permitidos = destinosManutencao(atual);
+  const permitidos = destinosManutencaoCard(card);
   if (permitidos.includes(destino)) return { ok: true, proxima: destino };
   if (permitidos.length === 0) {
     return { ok: false, motivo: `"${rotuloEtapa(atual)}" é uma etapa final.` };

@@ -44,6 +44,7 @@ interface CardsContextValue {
   porFluxo: (f: Fluxo) => Card[];
   obter: (id: string) => Card | undefined;
   criar: (input: NovoCardInput) => Promise<Card | null>;
+  criarComplementar: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
   atualizar: (id: string, patch: Partial<Card>) => Promise<void>;
   avancar: (id: string) => Promise<{ ok: boolean; motivo?: string }>;
   remover: (id: string) => Promise<void>;
@@ -86,6 +87,16 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
     return novo;
   }, []);
 
+  const criarComplementar = useCallback(async (id: string) => {
+    const { ok, json } = await api(`/api/cards/${id}/complementar`, { method: "POST" });
+    if (!ok) return { ok: false, motivo: json.erro as string };
+    const novo = json.card as Card;
+    // O endpoint também atualiza o histórico da OS de origem; recarrega para refletir.
+    setCards((prev) => [novo, ...prev]);
+    void recarregar();
+    return { ok: true, card: novo };
+  }, [recarregar]);
+
   const atualizar = useCallback(async (id: string, patch: Partial<Card>) => {
     const { ok, json } = await api(`/api/cards/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     if (ok) setCards((prev) => prev.map((c) => (c.id === id ? (json.card as Card) : c)));
@@ -106,8 +117,8 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<CardsContextValue>(
-    () => ({ cards, carregado, porFluxo, obter, criar, atualizar, avancar, remover, recarregar }),
-    [cards, carregado, porFluxo, obter, criar, atualizar, avancar, remover, recarregar],
+    () => ({ cards, carregado, porFluxo, obter, criar, criarComplementar, atualizar, avancar, remover, recarregar }),
+    [cards, carregado, porFluxo, obter, criar, criarComplementar, atualizar, avancar, remover, recarregar],
   );
 
   return <CardsContext.Provider value={value}>{children}</CardsContext.Provider>;

@@ -116,6 +116,10 @@ model Card {
   modalidade Modalidade?
   natureza   Natureza?
 
+  // Manutenção: orçamento complementar gerado a partir da Execução. Segue o
+  // fluxo normal até Aprovado; depois do Aprovado só pode ir para Encerrados.
+  complementar Boolean @default(false)
+
   clienteNome      String
   clienteDocumento String?
   clienteContato   String?

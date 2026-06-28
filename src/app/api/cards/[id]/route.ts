@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { destinosManutencao, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
+import { destinosManutencaoCard, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaManutencao, Fluxo } from "@/types";
@@ -77,7 +77,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const retrocessoCoord = body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO"
     && s.perfil === "COORDENADOR" && ehRetrocessoManutencao(existente.etapa as EtapaManutencao, body.etapa as EtapaManutencao);
   if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
-    const destinos = destinosManutencao(existente.etapa as EtapaManutencao);
+    const destinos = destinosManutencaoCard({ etapa: existente.etapa as EtapaManutencao, complementar: existente.complementar });
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
     }

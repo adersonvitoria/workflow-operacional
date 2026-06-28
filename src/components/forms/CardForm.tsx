@@ -260,7 +260,16 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Visita cobrada">
-                  <select value={man.visitaCobrada ? "sim" : "nao"} onChange={(e) => setM("visitaCobrada", e.target.value === "sim")} className={inputCls}>
+                  <select
+                    value={man.visitaCobrada ? "sim" : "nao"}
+                    onChange={(e) => {
+                      const sim = e.target.value === "sim";
+                      setM("visitaCobrada", sim);
+                      // "Não": esconde o campo e zera o valor para não ficar resíduo.
+                      if (!sim) setM("valorVisita", undefined);
+                    }}
+                    className={inputCls}
+                  >
                     <option value="nao">Não</option>
                     <option value="sim">Sim</option>
                   </select>
@@ -274,6 +283,13 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                   </select>
                 </Campo>
               </div>
+
+              {/* Valor da visita: só aparece quando a visita é cobrada. */}
+              {man.visitaCobrada && (
+                <Campo label="Valor da visita (R$)">
+                  <MoedaInput value={man.valorVisita} onChange={(v) => setM("valorVisita", v)} className={inputCls} placeholder="0,00" />
+                </Campo>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>

@@ -198,6 +198,13 @@ export const MODALIDADE_META: Record<
   },
 };
 
+/** Tag de ORÇAMENTO COMPLEMENTAR (Manutenção) — violeta. */
+export const COMPLEMENTAR_META = {
+  rotulo: "Complementar",
+  classe: "bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30",
+  ponto: "bg-violet-500",
+} as const;
+
 /**
  * Tag de TURNO (Manutenção) — cada turno tem cor própria e uma ordem
  * cronológica de prioridade: Manhã (1º) → Tarde (2º) → Dia (3º).

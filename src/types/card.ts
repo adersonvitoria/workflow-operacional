@@ -93,6 +93,8 @@ export type Turno = "MANHA" | "TARDE" | "DIA";
 /** Dados específicos de uma entrada de Manutenção. */
 export interface DadosManutencao {
   visitaCobrada?: boolean;
+  /** Valor da visita (R$) — só faz sentido quando visitaCobrada === true. */
+  valorVisita?: number;
   turno?: Turno;
   /** Data agendada da visita (YYYY-MM-DD) — ordena/segrega a coluna Rotina. */
   dataVisita?: string;
@@ -238,6 +240,12 @@ export interface Card {
   numeroOrcamento?: string;
   /** Número da conta — identificador do cliente (ambas as esteiras). */
   numeroConta?: string;
+
+  /**
+   * Manutenção: card de orçamento complementar gerado a partir da Execução.
+   * Segue o fluxo normal até Aprovado; depois do Aprovado só pode ir a Encerrados.
+   */
+  complementar?: boolean;
 
   /** Bifurcação de suprimentos. Obrigatória quando fluxo === "IMPLANTACAO". */
   modalidade?: Modalidade;

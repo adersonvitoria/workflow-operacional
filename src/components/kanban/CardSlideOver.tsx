@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  COMPLEMENTAR_META,
   criticidadeDoCard,
   CRITICIDADE_META,
   duracaoAteEncerrar,
@@ -12,7 +13,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencao, etapaAnteriorManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_EXECUCAO_MANUTENCAO, CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorManutencao, execucaoManutencaoCompleta, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
@@ -21,6 +22,11 @@ const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", 
 
 function fmtData(iso?: string): string {
   if (!iso) return "—";
+  // Datas "puras" (YYYY-MM-DD), como a data da visita, são formatadas sem fuso —
+  // `new Date("2026-06-29")` é meia-noite UTC e, no horário do Brasil (UTC-3),
+  // cairia em 28/06 (d-1). Formatamos direto a partir das partes da string.
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR");
 }
@@ -32,6 +38,8 @@ interface CardSlideOverProps {
   onAvancar: () => void;
   onEditar: () => void;
   onExcluir: () => void;
+  /** Manutenção · Execução: gera um Orçamento Complementar na coluna Orçamento. */
+  onOrcamentoComplementar: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -40,7 +48,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -51,7 +59,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
   const podeExcluir = card ? podeExcluirCard(perfil, card.etapa) : false;
   const dono = card ? donoDaEtapa(card.etapa, card.modalidade) : undefined;
   // Destinos válidos para avançar uma entrada de Manutenção a partir da etapa atual.
-  const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencao(card.etapa as EtapaManutencao) : [];
+  const destinosMan = card && card.fluxo === "MANUTENCAO" ? destinosManutencaoCard(card) : [];
   const ehCoordenador = perfil === "COORDENADOR";
   const anteriorMan = card && card.fluxo === "MANUTENCAO" ? etapaAnteriorManutencao(card.etapa as EtapaManutencao) : null;
   const man = card?.manutencao ?? {};
@@ -82,6 +90,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {card.complementar && <Tag classe={COMPLEMENTAR_META.classe}>{COMPLEMENTAR_META.rotulo}</Tag>}
                 {card.modalidade && <Tag classe={MODALIDADE_META[card.modalidade].classe}>{MODALIDADE_META[card.modalidade].rotulo}</Tag>}
                 <Tag classe={STATUS_META[card.status].classe}>{STATUS_META[card.status].rotulo}</Tag>
                 <Tag classe="bg-slate-100 text-slate-600 ring-slate-200">{rotuloEtapa(card.etapa)}</Tag>
@@ -142,6 +151,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                         <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />
                         <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
+                        {man.visitaCobrada && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
                         <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                         <Campo rotulo="Região" valor={man.regiao ?? "—"} />
@@ -279,6 +289,16 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       </div>
                     );
                   })}
+                  {/* Execução: gera um Orçamento Complementar (card novo na coluna Orçamento). */}
+                  {podeAgir && card.etapa === "EXECUCAO" && (
+                    <button
+                      onClick={onOrcamentoComplementar}
+                      className="w-full rounded-lg border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-500/40 dark:bg-violet-500/15 dark:text-violet-300 dark:hover:bg-violet-500/25"
+                      title="Cria um orçamento complementar na coluna Orçamento"
+                    >
+                      + Orçamento Complementar
+                    </button>
+                  )}
                   {ehCoordenador && anteriorMan && (
                     <button
                       onClick={() => onPatch({ etapa: anteriorMan })}

@@ -29,7 +29,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, atualizar, avancar, remover } = useCards();
+  const { porFluxo, obter, criar, criarComplementar, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtroCrit, setFiltroCrit] = useState<Criticidade | null>(null);
@@ -160,6 +160,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           if (!abertoId) return;
           const r = await avancar(abertoId);
           if (!r.ok) setToast(r.motivo ?? "Não foi possível avançar.");
+        }}
+        onOrcamentoComplementar={async () => {
+          if (!abertoId) return;
+          const r = await criarComplementar(abertoId);
+          setToast(r.ok ? `Orçamento complementar criado (#${r.card?.codigo}) na coluna Orçamento.` : (r.motivo ?? "Não foi possível gerar o complementar."));
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
         onExcluir={() => {

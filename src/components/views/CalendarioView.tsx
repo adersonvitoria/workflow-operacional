@@ -22,7 +22,15 @@ function inicioSemana(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0
 function addDias(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function ymd(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function hhmm(h: number): string { return `${String(h).padStart(2, "0")}:00`; }
-function dataBR(iso?: string): string { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR"); }
+function dataBR(iso?: string): string {
+  if (!iso) return "—";
+  // Datas "puras" (YYYY-MM-DD), como a data da visita, são formatadas sem fuso
+  // para não cair em d-1 (UTC vs. horário do Brasil). Veja fmtData no CardSlideOver.
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("pt-BR");
+}
 
 interface Evento {
   id: string;
@@ -212,6 +220,7 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {linha("Turno", m.turno ? (TURNO_ROTULO[m.turno] ?? m.turno) : "—")}
           {linha("Agendado", m.agendado ? "Sim" : "Não")}
           {linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
+          {m.visitaCobrada && linha("Valor da visita", formatarBRL(m.valorVisita))}
           {linha("Técnico", m.tecnico ?? "—")}
           {linha("Auxiliar técnico", m.auxiliarTecnico ?? "—")}
           {linha("Tipo de atendimento", m.tipoAtendimento ?? "—")}
