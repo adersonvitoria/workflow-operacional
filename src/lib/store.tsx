@@ -28,7 +28,13 @@ export interface NovoCardInput {
   crLocacao?: string;
   crServico?: string;
   crMaterial?: string;
+  crMensalidade?: string; // Venda: CR de mensalidade
   margem?: number; // Venda: % de margem (margemVenda)
+  // Implantação · perguntas básicas (comuns a Locação e Venda)
+  temContrato?: boolean;
+  crDedicado?: boolean;
+  temInvestimento?: boolean;
+  chamadoInvestimento?: string;
   chamado?: string;
   numeroOrcamento?: string;
   numeroConta?: string;

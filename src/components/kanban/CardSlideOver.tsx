@@ -134,6 +134,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                             <>
                               <Campo rotulo="CR de serviço" valor={card.crServico ?? "—"} />
                               <Campo rotulo="CR de material" valor={card.crMaterial ?? "—"} />
+                              <Campo rotulo="CR de mensalidade" valor={card.crMensalidade ?? "—"} />
                             </>
                           ) : (
                             <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
@@ -141,7 +142,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                           <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                           <Campo rotulo="Região" valor={card.regiao ?? "—"} />
-                          <Campo rotulo="Nº do chamado de investimento" valor={card.chamado ?? "—"} />
+                          {card.temContrato && <Campo rotulo="Nº do chamado" valor={card.chamado ?? "—"} />}
+                          {card.crDedicado && <Campo rotulo="Nº do CR" valor={card.cr ?? "—"} />}
+                          {card.temInvestimento && <Campo rotulo="Nº do chamado de investimento" valor={card.chamadoInvestimento ?? "—"} />}
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                           <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                           {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
@@ -155,6 +158,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                             <>
                               <Campo rotulo="Valor de serviço" valor={formatarBRL(card.valores.maoDeObra)} />
                               <Campo rotulo="Valor de material" valor={formatarBRL(card.valores.equipamentos)} />
+                              <Campo rotulo="Valor de mensalidade" valor={formatarBRL(card.valores.mensal)} />
                               <Campo rotulo="Margem de venda" valor={card.margemVenda != null ? `${card.margemVenda}%` : "—"} />
                               <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
                             </>

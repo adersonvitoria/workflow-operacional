@@ -143,6 +143,14 @@ model Card {
   crLocacao       String?
   crServico       String?
   crMaterial      String?
+  crMensalidade   String? // Venda: CR de mensalidade
+
+  // Implantação: perguntas básicas (comuns a Locação e Venda). Cada flag, quando
+  // ligada, habilita o respectivo número.
+  temContrato         Boolean @default(false) // "Contrato?"  → chamado (Nº do chamado)
+  crDedicado          Boolean @default(false) // "CR dedicado?" → cr (Nº do CR)
+  temInvestimento     Boolean @default(false) // "Investimento?" → chamadoInvestimento
+  chamadoInvestimento String? // Nº do chamado de investimento
 
   valorMaoDeObra    Float?
   valorEquipamentos Float?

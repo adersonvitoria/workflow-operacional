@@ -242,8 +242,16 @@ export interface Card {
   crLocacao?: string;
   crServico?: string;
   crMaterial?: string;
+  crMensalidade?: string; // Venda: CR de mensalidade
   /** Venda: % de margem aplicada sobre os itens (equipamentos/material). */
   margemVenda?: number;
+
+  // Implantação · perguntas básicas (comuns a Locação e Venda)
+  temContrato?: boolean; // "Contrato?"  → habilita `chamado` (Nº do chamado)
+  crDedicado?: boolean; // "CR dedicado?" → habilita `cr` (Nº do CR)
+  temInvestimento?: boolean; // "Investimento?" → habilita `chamadoInvestimento`
+  chamadoInvestimento?: string;
+
   chamado?: string;
   numeroOrcamento?: string;
   /** Número da conta — identificador do cliente (ambas as esteiras). */

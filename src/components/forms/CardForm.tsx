@@ -75,7 +75,13 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         crLocacao: inicial.crLocacao,
         crServico: inicial.crServico,
         crMaterial: inicial.crMaterial,
+        crMensalidade: inicial.crMensalidade,
         margem: inicial.margemVenda,
+        // Perguntas básicas: marca a caixinha se já houver flag ou valor.
+        temContrato: inicial.temContrato ?? !!inicial.chamado,
+        crDedicado: inicial.crDedicado ?? !!inicial.cr,
+        temInvestimento: inicial.temInvestimento ?? !!inicial.chamadoInvestimento,
+        chamadoInvestimento: inicial.chamadoInvestimento,
         chamado: inicial.chamado,
         numeroConta: inicial.numeroConta,
         regiao: inicial.regiao,
@@ -239,6 +245,35 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 <input list="regioes-poa-datalist" value={form.regiao ?? ""} onChange={(e) => set("regiao", e.target.value)} className={inputCls} placeholder="Selecione ou pesquise" />
                 <datalist id="regioes-poa-datalist">{REGIOES_POA.map((c) => <option key={c} value={c} />)}</datalist>
               </Campo>
+
+              {/* Perguntas básicas (comuns a Locação e Venda): marcar abre o campo. */}
+              <div className="space-y-2">
+                <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Perguntas básicas</span>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex w-40 shrink-0 cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" checked={!!form.temContrato} onChange={(e) => { const v = e.target.checked; set("temContrato", v); if (!v) set("chamado", undefined); }} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                    Contrato?
+                  </label>
+                  {form.temContrato && <input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={`${inputCls} flex-1`} placeholder="Nº do chamado" />}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex w-40 shrink-0 cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" checked={!!form.crDedicado} onChange={(e) => { const v = e.target.checked; set("crDedicado", v); if (!v) set("cr", undefined); }} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                    CR dedicado?
+                  </label>
+                  {form.crDedicado && <input value={form.cr ?? ""} onChange={(e) => set("cr", e.target.value)} className={`${inputCls} flex-1`} placeholder="Nº do CR" />}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex w-40 shrink-0 cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" checked={!!form.temInvestimento} onChange={(e) => { const v = e.target.checked; set("temInvestimento", v); if (!v) set("chamadoInvestimento", undefined); }} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                    Investimento?
+                  </label>
+                  {form.temInvestimento && <input value={form.chamadoInvestimento ?? ""} onChange={(e) => set("chamadoInvestimento", e.target.value)} className={`${inputCls} flex-1`} placeholder="Nº do chamado de investimento" />}
+                </div>
+              </div>
             </>
           )}
 
@@ -298,14 +333,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <Campo label="Total (auto = M.O + equipamentos)"><input readOnly value={formatarBRL(totalLocacao)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Campo label="Prioridade">
-                  <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
-                    {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Nº do chamado de investimento"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
-              </div>
+              <Campo label="Prioridade">
+                <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
+                  {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
+                </select>
+              </Campo>
 
               <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
             </>
@@ -317,6 +349,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="CR de serviço"><input value={form.crServico ?? ""} onChange={(e) => set("crServico", e.target.value)} className={inputCls} /></Campo>
                 <Campo label="CR de material"><input value={form.crMaterial ?? ""} onChange={(e) => set("crMaterial", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="CR de mensalidade"><input value={form.crMensalidade ?? ""} onChange={(e) => set("crMensalidade", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Valor de mensalidade (R$)"><MoedaInput value={form.mensal} onChange={(v) => set("mensal", v)} className={inputCls} placeholder="0,00" /></Campo>
               </div>
 
               <Campo label="Margem de venda (%)">
@@ -367,14 +404,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               <Campo label="Total (auto = serviço + material)"><input readOnly value={formatarBRL(totalVenda)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Campo label="Prioridade">
-                  <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
-                    {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Nº do chamado de investimento"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
-              </div>
+              <Campo label="Prioridade">
+                <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
+                  {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
+                </select>
+              </Campo>
 
               <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
             </>
