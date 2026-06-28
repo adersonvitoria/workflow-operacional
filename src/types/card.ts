@@ -126,10 +126,11 @@ export interface Cliente {
 }
 
 export interface Valores {
-  maoDeObra?: number; // VALOR DE M.O
-  equipamentos?: number; // VALOR DE EQUIPAMENTOS
+  maoDeObra?: number; // VALOR DE M.O (Locação) / VALOR DE SERVIÇO (Venda)
+  equipamentos?: number; // VALOR DE EQUIPAMENTOS (Locação) / VALOR DE MATERIAL (Venda)
   total?: number; // VALOR TOTAL
-  mensal?: number; // MENSAL (recorrência de monitoramento)
+  mensal?: number; // MENSAL / mensalidade (recorrência de monitoramento)
+  locacao?: number; // Locação: valor de locação (além da mensalidade)
 }
 
 export type StatusMaterial =
@@ -236,6 +237,13 @@ export interface Card {
   cliente: Cliente;
   cr?: string;
   cc?: string;
+  // Implantação · CRs por modalidade (Locação: monitoramento/locação · Venda: serviço/material).
+  crMonitoramento?: string;
+  crLocacao?: string;
+  crServico?: string;
+  crMaterial?: string;
+  /** Venda: % de margem aplicada sobre os itens (equipamentos/material). */
+  margemVenda?: number;
   chamado?: string;
   numeroOrcamento?: string;
   /** Número da conta — identificador do cliente (ambas as esteiras). */

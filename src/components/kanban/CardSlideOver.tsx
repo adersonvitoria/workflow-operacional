@@ -122,10 +122,22 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     <>
                       <Secao titulo="Identificação">
                         <dl className="grid grid-cols-2 gap-3 text-sm">
-                          <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
+                          {card.modalidade === "LOCACAO" ? (
+                            <>
+                              <Campo rotulo="CR de monitoramento" valor={card.crMonitoramento ?? "—"} />
+                              <Campo rotulo="CR de locação" valor={card.crLocacao ?? "—"} />
+                            </>
+                          ) : card.modalidade === "VENDA" ? (
+                            <>
+                              <Campo rotulo="CR de serviço" valor={card.crServico ?? "—"} />
+                              <Campo rotulo="CR de material" valor={card.crMaterial ?? "—"} />
+                            </>
+                          ) : (
+                            <Campo rotulo="CR (Centro de Resultado)" valor={card.cr ?? "—"} />
+                          )}
                           <Campo rotulo="CC (Centro de Custo)" valor={card.cc ?? "—"} />
                           <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
-                          <Campo rotulo="Chamado / OS" valor={card.chamado ?? "—"} />
+                          <Campo rotulo="Nº do chamado de investimento" valor={card.chamado ?? "—"} />
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
                           <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                           {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
@@ -135,10 +147,29 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
 
                       <Secao titulo="Financeiro">
                         <dl className="grid grid-cols-2 gap-3 text-sm">
-                          <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
-                          <Campo rotulo="Equipamentos" valor={formatarBRL(card.valores.equipamentos)} />
-                          <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
-                          <Campo rotulo="Mensal" valor={formatarBRL(card.valores.mensal)} />
+                          {card.modalidade === "VENDA" ? (
+                            <>
+                              <Campo rotulo="Valor de serviço" valor={formatarBRL(card.valores.maoDeObra)} />
+                              <Campo rotulo="Valor de material" valor={formatarBRL(card.valores.equipamentos)} />
+                              <Campo rotulo="Margem de venda" valor={card.margemVenda != null ? `${card.margemVenda}%` : "—"} />
+                              <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
+                            </>
+                          ) : card.modalidade === "LOCACAO" ? (
+                            <>
+                              <Campo rotulo="Mensalidade" valor={formatarBRL(card.valores.mensal)} />
+                              <Campo rotulo="Valor de locação" valor={formatarBRL(card.valores.locacao)} />
+                              <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
+                              <Campo rotulo="Equipamentos" valor={formatarBRL(card.valores.equipamentos)} />
+                              <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
+                            </>
+                          ) : (
+                            <>
+                              <Campo rotulo="Mão de obra" valor={formatarBRL(card.valores.maoDeObra)} />
+                              <Campo rotulo="Equipamentos" valor={formatarBRL(card.valores.equipamentos)} />
+                              <Campo rotulo="Total" valor={formatarBRL(card.valores.total)} destaque />
+                              <Campo rotulo="Mensal" valor={formatarBRL(card.valores.mensal)} />
+                            </>
+                          )}
                         </dl>
                       </Secao>
                     </>

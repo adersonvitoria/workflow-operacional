@@ -132,10 +132,19 @@ model Card {
   numeroOrcamento String?
   numeroConta     String?
 
+  // Implantação · CRs por modalidade (substituem o CR único no formulário).
+  // Locação: monitoramento + locação · Venda: serviço + material.
+  crMonitoramento String?
+  crLocacao       String?
+  crServico       String?
+  crMaterial      String?
+
   valorMaoDeObra    Float?
   valorEquipamentos Float?
   valorTotal        Float?
   valorMensal       Float?
+  valorLocacao      Float? // Locação: valor de locação (além da mensalidade)
+  margemVenda       Float? // Venda: % de margem aplicada sobre os itens (equipamentos)
   pagamento         Json?
 
   responsavelSetor   String?

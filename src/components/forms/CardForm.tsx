@@ -43,9 +43,13 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
   const [erro, setErro] = useState<string | null>(null);
   const edicao = !!inicial;
 
-  // Valores derivados dos itens do projeto.
-  const equipamentos = itens.reduce((s, m) => s + (m.precoUnitario ?? 0) * m.quantidade, 0);
-  const totalCalc = (form.maoDeObra ?? 0) + equipamentos;
+  // Valores derivados. Venda: o material sai dos itens com a margem aplicada;
+  // Locação: equipamentos é digitado à mão (sem seção de itens).
+  const itemsCusto = itens.reduce((s, m) => s + (m.precoUnitario ?? 0) * m.quantidade, 0);
+  const margem = form.margem ?? 0;
+  const materialVenda = itemsCusto * (1 + margem / 100);
+  const totalVenda = (form.maoDeObra ?? 0) + materialVenda;
+  const totalLocacao = (form.maoDeObra ?? 0) + (form.equipamentos ?? 0);
 
   // Seleciona o primeiro item do catálogo assim que ele carrega.
   useEffect(() => {
@@ -66,6 +70,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         prioridade: inicial.prioridade,
         cr: inicial.cr,
         cc: inicial.cc,
+        crMonitoramento: inicial.crMonitoramento,
+        crLocacao: inicial.crLocacao,
+        crServico: inicial.crServico,
+        crMaterial: inicial.crMaterial,
+        margem: inicial.margemVenda,
         chamado: inicial.chamado,
         numeroConta: inicial.numeroConta,
         dataCadastro: inicial.datas?.abertura?.slice(0, 10),
@@ -73,6 +82,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         equipamentos: inicial.valores.equipamentos,
         total: inicial.valores.total,
         mensal: inicial.valores.mensal,
+        locacao: inicial.valores.locacao,
         numeroOrcamento: inicial.numeroOrcamento,
         manutencao: inicial.manutencao,
         observacoes: inicial.observacoes,
@@ -121,8 +131,16 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
     if (!form.clienteNome.trim()) return setErro("Informe o nome do cliente.");
     if (fluxo === "IMPLANTACAO") {
       if (!form.modalidade) return setErro("Selecione a modalidade (Locação ou Venda).");
-      if (!totalCalc && !form.mensal) return setErro("Adicione itens (Total/Equipamentos) ou informe o Mensal.");
-      onSubmit({ ...form, equipamentos, total: totalCalc, materiais: itens });
+      if (form.modalidade === "VENDA") {
+        if (!totalVenda) return setErro("Adicione itens e/ou informe o valor de serviço.");
+        onSubmit({ ...form, equipamentos: materialVenda, total: totalVenda, materiais: itens });
+        return;
+      }
+      // Locação: mão de obra + equipamentos manuais; mensalidade/locação recorrentes.
+      if (!totalLocacao && !form.mensal && !form.locacao) {
+        return setErro("Informe a mensalidade, a locação ou os valores de implantação.");
+      }
+      onSubmit({ ...form, total: totalLocacao, materiais: [] });
       return;
     }
     // Manutenção: sem valores/itens — só os campos da entrada.
@@ -185,20 +203,34 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
             </Campo>
           )}
 
-          {fluxo === "IMPLANTACAO" && (
+          {/* Implantação: os campos abrem conforme a modalidade escolhida. */}
+          {fluxo === "IMPLANTACAO" && !form.modalidade && (
+            <p className="rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              Selecione a modalidade acima para abrir os campos do cadastro.
+            </p>
+          )}
+
+          {/* LOCAÇÃO */}
+          {fluxo === "IMPLANTACAO" && form.modalidade === "LOCACAO" && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="CR (Centro de Resultado)"><input value={form.cr ?? ""} onChange={(e) => set("cr", e.target.value)} className={inputCls} /></Campo>
-                <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="CR de monitoramento"><input value={form.crMonitoramento ?? ""} onChange={(e) => set("crMonitoramento", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="CR de locação"><input value={form.crLocacao ?? ""} onChange={(e) => set("crLocacao", e.target.value)} className={inputCls} /></Campo>
               </div>
 
-              <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Campo label="Mão de obra (R$)"><input inputMode="decimal" value={form.maoDeObra ?? ""} onChange={(e) => set("maoDeObra", num(e.target.value))} className={inputCls} /></Campo>
-                <Campo label="Mensal (R$)"><input inputMode="decimal" value={form.mensal ?? ""} onChange={(e) => set("mensal", num(e.target.value))} className={inputCls} /></Campo>
-                <Campo label="Equipamentos (auto)"><input readOnly value={formatarBRL(equipamentos)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Calculado a partir dos itens" /></Campo>
-                <Campo label="Total (auto = M.O + equip.)"><input readOnly value={formatarBRL(totalCalc)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
+                <Campo label="Valor da mensalidade (R$)"><MoedaInput value={form.mensal} onChange={(v) => set("mensal", v)} className={inputCls} placeholder="0,00" /></Campo>
+                <Campo label="Valor de locação (R$)"><MoedaInput value={form.locacao} onChange={(v) => set("locacao", v)} className={inputCls} placeholder="0,00" /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Valor de mão de obra (R$)"><MoedaInput value={form.maoDeObra} onChange={(v) => set("maoDeObra", v)} className={inputCls} placeholder="0,00" /></Campo>
+                <Campo label="Valor de equipamentos (R$)"><MoedaInput value={form.equipamentos} onChange={(v) => set("equipamentos", v)} className={inputCls} placeholder="0,00" /></Campo>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -207,16 +239,34 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                     {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
                   </select>
                 </Campo>
-                <Campo label="Chamado / OS"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Nº do chamado de investimento"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
               </div>
 
               <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
+            </>
+          )}
 
-              {/* Itens do projeto (Qtd + Item) */}
+          {/* VENDA */}
+          {fluxo === "IMPLANTACAO" && form.modalidade === "VENDA" && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="CR de serviço"><input value={form.crServico ?? ""} onChange={(e) => set("crServico", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="CR de material"><input value={form.crMaterial ?? ""} onChange={(e) => set("crMaterial", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="CC (Centro de Custo)"><input value={form.cc ?? ""} onChange={(e) => set("cc", e.target.value)} className={inputCls} /></Campo>
+                <Campo label="Número da conta"><input value={form.numeroConta ?? ""} onChange={(e) => set("numeroConta", e.target.value)} className={inputCls} placeholder="Identificador do cliente" /></Campo>
+              </div>
+
+              <Campo label="Margem de venda (%)">
+                <input inputMode="decimal" value={form.margem ?? ""} onChange={(e) => set("margem", num(e.target.value))} className={inputCls} placeholder="Ex.: 30" />
+                <span className="mt-0.5 block text-[10px] text-slate-400">Aplicada sobre cada item na parte de equipamentos (material).</span>
+              </Campo>
+
+              {/* Itens do projeto (Qtd + Item) — base do material */}
               <div>
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Itens do projeto {form.modalidade ? `(${MODALIDADE_META[form.modalidade].rotulo})` : ""}
-                </span>
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Itens do projeto (material)</span>
                 <div className="flex items-end gap-2">
                   <div className="w-20">
                     <span className="mb-1 block text-[10px] text-slate-400">Qtd</span>
@@ -244,11 +294,29 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                       </li>
                     ))}
                     <li className="flex justify-between px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      <span>Equipamentos</span><span>{formatarBRL(equipamentos)}</span>
+                      <span>Custo dos itens</span><span>{formatarBRL(itemsCusto)}</span>
                     </li>
                   </ul>
                 )}
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Valor de serviço (R$)"><MoedaInput value={form.maoDeObra} onChange={(v) => set("maoDeObra", v)} className={inputCls} placeholder="0,00" /></Campo>
+                <Campo label="Valor de material (auto = itens + margem)"><input readOnly value={formatarBRL(materialVenda)} className={`${inputCls} bg-slate-50 dark:bg-slate-800/60`} title="Soma dos itens com a margem aplicada" /></Campo>
+              </div>
+
+              <Campo label="Total (auto = serviço + material)"><input readOnly value={formatarBRL(totalVenda)} className={`${inputCls} bg-slate-50 font-semibold dark:bg-slate-800/60`} /></Campo>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Prioridade">
+                  <select value={form.prioridade} onChange={(e) => set("prioridade", e.target.value as Prioridade)} className={inputCls}>
+                    {PRIORIDADES.map((p) => <option key={p} value={p}>{p[0] + p.slice(1).toLowerCase()}</option>)}
+                  </select>
+                </Campo>
+                <Campo label="Nº do chamado de investimento"><input value={form.chamado ?? ""} onChange={(e) => set("chamado", e.target.value)} className={inputCls} /></Campo>
+              </div>
+
+              <Campo label="Contato"><input value={form.contato ?? ""} onChange={(e) => set("contato", e.target.value)} className={inputCls} /></Campo>
             </>
           )}
 

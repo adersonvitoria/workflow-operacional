@@ -23,6 +23,12 @@ export interface NovoCardInput {
   prioridade: Prioridade;
   cr?: string;
   cc?: string;
+  // Implantação · CRs por modalidade
+  crMonitoramento?: string;
+  crLocacao?: string;
+  crServico?: string;
+  crMaterial?: string;
+  margem?: number; // Venda: % de margem (margemVenda)
   chamado?: string;
   numeroOrcamento?: string;
   numeroConta?: string;
@@ -33,6 +39,7 @@ export interface NovoCardInput {
   equipamentos?: number;
   total?: number;
   mensal?: number;
+  locacao?: number; // Locação: valor de locação
   observacoes?: string;
   /** Itens do projeto selecionados pelo Comercial (Qtd + Item). */
   materiais?: ItemMaterial[];
