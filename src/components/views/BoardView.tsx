@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
+import { BoardFiltros } from "@/components/kanban/BoardFiltros";
 import { useCards, type NovoCardInput } from "@/lib/store";
 import { ehRetrocessoImplantacao, movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
-import { criticidadeDoCard, CRITICIDADE_META, mesDoCard } from "@/lib/flows";
+import { mesDoCard } from "@/lib/flows";
+import { cardCorrespondeFiltros, FILTROS_VAZIO, temFiltroAtivo, type FiltrosBoard } from "@/lib/board-filtros";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
-import type { Card, Criticidade, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
+import type { Card, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
   return {
@@ -43,16 +45,10 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const { porFluxo, obter, criar, criarComplementar, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
-  const [filtroCrit, setFiltroCrit] = useState<Criticidade | null>(null);
-  const [filtroComp, setFiltroComp] = useState<string>("");
-  // Criticidade é uma frente exclusiva da Manutenção.
-  const mostrarFiltro = fluxo === "MANUTENCAO";
+  const [filtros, setFiltros] = useState<FiltrosBoard>(FILTROS_VAZIO);
   const competencias = useMemo(() => Array.from(new Set(cards.map(mesDoCard).filter(Boolean))).sort().reverse(), [cards]);
-  const cardsVisiveis = cards.filter((c) => {
-    if (mostrarFiltro && filtroCrit && criticidadeDoCard(c) !== filtroCrit) return false;
-    if (filtroComp && mesDoCard(c) !== filtroComp) return false;
-    return true;
-  });
+  const cardsVisiveis = cards.filter((c) => cardCorrespondeFiltros(c, filtros, fluxo));
+  const filtrando = temFiltroAtivo(filtros);
   const podeCriar = podeCriarCard(atual?.perfil, fluxo);
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
@@ -119,43 +115,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-white">{titulo}</h1>
           <p className="truncate text-xs text-slate-400">
-            {subtitulo} · {cardsVisiveis.length}{(filtroComp || (mostrarFiltro && filtroCrit)) ? ` de ${cards.length}` : ""} cards
+            {subtitulo} · {cardsVisiveis.length}{filtrando ? ` de ${cards.length}` : ""} cards
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">Competência</span>
-            <select value={filtroComp} onChange={(e) => setFiltroComp(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-              <option value="">Todas</option>
-              {competencias.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          {mostrarFiltro && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-slate-400">Criticidade</span>
-            {([null, "ALTA", "MEDIA", "BAIXA"] as (Criticidade | null)[]).map((c) => {
-              const ativo = filtroCrit === c;
-              const rotulo = c ? CRITICIDADE_META[c].rotulo : "Todas";
-              return (
-                <button
-                  key={c ?? "todas"}
-                  type="button"
-                  onClick={() => setFiltroCrit(c)}
-                  className={[
-                    "rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset transition",
-                    ativo
-                      ? c
-                        ? CRITICIDADE_META[c].classe
-                        : "bg-brand text-white ring-brand"
-                      : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700",
-                  ].join(" ")}
-                >
-                  {rotulo}
-                </button>
-              );
-            })}
-          </div>
-          )}
+        <div className="flex shrink-0 items-center gap-2.5">
+          <BoardFiltros fluxo={fluxo} competencias={competencias} filtros={filtros} setFiltros={setFiltros} />
           {podeCriar && (
             <button onClick={() => { setEditId(null); setFormAberto(true); }} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
               + Nova entrada
