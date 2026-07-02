@@ -53,9 +53,9 @@ export type EtapaImplantacao =
  * ENCERRADOS (OK, sem serviço extra), MEDICAO (RQ, pequeno reparo já feito no
  * ato) ou ORCAMENTO (reparo maior, vai orçar). O orçamento, depois de enviado
  * ao cliente, fica explícito em três colunas (aguardando/não aprovado/aprovado)
- * para dar visão de distribuição. ORC_APROVADO (normal) libera SEPARACAO ⇄ COMPRA
- * e, com o material pronto, o card vai para AGENDAMENTO → ROTINA. Complementares
- * aprovados vão direto para AGENDAMENTO. AGENDAMENTO é a 1ª coluna (antes da Rotina).
+ * para dar visão de distribuição. ORC_APROVADO libera SEPARACAO ⇄ COMPRA e, com o
+ * material pronto, o card vai para AGENDAMENTO → ROTINA. Os complementares seguem
+ * o mesmo fluxo dos comuns. AGENDAMENTO é a 1ª coluna (antes da Rotina).
  */
 export type EtapaManutencao =
   | "AGENDAMENTO" // 1. Agendamento da OS (antes da rotina); recebe complementares aprovados
@@ -261,8 +261,8 @@ export interface Card {
   regiao?: string;
 
   /**
-   * Manutenção: card de orçamento complementar gerado a partir da Execução.
-   * Segue o fluxo normal até Aprovado; depois do Aprovado só pode ir a Encerrados.
+   * Manutenção: card de orçamento complementar gerado a partir do Cheque. Segue
+   * o mesmo fluxo dos cards comuns — a flag é só para exibir a tag "Complementar".
    */
   complementar?: boolean;
 

@@ -202,8 +202,7 @@ export function movimentoValido(card: Card, destino: EtapaImplantacao): Resultad
  * Regras de negócio:
  * - AGENDAMENTO → ROTINA (entra na rotina do dia).
  * - ORC_NAO_APROVADO volta para ORCAMENTO (renegociar).
- * - ORC_APROVADO normal vai para SEPARACAO; complementar vai para AGENDAMENTO
- *   (ver destinosManutencaoCard).
+ * - ORC_APROVADO vai para SEPARACAO (comum e complementar seguem o mesmo fluxo).
  * - MEDICAO, depois de faturar, arquiva em ENCERRADOS.
  * - ENCERRADOS é a única etapa final.
  */
@@ -227,16 +226,14 @@ export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
 }
 
 /**
- * Destinos válidos considerando se o card é um orçamento complementar.
- * O complementar segue o fluxo normal até o Aprovado; depois do Aprovado ele vai
- * para o Agendamento (é agendado e entra na rotina), em vez de Separação.
+ * Destinos válidos de um card de manutenção. Os orçamentos complementares seguem
+ * exatamente o mesmo fluxo dos cards comuns (a tag "Complementar" é só para
+ * identificação, não altera o roteamento).
  */
 export function destinosManutencaoCard(
   card: Pick<Card, "etapa" | "complementar">,
 ): EtapaManutencao[] {
-  const etapa = card.etapa as EtapaManutencao;
-  if (card.complementar && etapa === "ORC_APROVADO") return ["AGENDAMENTO"];
-  return destinosManutencao(etapa);
+  return destinosManutencao(card.etapa as EtapaManutencao);
 }
 
 /** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */
