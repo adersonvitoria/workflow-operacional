@@ -53,19 +53,20 @@ export type EtapaImplantacao =
  * ENCERRADOS (OK, sem serviço extra), MEDICAO (RQ, pequeno reparo já feito no
  * ato) ou ORCAMENTO (reparo maior, vai orçar). O orçamento, depois de enviado
  * ao cliente, fica explícito em três colunas (aguardando/não aprovado/aprovado)
- * para dar visão de distribuição. ORC_APROVADO libera SEPARACAO ⇄ COMPRA e,
- * com o material pronto, EXECUCAO → MEDICAO.
+ * para dar visão de distribuição. ORC_APROVADO (normal) libera SEPARACAO ⇄ COMPRA
+ * e, com o material pronto, o card vai para AGENDAMENTO → ROTINA. Complementares
+ * aprovados vão direto para AGENDAMENTO. AGENDAMENTO é a 1ª coluna (antes da Rotina).
  */
 export type EtapaManutencao =
-  | "ROTINA" // 1. Administrativo 1 lança todas as OS do dia
-  | "CHEQUE" // 2. Supervisão confere cada OS (gate de 3 saídas)
-  | "ORCAMENTO" // 3. Administrativo 2 gera o orçamento e envia ao cliente
-  | "ORC_AGUARDANDO" // 4. Aguardando retorno do cliente
-  | "ORC_NAO_APROVADO" // 5. Cliente reprovou (arquiva)
-  | "ORC_APROVADO" // 6. Cliente aprovou — libera a execução
-  | "SEPARACAO" // 7. Almoxarifado separa os itens
-  | "COMPRA" // 8. Suprimentos compra os faltantes e devolve ao Almox.
-  | "EXECUCAO" // 9. Técnica executa o serviço
+  | "AGENDAMENTO" // 1. Agendamento da OS (antes da rotina); recebe complementares aprovados
+  | "ROTINA" // 2. Administrativo 1 lança todas as OS do dia
+  | "CHEQUE" // 3. Supervisão confere cada OS (gate de 3 saídas)
+  | "ORCAMENTO" // 4. Administrativo 2 gera o orçamento e envia ao cliente
+  | "ORC_AGUARDANDO" // 5. Aguardando retorno do cliente (7 dias → Não Aprovado)
+  | "ORC_NAO_APROVADO" // 6. Cliente reprovou (arquiva)
+  | "ORC_APROVADO" // 7. Cliente aprovou — libera Separação (ou Agendamento, se complementar)
+  | "SEPARACAO" // 8. Almoxarifado separa os itens
+  | "COMPRA" // 9. Suprimentos compra os faltantes e devolve ao Almox.
   | "MEDICAO" // 10. Faturamento + relatório (também recebe a RQ do Cheque)
   | "ENCERRADOS"; // 11. OS de rotina encerrada no Cheque (OK)
 

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { destinosManutencaoCard, ehRetrocessoImplantacao, ehRetrocessoManutencao, execucaoManutencaoCompleta, rotuloEtapa } from "@/lib/routing";
+import { destinosManutencaoCard, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
@@ -96,13 +96,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const valor = body.valores?.total ?? existente.valorTotal;
       if (!numero || !String(numero).trim() || valor == null || Number(valor) <= 0) {
         return NextResponse.json({ erro: "Informe o número e o valor do orçamento antes de enviar." }, { status: 422 });
-      }
-    }
-    // Execução → Medição exige os dois flags do checklist concluídos.
-    if (existente.etapa === "EXECUCAO" && body.etapa === "MEDICAO") {
-      const checklist = (body.checklist ?? existente.checklist ?? []) as Card["checklist"];
-      if (!execucaoManutencaoCompleta({ checklist })) {
-        return NextResponse.json({ erro: "Conclua o checklist da Execução (Orçamento concluído e Sistema comunicando)." }, { status: 422 });
       }
     }
     // Medição → Encerrados exige nº do chamado, CR e competência (mês/ano).

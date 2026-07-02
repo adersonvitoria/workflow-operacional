@@ -162,15 +162,15 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
  * ficam explícitas para dar visão de distribuição (contador + soma por estado).
  */
 export const COLUNAS_MANUTENCAO: ColunaConfig[] = [
+  { id: "AGENDAMENTO", titulo: "Agendamento", setorResponsavel: "ADMINISTRATIVO", descricao: "Agenda a OS antes de entrar na rotina do dia", accent: "bg-sky-500" },
   { id: "ROTINA", titulo: "Rotina", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo lança todas as OS do dia", accent: "bg-blue-600" },
   { id: "CHEQUE", titulo: "Cheque", setorResponsavel: "SUPERVISAO", descricao: "Supervisão confere cada OS: OK · RQ · Orçar", accent: "bg-amber-500" },
   { id: "ORCAMENTO", titulo: "Orçamento", setorResponsavel: "ADMINISTRATIVO", descricao: "Administrativo gera o orçamento e envia ao cliente", accent: "bg-indigo-500" },
-  { id: "ORC_AGUARDANDO", titulo: "Aguardando", setorResponsavel: "ADMINISTRATIVO", descricao: "Aguardando o retorno do cliente", accent: "bg-amber-500", grupo: "Orçamentos" },
+  { id: "ORC_AGUARDANDO", titulo: "Aguardando", setorResponsavel: "ADMINISTRATIVO", descricao: "Aguardando o retorno do cliente (7 dias → Não Aprovado)", accent: "bg-amber-500", grupo: "Orçamentos" },
   { id: "ORC_NAO_APROVADO", titulo: "Não Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente reprovou — volta ao Orçamento p/ renegociar", accent: "bg-rose-500", grupo: "Orçamentos" },
   { id: "ORC_APROVADO", titulo: "Aprovado", setorResponsavel: "ADMINISTRATIVO", descricao: "Cliente aprovou — libera a execução", accent: "bg-emerald-500", grupo: "Orçamentos" },
   { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado separa os itens em estoque", accent: "bg-purple-500" },
   { id: "COMPRA", titulo: "Suprimentos", setorResponsavel: "COMPRAS", descricao: "Compra os faltantes e devolve ao Almoxarifado", accent: "bg-indigo-500" },
-  { id: "EXECUCAO", titulo: "Execução", setorResponsavel: "TECNICA", descricao: "Técnica executa o serviço em campo", accent: "bg-teal-500" },
   { id: "MEDICAO", titulo: "Medição", setorResponsavel: "MEDICAO", descricao: "Faturamento e geração do relatório", accent: "bg-emerald-600" },
   { id: "ENCERRADOS", titulo: "Encerrados", setorResponsavel: "SUPERVISAO", descricao: "OS de rotina encerrada no Cheque (OK)", accent: "bg-slate-500" },
 ];

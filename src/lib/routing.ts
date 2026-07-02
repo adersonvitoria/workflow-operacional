@@ -24,17 +24,6 @@ export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
   { id: "tec-comunicando", rotulo: "Sistema comunicando" },
 ];
 
-/** Itens obrigatórios da Execução (Manutenção) antes de seguir para a Medição. */
-export const CHECKLIST_EXECUCAO_MANUTENCAO: { id: string; rotulo: string }[] = [
-  { id: "exec-orcamento", rotulo: "Orçamento concluído" },
-  { id: "exec-comunicando", rotulo: "Sistema comunicando" },
-];
-
-/** True se os dois flags da Execução (Manutenção) estão concluídos. */
-export function execucaoManutencaoCompleta(card: Pick<Card, "checklist">): boolean {
-  return CHECKLIST_EXECUCAO_MANUTENCAO.every((it) => card.checklist.some((c) => c.id === it.id && c.concluido));
-}
-
 /** Ordem visual das colunas no board de Implantação. */
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
@@ -206,25 +195,28 @@ export function movimentoValido(card: Card, destino: EtapaImplantacao): Resultad
 // ---------------------------------------------------------------------------
 
 /**
- * Transições permitidas na Manutenção. O CHEQUE é o gate de 3 saídas; a
- * SEPARACAO bifurca (COMPRA se faltar item, EXECUCAO se estiver tudo) e a
- * COMPRA devolve à SEPARACAO. Etapas com lista vazia são finais.
+ * Transições permitidas na Manutenção. O AGENDAMENTO alimenta a ROTINA; o CHEQUE
+ * é o gate de 3 saídas; a SEPARACAO bifurca (COMPRA se faltar item, AGENDAMENTO
+ * quando o material está pronto) e a COMPRA devolve à SEPARACAO.
  *
  * Regras de negócio:
- * - ORC_NAO_APROVADO volta para ORCAMENTO (renegociar: o Administrativo refaz a proposta).
+ * - AGENDAMENTO → ROTINA (entra na rotina do dia).
+ * - ORC_NAO_APROVADO volta para ORCAMENTO (renegociar).
+ * - ORC_APROVADO normal vai para SEPARACAO; complementar vai para AGENDAMENTO
+ *   (ver destinosManutencaoCard).
  * - MEDICAO, depois de faturar, arquiva em ENCERRADOS.
  * - ENCERRADOS é a única etapa final.
  */
 export const TRANSICOES_MANUTENCAO: Record<EtapaManutencao, EtapaManutencao[]> = {
+  AGENDAMENTO: ["ROTINA"],
   ROTINA: ["CHEQUE"],
   CHEQUE: ["ENCERRADOS", "MEDICAO", "ORCAMENTO"],
   ORCAMENTO: ["ORC_AGUARDANDO"],
   ORC_AGUARDANDO: ["ORC_NAO_APROVADO", "ORC_APROVADO"],
   ORC_NAO_APROVADO: ["ORCAMENTO"], // renegociar
   ORC_APROVADO: ["SEPARACAO"],
-  SEPARACAO: ["COMPRA", "EXECUCAO"],
+  SEPARACAO: ["COMPRA", "AGENDAMENTO"],
   COMPRA: ["SEPARACAO"],
-  EXECUCAO: ["MEDICAO"],
   MEDICAO: ["ENCERRADOS"], // após faturar
   ENCERRADOS: [],
 };
@@ -236,21 +228,21 @@ export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
 
 /**
  * Destinos válidos considerando se o card é um orçamento complementar.
- * O complementar segue o fluxo normal até o Aprovado; depois do Aprovado o
- * único caminho é Encerrados (não passa por Separação/Compra/Execução/Medição).
+ * O complementar segue o fluxo normal até o Aprovado; depois do Aprovado ele vai
+ * para o Agendamento (é agendado e entra na rotina), em vez de Separação.
  */
 export function destinosManutencaoCard(
   card: Pick<Card, "etapa" | "complementar">,
 ): EtapaManutencao[] {
   const etapa = card.etapa as EtapaManutencao;
-  if (card.complementar && etapa === "ORC_APROVADO") return ["ENCERRADOS"];
+  if (card.complementar && etapa === "ORC_APROVADO") return ["AGENDAMENTO"];
   return destinosManutencao(etapa);
 }
 
 /** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */
 export const ORDEM_MANUTENCAO: EtapaManutencao[] = [
-  "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO",
-  "SEPARACAO", "COMPRA", "EXECUCAO", "MEDICAO", "ENCERRADOS",
+  "AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO",
+  "SEPARACAO", "COMPRA", "MEDICAO", "ENCERRADOS",
 ];
 
 /** True se mover de `de` para `para` é um retrocesso (raia anterior). */
@@ -308,7 +300,7 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
     ORC_APROVADO: "Aprovado",
     SEPARACAO: "Separação",
     COMPRA: "Suprimentos",
-    EXECUCAO: "Execução",
+    AGENDAMENTO: "Agendamento",
     ENCERRADOS: "Encerrados",
   };
   return mapa[etapa] ?? etapa;

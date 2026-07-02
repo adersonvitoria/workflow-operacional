@@ -6,14 +6,14 @@ import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { rowToCard } from "@/lib/mappers";
 
 /**
- * Gera um Orçamento Complementar a partir de um card de Manutenção que está na
- * Execução. O card novo nasce na coluna Orçamento (com a tag Complementar) e
+ * Gera um Orçamento Complementar a partir de um card de Manutenção que está no
+ * Cheque. O card novo nasce na coluna Orçamento (com a tag Complementar) e
  * herda apenas: nome do cliente, tipo de cliente, nº da conta, região e técnico.
  * Os demais campos (Setor, valores, CR, chamado, competência, turno, etc.)
  * ficam em branco para serem preenchidos depois.
  *
- * Permissão: executar a etapa Execução (Supervisor Técnico / Coordenador) — é
- * uma ação da Execução, não um "cadastro" comum de card.
+ * Permissão: executar a etapa Cheque (Supervisão / Coordenador) — é uma ação do
+ * Cheque, não um "cadastro" comum de card.
  */
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
@@ -23,13 +23,13 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const origem = await prisma.card.findUnique({ where: { id: params.id } });
   if (!origem) return NextResponse.json({ erro: "Card de origem não encontrado." }, { status: 404 });
 
-  if (origem.fluxo !== "MANUTENCAO" || origem.etapa !== "EXECUCAO") {
+  if (origem.fluxo !== "MANUTENCAO" || origem.etapa !== "CHEQUE") {
     return NextResponse.json(
-      { erro: "O orçamento complementar só pode ser gerado de um card de Manutenção na Execução." },
+      { erro: "O orçamento complementar só pode ser gerado de um card de Manutenção no Cheque." },
       { status: 422 },
     );
   }
-  if (!podeExecutarEtapa(s.perfil, "EXECUCAO")) {
+  if (!podeExecutarEtapa(s.perfil, "CHEQUE")) {
     return NextResponse.json({ erro: "Seu perfil não pode gerar orçamento complementar nesta etapa." }, { status: 403 });
   }
 
@@ -58,9 +58,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         {
           id: "h0",
           data: agora,
-          setor: "TECNICA",
+          setor: "SUPERVISAO",
           autor: s.nome,
-          acao: `Orçamento complementar gerado a partir da OS #${origem.codigo} (Execução)`,
+          acao: `Orçamento complementar gerado a partir da OS #${origem.codigo} (Cheque)`,
           para: "ORCAMENTO",
         },
       ],
@@ -77,11 +77,11 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         {
           id: `h${histOrigem.length}`,
           data: agora,
-          setor: "TECNICA",
+          setor: "SUPERVISAO",
           autor: s.nome,
           acao: `Orçamento complementar gerado (#${novo.codigo})`,
-          de: "EXECUCAO",
-          para: "EXECUCAO",
+          de: "CHEQUE",
+          para: "CHEQUE",
         },
       ] as unknown as object[],
     },

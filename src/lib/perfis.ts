@@ -214,7 +214,7 @@ export interface PerfilConfig {
 /** Todas as etapas das duas esteiras (MEDICAO/ENCERRADOS são compartilhadas). */
 export const TODAS_ETAPAS: EtapaId[] = [
   "COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "COORDENACAO_AUDITORIA",
-  "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO", "SEPARACAO", "COMPRA", "EXECUCAO",
+  "AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO", "SEPARACAO", "COMPRA",
   "MEDICAO", "ENCERRADOS",
 ];
 
@@ -230,12 +230,12 @@ function cap(p: Partial<Capacidades>): Capacidades {
 export const CONFIG_PADRAO: Record<Perfil, PerfilConfig> = {
   COORDENADOR: { etapas: [...TODAS_ETAPAS], capacidades: cap({ criarImplantacao: true, criarManutencao: true, editarCard: true, excluirCard: true, gerarRelatorio: true, gerenciarItens: true, gerenciarUsuarios: true }), acoes: PERFIL_META.COORDENADOR.acoes },
   COMERCIAL: { etapas: ["COMERCIAL"], capacidades: cap({ criarImplantacao: true, criarManutencao: true, editarCard: true, excluirCard: true, gerenciarItens: true }), acoes: PERFIL_META.COMERCIAL.acoes },
-  ASSISTENTE_1: { etapas: ["ROTINA"], capacidades: cap({ criarManutencao: true, editarCard: true }), acoes: PERFIL_META.ASSISTENTE_1.acoes },
+  ASSISTENTE_1: { etapas: ["AGENDAMENTO", "ROTINA"], capacidades: cap({ criarManutencao: true, editarCard: true }), acoes: PERFIL_META.ASSISTENTE_1.acoes },
   ASSISTENTE_2: { etapas: ["ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO"], capacidades: cap({ editarCard: true }), acoes: PERFIL_META.ASSISTENTE_2.acoes },
   ALMOXARIFADO: { etapas: ["ALMOXARIFADO", "SEPARACAO"], capacidades: cap({}), acoes: PERFIL_META.ALMOXARIFADO.acoes },
   SUPRIMENTOS: { etapas: ["SUPRIMENTOS", "COMPRA"], capacidades: cap({}), acoes: PERFIL_META.SUPRIMENTOS.acoes },
   SUPERVISOR_MONITORAMENTO: { etapas: ["MONITORAMENTO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_MONITORAMENTO.acoes },
-  SUPERVISOR_TECNICO: { etapas: ["TECNICA", "CHEQUE", "EXECUCAO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_TECNICO.acoes },
+  SUPERVISOR_TECNICO: { etapas: ["TECNICA", "CHEQUE"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_TECNICO.acoes },
   MEDICAO: { etapas: ["MEDICAO", "ENCERRADOS"], capacidades: cap({ editarCard: true, gerarRelatorio: true }), acoes: PERFIL_META.MEDICAO.acoes },
   ADMINISTRATIVO: { etapas: [], capacidades: cap({ gerarRelatorio: true, gerenciarItens: true, gerenciarUsuarios: true }), acoes: PERFIL_META.ADMINISTRATIVO.acoes },
 };
