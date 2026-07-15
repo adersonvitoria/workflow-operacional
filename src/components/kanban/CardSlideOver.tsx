@@ -248,8 +248,10 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                   )}
 
                   {/* Mostra apenas o checklist da Técnica · Execução (os flags do
-                      Cheque · Monitoramento aparecem só no gate da etapa). */}
-                  {card.fluxo === "IMPLANTACAO" && card.checklist.some((c) => c.etapa === "TECNICA") && (
+                      Cheque · Monitoramento aparecem só no gate da etapa). Na
+                      própria Técnica com o gate aberto, a seção some — o gate já
+                      exibe o checklist (evita duplicidade). */}
+                  {card.fluxo === "IMPLANTACAO" && !(card.etapa === "TECNICA" && podeAgir) && card.checklist.some((c) => c.etapa === "TECNICA") && (
                     <Secao titulo="Checklist da Técnica · Execução">
                       <ul className="space-y-1.5">
                         {card.checklist.filter((c) => c.etapa === "TECNICA").map((item) => (
