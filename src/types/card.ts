@@ -302,7 +302,8 @@ export interface Card {
   // durante todo o intervalo), equipe e chip. Preenchidos no gate da Técnica.
   dataInicioExecucao?: string; // ISO 8601
   dataFimExecucao?: string; // ISO 8601
-  tecnicos?: string; // nomes dos técnicos
+  tecnicos?: string; // técnico (lista de técnicos/prestadores cadastrados)
+  auxiliarTecnico?: string; // auxiliar técnico (mesma lista)
   numeroChip?: string; // Nº do chip
 
   // Esteira de produção

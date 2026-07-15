@@ -11,7 +11,7 @@ import type { Card, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "crMensalidade", "margemVenda", "temContrato", "crDedicado", "temInvestimento", "chamadoInvestimento", "chamado", "numeroOrcamento", "numeroConta", "regiao", "datas", "observacoes", "pagamento"];
 // Período de execução/equipe/chip são preenchidos pela Técnica no gate da etapa.
-const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual", "dataInicioExecucao", "dataFimExecucao", "tecnicos", "numeroChip"];
+const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual", "dataInicioExecucao", "dataFimExecucao", "tecnicos", "auxiliarTecnico", "numeroChip"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
 function patchToData(p: Partial<Card>): Record<string, unknown> {
@@ -45,7 +45,7 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   for (const k of ["dataInicioExecucao", "dataFimExecucao"] as const) {
     if (p[k] !== undefined) d[k] = p[k] ? dataPura(p[k] as string) : null;
   }
-  for (const k of ["tecnicos", "numeroChip"] as const) {
+  for (const k of ["tecnicos", "auxiliarTecnico", "numeroChip"] as const) {
     if (p[k] !== undefined) d[k] = p[k] ?? null;
   }
   if (p.responsavelAtual) {

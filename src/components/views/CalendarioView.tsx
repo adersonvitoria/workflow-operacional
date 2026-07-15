@@ -187,7 +187,8 @@ export function CalendarioView() {
                             <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-teal-500" />Execução</span>
                           </div>
                           <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
-                          <p className="mt-1 break-words"><span className="opacity-70">Técnicos:</span> {c.tecnicos || "—"}</p>
+                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.tecnicos || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Aux. Técnico:</span> {c.auxiliarTecnico || "—"}</p>
                           <p className="break-words"><span className="opacity-70">Nº do chip:</span> {c.numeroChip || "—"}</p>
                           <p className="break-words"><span className="opacity-70">Região:</span> {c.regiao || "—"}</p>
                         </button>
@@ -270,7 +271,8 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
             {linha("Criticidade", crit ? CRITICIDADE_META[crit].rotulo : "—")}
             {linha("Região", card.regiao ?? "—")}
             {linha("Período de execução", `${dataBR(card.dataInicioExecucao)} – ${dataBR(card.dataFimExecucao)}`)}
-            {linha("Técnicos", card.tecnicos ?? "—")}
+            {linha("Técnico", card.tecnicos ?? "—")}
+            {linha("Aux. Técnico", card.auxiliarTecnico ?? "—")}
             {linha("Nº do chip", card.numeroChip ?? "—")}
             {linha("Valor total", formatarBRL(card.valores.total))}
             {linha("Data de cadastro", dataBR(card.datas?.abertura))}

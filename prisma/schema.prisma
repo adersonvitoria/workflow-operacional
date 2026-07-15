@@ -172,7 +172,8 @@ model Card {
   // (o card aparece no calendário durante todo o intervalo) + equipe e chip.
   dataInicioExecucao DateTime?
   dataFimExecucao    DateTime?
-  tecnicos           String? // nomes dos técnicos da execução
+  tecnicos           String? // técnico da execução (lista de técnicos/prestadores)
+  auxiliarTecnico    String? // auxiliar técnico da execução (mesma lista)
   numeroChip         String? // Nº do chip instalado
 
   // Gates e estruturas aninhadas (jsonb)

@@ -16,6 +16,8 @@ import {
 } from "@/lib/flows";
 import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
+import { useTecnicos } from "@/lib/tecnicos-store";
+import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
 
@@ -145,7 +147,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           {(card.dataInicioExecucao || card.dataFimExecucao) && (
                             <Campo rotulo="Período de execução" valor={`${fmtData(card.dataInicioExecucao)} – ${fmtData(card.dataFimExecucao)}`} destaque />
                           )}
-                          {card.tecnicos && <Campo rotulo="Técnicos" valor={card.tecnicos} />}
+                          {card.tecnicos && <Campo rotulo="Técnico" valor={card.tecnicos} />}
+                          {card.auxiliarTecnico && <Campo rotulo="Aux. Técnico" valor={card.auxiliarTecnico} />}
                           {card.numeroChip && <Campo rotulo="Nº do chip" valor={card.numeroChip} />}
                           {card.temContrato && <Campo rotulo="Nº do chamado" valor={card.chamado ?? "—"} />}
                           {card.crDedicado && <Campo rotulo="Nº do CR" valor={card.cr ?? "—"} />}
@@ -244,10 +247,12 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     </Secao>
                   )}
 
-                  {card.fluxo === "IMPLANTACAO" && card.checklist.length > 0 && (
-                    <Secao titulo="Checklist da esteira">
+                  {/* Mostra apenas o checklist da Técnica · Execução (os flags do
+                      Cheque · Monitoramento aparecem só no gate da etapa). */}
+                  {card.fluxo === "IMPLANTACAO" && card.checklist.some((c) => c.etapa === "TECNICA") && (
+                    <Secao titulo="Checklist da Técnica · Execução">
                       <ul className="space-y-1.5">
-                        {card.checklist.map((item) => (
+                        {card.checklist.filter((c) => c.etapa === "TECNICA").map((item) => (
                           <li key={item.id}>
                             <button type="button" disabled={!podeAgir} onClick={() => podeAgir && onPatch({ checklist: card.checklist.map((c) => (c.id === item.id ? { ...c, concluido: !c.concluido } : c)) })} className="flex w-full items-center gap-2 text-left text-sm disabled:cursor-default">
                               <span className={["flex h-4 w-4 items-center justify-center rounded border text-[10px]", item.concluido ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent"].join(" ")}>✓</span>
@@ -481,28 +486,33 @@ function ChecklistTecnica({ card, patch }: { card: Card; patch: (p: Partial<Card
 
 /**
  * Dados da execução em campo (Técnica): período (alimenta o calendário durante
- * todo o intervalo), nomes dos técnicos e o Nº do chip.
+ * todo o intervalo), técnico + auxiliar (lista de técnicos/prestadores) e chip.
  */
 function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const { ativos: pessoas } = useTecnicos();
   const [inicio, setInicio] = useState(card.dataInicioExecucao?.slice(0, 10) ?? "");
   const [fim, setFim] = useState(card.dataFimExecucao?.slice(0, 10) ?? "");
-  const [tecnicos, setTecnicos] = useState(card.tecnicos ?? "");
+  const [tecnico, setTecnico] = useState(card.tecnicos ?? "");
+  const [auxiliar, setAuxiliar] = useState(card.auxiliarTecnico ?? "");
   const [chip, setChip] = useState(card.numeroChip ?? "");
   useEffect(() => {
     setInicio(card.dataInicioExecucao?.slice(0, 10) ?? "");
     setFim(card.dataFimExecucao?.slice(0, 10) ?? "");
-    setTecnicos(card.tecnicos ?? "");
+    setTecnico(card.tecnicos ?? "");
+    setAuxiliar(card.auxiliarTecnico ?? "");
     setChip(card.numeroChip ?? "");
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-  function salvar() {
+  function salvar(over: Partial<Card> = {}) {
     patch({
       dataInicioExecucao: inicio || undefined,
       dataFimExecucao: fim || undefined,
-      tecnicos: tecnicos.trim() || undefined,
+      tecnicos: tecnico.trim() || undefined,
+      auxiliarTecnico: auxiliar.trim() || undefined,
       numeroChip: chip.trim() || undefined,
+      ...over,
     });
   }
 
@@ -510,13 +520,27 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
     <Gate titulo="Execução em campo · agenda">
       <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário durante todo o período informado.</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
-        <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={salvar} className={inp} /></Campito>
-        <Campito label="Data de fim *"><input type="date" value={fim} onChange={(e) => setFim(e.target.value)} onBlur={salvar} className={inp} /></Campito>
+        <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
+        <Campito label="Data de fim *"><input type="date" value={fim} onChange={(e) => setFim(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
       </div>
-      <label className="mt-2 block text-[10px] text-slate-400">Técnicos</label>
-      <input value={tecnicos} onChange={(e) => setTecnicos(e.target.value)} onBlur={salvar} placeholder="Nomes dos técnicos" className={inp} />
+      <label className="mt-2 block text-[10px] text-slate-400">Técnico</label>
+      <ComboPessoa
+        value={tecnico}
+        onChange={(v) => { setTecnico(v); salvar({ tecnicos: v.trim() || undefined }); }}
+        opcoes={pessoas}
+        className={inp}
+        placeholder="Selecione ou pesquise (técnicos e prestadores)"
+      />
+      <label className="mt-2 block text-[10px] text-slate-400">Aux. Técnico</label>
+      <ComboPessoa
+        value={auxiliar}
+        onChange={(v) => { setAuxiliar(v); salvar({ auxiliarTecnico: v.trim() || undefined }); }}
+        opcoes={pessoas}
+        className={inp}
+        placeholder="Selecione ou pesquise (técnicos e prestadores)"
+      />
       <label className="mt-2 block text-[10px] text-slate-400">Nº do chip</label>
-      <input value={chip} onChange={(e) => setChip(e.target.value)} onBlur={salvar} placeholder="Nº do chip" className={inp} />
+      <input value={chip} onChange={(e) => setChip(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chip" className={inp} />
     </Gate>
   );
 }

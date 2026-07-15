@@ -67,6 +67,7 @@ export function rowToCard(r: PrismaCard): Card {
     dataInicioExecucao: iso(r.dataInicioExecucao),
     dataFimExecucao: iso(r.dataFimExecucao),
     tecnicos: r.tecnicos ?? undefined,
+    auxiliarTecnico: r.auxiliarTecnico ?? undefined,
     numeroChip: r.numeroChip ?? undefined,
     aprovacaoInicial: (r.aprovacaoInicial as unknown as Card["aprovacaoInicial"]) ?? undefined,
     auditoriaFinal: (r.auditoriaFinal as unknown as Card["auditoriaFinal"]) ?? undefined,
