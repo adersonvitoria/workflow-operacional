@@ -7,7 +7,7 @@ import { useTecnicos } from "@/lib/tecnicos-store";
 import { REGIOES_POA } from "@/lib/regioes-poa";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import type { NovoCardInput } from "@/lib/store";
-import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, Turno } from "@/types";
+import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, TipoEntradaManutencao, Turno } from "@/types";
 
 interface CardFormProps {
   aberto: boolean;
@@ -31,6 +31,12 @@ const VAZIO = (fluxo: Fluxo): NovoCardInput => ({
 });
 
 const PRIORIDADES: Prioridade[] = ["BAIXA", "NORMAL", "ALTA", "URGENTE"];
+
+/** Tipo da entrada de Manutenção (estilo Modalidade): Orçamento x Visita. */
+const TIPO_ENTRADA_META: Record<TipoEntradaManutencao, { rotulo: string; classe: string }> = {
+  ORCAMENTO: { rotulo: "Orçamento", classe: "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30" },
+  VISITA: { rotulo: "Visita", classe: "bg-teal-50 text-teal-700 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:ring-teal-500/30" },
+};
 
 /** Modal de cadastro/edição de card. */
 export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFormProps) {
@@ -416,6 +422,27 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
           {fluxo === "MANUTENCAO" && (
             <>
+              {/* Orçamento x Visita: define quais campos aparecem (novos cards). */}
+              <Campo label="Tipo de entrada">
+                <div className="flex gap-2">
+                  {(["ORCAMENTO", "VISITA"] as TipoEntradaManutencao[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setM("tipo", t);
+                        // Limpa os campos que não pertencem ao tipo escolhido.
+                        if (t === "VISITA") { set("numeroOrcamento", undefined); set("total", undefined); }
+                        if (t === "ORCAMENTO") setM("valorVisita", undefined);
+                      }}
+                      className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", man.tipo === t ? TIPO_ENTRADA_META[t].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}
+                    >
+                      {TIPO_ENTRADA_META[t].rotulo}
+                    </button>
+                  ))}
+                </div>
+              </Campo>
+
               <Campo label="Data da visita">
                 <input type="date" value={man.dataVisita ?? ""} onChange={(e) => setM("dataVisita", e.target.value || undefined)} className={inputCls} />
               </Campo>
@@ -446,8 +473,8 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 </Campo>
               </div>
 
-              {/* Valor da visita: só aparece quando a visita é cobrada. */}
-              {man.visitaCobrada && (
+              {/* Valor da visita: só quando a visita é cobrada — e some no tipo Orçamento. */}
+              {man.visitaCobrada && man.tipo !== "ORCAMENTO" && (
                 <Campo label="Valor da visita (R$)">
                   <MoedaInput value={man.valorVisita} onChange={(v) => setM("valorVisita", v)} className={inputCls} placeholder="0,00" />
                 </Campo>
@@ -478,14 +505,19 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 <Campo label="Auxiliar técnico"><ComboPessoa value={man.auxiliarTecnico ?? ""} onChange={(v) => setM("auxiliarTecnico", v)} opcoes={tecnicosAtivos} className={inputCls} placeholder="Selecione ou pesquise" /></Campo>
               </div>
 
+              {/* Nº e valor do orçamento somem no tipo Visita. */}
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Tipo de atendimento"><input value={man.tipoAtendimento ?? ""} onChange={(e) => setM("tipoAtendimento", e.target.value)} className={inputCls} /></Campo>
-                <Campo label="Número do orçamento"><input value={form.numeroOrcamento ?? ""} onChange={(e) => set("numeroOrcamento", e.target.value)} className={inputCls} /></Campo>
+                {man.tipo !== "VISITA" && (
+                  <Campo label="Número do orçamento"><input value={form.numeroOrcamento ?? ""} onChange={(e) => set("numeroOrcamento", e.target.value)} className={inputCls} /></Campo>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Setor"><input value={man.setor ?? ""} onChange={(e) => setM("setor", e.target.value)} className={inputCls} /></Campo>
-                <Campo label="Valor do orçamento (R$)"><MoedaInput value={form.total} onChange={(v) => set("total", v)} className={inputCls} placeholder="0,00" /></Campo>
+                {man.tipo !== "VISITA" && (
+                  <Campo label="Valor do orçamento (R$)"><MoedaInput value={form.total} onChange={(v) => set("total", v)} className={inputCls} placeholder="0,00" /></Campo>
+                )}
               </div>
             </>
           )}

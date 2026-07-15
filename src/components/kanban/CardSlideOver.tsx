@@ -194,11 +194,12 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                   {card.fluxo === "MANUTENCAO" && (
                     <Secao titulo="Atendimento">
                       <dl className="grid grid-cols-2 gap-3 text-sm">
+                        {man.tipo && <Campo rotulo="Tipo de entrada" valor={man.tipo === "ORCAMENTO" ? "Orçamento" : "Visita"} destaque />}
                         <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                         <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                         <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />
                         <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
-                        {man.visitaCobrada && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
+                        {man.visitaCobrada && man.tipo !== "ORCAMENTO" && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
                         {card.medicao?.visitaIsenta && <Campo rotulo="Visita Isenta" valor="Sim" destaque />}
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
                         <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
@@ -208,7 +209,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Técnico" valor={man.tecnico ?? "—"} />
                         <Campo rotulo="Auxiliar técnico" valor={man.auxiliarTecnico ?? "—"} />
                         <Campo rotulo="Tipo de atendimento" valor={man.tipoAtendimento ?? "—"} />
-                        <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />
+                        {man.tipo !== "VISITA" && <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />}
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
                         <Campo rotulo="CR" valor={card.cr ?? "—"} />
@@ -216,7 +217,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
-                        <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />
+                        {man.tipo !== "VISITA" && <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />}
                       </dl>
                     </Secao>
                   )}

@@ -286,16 +286,17 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {linha("Data da visita", dataBR(m.dataVisita))}
           {linha("Turno", m.turno ? (TURNO_ROTULO[m.turno] ?? m.turno) : "—")}
           {linha("Agendado", m.agendado ? "Sim" : "Não")}
+          {m.tipo && linha("Tipo de entrada", m.tipo === "ORCAMENTO" ? "Orçamento" : "Visita")}
           {linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
-          {m.visitaCobrada && linha("Valor da visita", formatarBRL(m.valorVisita))}
+          {m.visitaCobrada && m.tipo !== "ORCAMENTO" && linha("Valor da visita", formatarBRL(m.valorVisita))}
           {linha("Técnico", m.tecnico ?? "—")}
           {linha("Auxiliar técnico", m.auxiliarTecnico ?? "—")}
           {linha("Tipo de atendimento", m.tipoAtendimento ?? "—")}
           {linha("Setor", m.setor ?? "—")}
           {linha("Região", m.regiao ?? "—")}
           {linha("Ordem de serviço", m.ordemServico ?? "—")}
-          {linha("Número do orçamento", card.numeroOrcamento ?? "—")}
-          {linha("Valor do orçamento", formatarBRL(card.valores.total))}
+          {m.tipo !== "VISITA" && linha("Número do orçamento", card.numeroOrcamento ?? "—")}
+          {m.tipo !== "VISITA" && linha("Valor do orçamento", formatarBRL(card.valores.total))}
           {linha("CR", card.cr ?? "—")}
           {linha("Chamado", card.medicao?.chamado ?? card.chamado ?? "—")}
           {linha("Data de cadastro", dataBR(card.datas?.abertura))}

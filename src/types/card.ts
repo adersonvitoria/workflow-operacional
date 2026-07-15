@@ -92,8 +92,16 @@ export type FormaPagamento = "A_VISTA" | "PARCELADO";
 /** Turno da visita (Manutenção). */
 export type Turno = "MANHA" | "TARDE" | "DIA";
 
+/**
+ * Tipo da entrada de Manutenção: Orçamento (esconde o valor da visita) ou
+ * Visita (esconde nº/valor do orçamento). Cards antigos (sem tipo) mostram tudo.
+ */
+export type TipoEntradaManutencao = "ORCAMENTO" | "VISITA";
+
 /** Dados específicos de uma entrada de Manutenção. */
 export interface DadosManutencao {
+  /** Orçamento ou Visita — escolhido na criação/edição (novos cards). */
+  tipo?: TipoEntradaManutencao;
   visitaCobrada?: boolean;
   /** Valor da visita (R$) — só faz sentido quando visitaCobrada === true. */
   valorVisita?: number;
