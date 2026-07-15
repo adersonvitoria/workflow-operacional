@@ -64,6 +64,11 @@ function montarEventos(cards: Card[]): Evento[] {
     .sort((a, b) => FAIXA[a.turno].ini - FAIXA[b.turno].ini || a.cliente.localeCompare(b.cliente));
 }
 
+/** Dia local (YYYY-MM-DD) de um ISO datetime. */
+function ymdIso(iso: string): string {
+  return ymd(new Date(iso));
+}
+
 export function CalendarioView() {
   const { porFluxo } = useCards();
   const { ativos: pessoasAtivas } = useTecnicos();
@@ -76,13 +81,32 @@ export function CalendarioView() {
   const agendados = useMemo(() => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)), [porFluxo]);
   const semData = useMemo(() => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length, [porFluxo]);
 
+  // Implantação · Técnica-Execução: o card ocupa a agenda em TODOS os dias do
+  // período [início, fim] enquanto estiver na coluna de execução.
+  const execucoes = useMemo(
+    () => porFluxo("IMPLANTACAO").filter((c) => c.etapa === "TECNICA" && c.dataInicioExecucao && c.dataFimExecucao),
+    [porFluxo],
+  );
+
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, Evento[]>();
     for (const d of dias) { const ds = ymd(d); mapa.set(ds, montarEventos(agendados.filter((c) => diaVisita(c) === ds))); }
     return mapa;
   }, [dias, agendados]);
 
-  const diasVisiveis = useMemo(() => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) > 0), [dias, eventosPorDia]);
+  const execucoesPorDia = useMemo(() => {
+    const mapa = new Map<string, Card[]>();
+    for (const d of dias) {
+      const ds = ymd(d);
+      mapa.set(ds, execucoes.filter((c) => ymdIso(c.dataInicioExecucao!) <= ds && ds <= ymdIso(c.dataFimExecucao!)));
+    }
+    return mapa;
+  }, [dias, execucoes]);
+
+  const diasVisiveis = useMemo(
+    () => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) + (execucoesPorDia.get(ymd(d))?.length ?? 0) > 0),
+    [dias, eventosPorDia, execucoesPorDia],
+  );
 
   // Técnicos (somente tipo TÉCNICO, não terceiros) sem OS hoje.
   const semOSHoje = useMemo(() => {
@@ -96,13 +120,14 @@ export function CalendarioView() {
 
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
   const totalSemana = dias.reduce((s, d) => s + (eventosPorDia.get(ymd(d))?.length ?? 0), 0);
+  const totalExec = dias.reduce((s, d) => s + (execucoesPorDia.get(ymd(d))?.length ?? 0), 0);
 
   return (
     <>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Calendário</h1>
-          <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
+          <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){totalExec > 0 ? ` · ${totalExec} execução(ões) de implantação` : ""}{semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="mr-2 hidden items-center gap-2 text-[11px] text-slate-500 sm:flex dark:text-slate-400">
@@ -133,6 +158,7 @@ export function CalendarioView() {
           )}
           {diasVisiveis.map((d) => {
             const evs = eventosPorDia.get(ymd(d)) ?? [];
+            const execs = execucoesPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
               <div key={ymd(d)} className={["flex w-60 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
@@ -142,6 +168,32 @@ export function CalendarioView() {
                 </header>
 
                 <div className="flex-1 space-y-3 p-2">
+                  {/* Implantação em execução: o card ocupa todos os dias do período. */}
+                  {execs.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
+                        <span className="h-2 w-2 rounded-full bg-teal-500" />
+                        Execução · Implantação <span className="text-slate-300 dark:text-slate-600">· {execs.length}</span>
+                      </p>
+                      {execs.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelecionado(c)}
+                          className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-teal-50 text-teal-800 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:ring-teal-500/40"
+                        >
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="font-semibold">{dataBR(c.dataInicioExecucao)} – {dataBR(c.dataFimExecucao)}</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-teal-500" />Execução</span>
+                          </div>
+                          <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
+                          <p className="mt-1 break-words"><span className="opacity-70">Técnicos:</span> {c.tecnicos || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Nº do chip:</span> {c.numeroChip || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Região:</span> {c.regiao || "—"}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {(["MANHA", "TARDE", "DIA"] as Turno[])
                     .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
                     .filter((g) => g.itens.length > 0)
@@ -210,8 +262,21 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
         </div>
 
         {/* Mapa da região (ponto vermelho) */}
-        <MapaRegiao regiao={m.regiao} />
+        <MapaRegiao regiao={card.fluxo === "IMPLANTACAO" ? card.regiao : m.regiao} />
 
+        {card.fluxo === "IMPLANTACAO" ? (
+          <dl className="mt-4">
+            {linha("Tipo de cliente", card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—")}
+            {linha("Criticidade", crit ? CRITICIDADE_META[crit].rotulo : "—")}
+            {linha("Região", card.regiao ?? "—")}
+            {linha("Período de execução", `${dataBR(card.dataInicioExecucao)} – ${dataBR(card.dataFimExecucao)}`)}
+            {linha("Técnicos", card.tecnicos ?? "—")}
+            {linha("Nº do chip", card.numeroChip ?? "—")}
+            {linha("Valor total", formatarBRL(card.valores.total))}
+            {linha("Data de cadastro", dataBR(card.datas?.abertura))}
+            {card.observacoes && linha("Observações", card.observacoes)}
+          </dl>
+        ) : (
         <dl className="mt-4">
           {linha("Tipo de cliente", card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—")}
           {linha("Criticidade", crit ? CRITICIDADE_META[crit].rotulo : "—")}
@@ -235,6 +300,7 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {card.datas?.conclusao && linha("Encerrado em", dataBR(card.datas.conclusao))}
           {card.observacoes && linha("Observações", card.observacoes)}
         </dl>
+        )}
       </div>
     </>
   );

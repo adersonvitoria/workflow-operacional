@@ -41,10 +41,11 @@ export type EtapaImplantacao =
   | "ALMOXARIFADO" // 3. (só VENDA) confere item a item: em estoque x faltante
   | "SUPRIMENTOS" // 4. Compra os faltantes (Venda) / 100% dos itens (Locação)
   | "MONITORAMENTO" // 5. Cria conta no software central + dados de conexão
-  | "TECNICA" // 6. Execução da instalação e teste de conexão
-  | "COORDENACAO_AUDITORIA" // 7. OK de qualidade / checklist de obra
-  | "MEDICAO" // 8. Faturamento
-  | "ENCERRADOS"; // 9. Projetos faturados e concluídos (arquivo)
+  | "TECNICA" // 6. Execução da instalação e teste de conexão (período no calendário)
+  | "CHEQUE_MONITORAMENTO" // 7. Monitoramento revisa usuários/senhas, setorização, etc.
+  | "COORDENACAO_AUDITORIA" // 8. OK de qualidade / checklist de obra
+  | "MEDICAO" // 9. Faturamento
+  | "ENCERRADOS"; // 10. Projetos faturados e concluídos (arquivo)
 
 /**
  * Etapas do Fluxo de Manutenção (ordem canônica do board).
@@ -197,6 +198,8 @@ export interface EventoHistorico {
 /** Dados de Medição/Faturamento (preenchidos pelo setor de Medição). */
 export interface DadosMedicao {
   numeroImplantar?: string;
+  /** Manutenção: visita isenta de cobrança — exige o Nº do orçamento para encerrar. */
+  visitaIsenta?: boolean;
   competencia?: string; // ex.: "06/2026" ou "JUNHO/2026"
   valorMedicao?: number;
   chamado?: string;
@@ -294,6 +297,13 @@ export interface Card {
     previsaoInstalacao?: string;
     conclusao?: string;
   };
+
+  // Implantação · Técnica-Execução: período em campo (aparece no calendário
+  // durante todo o intervalo), equipe e chip. Preenchidos no gate da Técnica.
+  dataInicioExecucao?: string; // ISO 8601
+  dataFimExecucao?: string; // ISO 8601
+  tecnicos?: string; // nomes dos técnicos
+  numeroChip?: string; // Nº do chip
 
   // Esteira de produção
   materiais: ItemMaterial[];

@@ -10,7 +10,8 @@ import type { Card, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "crMensalidade", "margemVenda", "temContrato", "crDedicado", "temInvestimento", "chamadoInvestimento", "chamado", "numeroOrcamento", "numeroConta", "regiao", "datas", "observacoes", "pagamento"];
-const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual"];
+// Período de execução/equipe/chip são preenchidos pela Técnica no gate da etapa.
+const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual", "dataInicioExecucao", "dataFimExecucao", "tecnicos", "numeroChip"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
 function patchToData(p: Partial<Card>): Record<string, unknown> {
@@ -38,6 +39,14 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   if (p.datas) {
     if (p.datas.abertura != null) d.dataAbertura = new Date(p.datas.abertura);
     if (p.datas.conclusao != null) d.dataConclusao = new Date(p.datas.conclusao);
+  }
+  // Datas "puras" (YYYY-MM-DD) viram meio-dia local para não cair em d-1 (fuso).
+  const dataPura = (v: string) => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T12:00:00`) : new Date(v));
+  for (const k of ["dataInicioExecucao", "dataFimExecucao"] as const) {
+    if (p[k] !== undefined) d[k] = p[k] ? dataPura(p[k] as string) : null;
+  }
+  for (const k of ["tecnicos", "numeroChip"] as const) {
+    if (p[k] !== undefined) d[k] = p[k] ?? null;
   }
   if (p.responsavelAtual) {
     d.responsavelSetor = p.responsavelAtual.setor;
@@ -100,12 +109,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
     // Medição → Encerrados exige nº do chamado, CR e competência (mês/ano).
     if (existente.etapa === "MEDICAO" && body.etapa === "ENCERRADOS") {
-      const medExistente = existente.medicao as { chamado?: string; competencia?: string } | null;
+      const medExistente = existente.medicao as { chamado?: string; competencia?: string; visitaIsenta?: boolean } | null;
       const chamado = body.medicao?.chamado ?? medExistente?.chamado;
       const competencia = body.medicao?.competencia ?? medExistente?.competencia;
       const cr = body.cr ?? existente.cr;
       if (!chamado || !String(chamado).trim() || !cr || !String(cr).trim() || !competencia || !String(competencia).trim()) {
         return NextResponse.json({ erro: "Informe o nº do chamado, o CR e a competência antes de encerrar." }, { status: 422 });
+      }
+      // Visita Isenta exige o Nº do orçamento.
+      const visitaIsenta = body.medicao?.visitaIsenta ?? medExistente?.visitaIsenta;
+      const numeroOrcamento = body.numeroOrcamento ?? existente.numeroOrcamento;
+      if (visitaIsenta && (!numeroOrcamento || !String(numeroOrcamento).trim())) {
+        return NextResponse.json({ erro: "Visita Isenta: informe o Nº do orçamento antes de encerrar." }, { status: 422 });
       }
     }
   }

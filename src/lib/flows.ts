@@ -133,6 +133,13 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
     accent: "bg-teal-500",
   },
   {
+    id: "CHEQUE_MONITORAMENTO",
+    titulo: "Cheque · Monitoramento",
+    setorResponsavel: "MONITORAMENTO",
+    descricao: "Revisa usuários/senhas, setorização, equipamentos e comunicação",
+    accent: "bg-cyan-600",
+  },
+  {
     id: "COORDENACAO_AUDITORIA",
     titulo: "Coordenação · Auditoria",
     setorResponsavel: "COORDENACAO",

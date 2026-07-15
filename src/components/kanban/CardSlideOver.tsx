@@ -14,7 +14,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, destinosManutencaoCard, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaImplantacao, EtapaManutencao, FormaPagamento } from "@/types";
@@ -142,6 +142,11 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                           <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                           <Campo rotulo="Região" valor={card.regiao ?? "—"} />
+                          {(card.dataInicioExecucao || card.dataFimExecucao) && (
+                            <Campo rotulo="Período de execução" valor={`${fmtData(card.dataInicioExecucao)} – ${fmtData(card.dataFimExecucao)}`} destaque />
+                          )}
+                          {card.tecnicos && <Campo rotulo="Técnicos" valor={card.tecnicos} />}
+                          {card.numeroChip && <Campo rotulo="Nº do chip" valor={card.numeroChip} />}
                           {card.temContrato && <Campo rotulo="Nº do chamado" valor={card.chamado ?? "—"} />}
                           {card.crDedicado && <Campo rotulo="Nº do CR" valor={card.cr ?? "—"} />}
                           {card.temInvestimento && <Campo rotulo="Nº do chamado de investimento" valor={card.chamadoInvestimento ?? "—"} />}
@@ -191,6 +196,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />
                         <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
                         {man.visitaCobrada && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
+                        {card.medicao?.visitaIsenta && <Campo rotulo="Visita Isenta" valor="Sim" destaque />}
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
                         <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                         <Campo rotulo="Região" valor={man.regiao ?? "—"} />
@@ -313,6 +319,11 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       bloqueado = true;
                       aviso = "Informe o nº do chamado, o CR e a competência para encerrar.";
                     }
+                    // Visita Isenta exige o Nº do orçamento para encerrar.
+                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && card.medicao?.visitaIsenta && !card.numeroOrcamento?.trim()) {
+                      bloqueado = true;
+                      aviso = "Visita Isenta: informe o Nº do orçamento para encerrar.";
+                    }
                     return (
                       <div key={d}>
                         {bloqueado && (
@@ -421,7 +432,16 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   if (etapa === "TECNICA") {
-    return <ChecklistTecnica card={card} patch={patch} />;
+    return (
+      <>
+        <DadosExecucaoGate card={card} patch={patch} />
+        <ChecklistTecnica card={card} patch={patch} />
+      </>
+    );
+  }
+
+  if (etapa === "CHEQUE_MONITORAMENTO") {
+    return <ChecklistChequeMonitoramento card={card} patch={patch} />;
   }
 
   if (etapa === "MEDICAO") {
@@ -444,6 +464,76 @@ function ChecklistTecnica({ card, patch }: { card: Card; patch: (p: Partial<Card
     <Gate titulo="Checklist da Técnica · Execução">
       <ul className="space-y-1.5">
         {CHECKLIST_TECNICA.map((it) => {
+          const done = card.checklist.some((c) => c.id === it.id && c.concluido);
+          return (
+            <li key={it.id}>
+              <button type="button" onClick={() => toggle(it.id, it.rotulo)} className="flex w-full items-center gap-2 text-left text-sm">
+                <span className={["flex h-4 w-4 items-center justify-center rounded border text-[10px]", done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent dark:border-slate-600"].join(" ")}>✓</span>
+                <span className={done ? "text-slate-500 line-through" : "text-slate-700 dark:text-slate-200"}>{it.rotulo}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Gate>
+  );
+}
+
+/**
+ * Dados da execução em campo (Técnica): período (alimenta o calendário durante
+ * todo o intervalo), nomes dos técnicos e o Nº do chip.
+ */
+function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  const [inicio, setInicio] = useState(card.dataInicioExecucao?.slice(0, 10) ?? "");
+  const [fim, setFim] = useState(card.dataFimExecucao?.slice(0, 10) ?? "");
+  const [tecnicos, setTecnicos] = useState(card.tecnicos ?? "");
+  const [chip, setChip] = useState(card.numeroChip ?? "");
+  useEffect(() => {
+    setInicio(card.dataInicioExecucao?.slice(0, 10) ?? "");
+    setFim(card.dataFimExecucao?.slice(0, 10) ?? "");
+    setTecnicos(card.tecnicos ?? "");
+    setChip(card.numeroChip ?? "");
+  }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+
+  function salvar() {
+    patch({
+      dataInicioExecucao: inicio || undefined,
+      dataFimExecucao: fim || undefined,
+      tecnicos: tecnicos.trim() || undefined,
+      numeroChip: chip.trim() || undefined,
+    });
+  }
+
+  return (
+    <Gate titulo="Execução em campo · agenda">
+      <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário durante todo o período informado.</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={salvar} className={inp} /></Campito>
+        <Campito label="Data de fim *"><input type="date" value={fim} onChange={(e) => setFim(e.target.value)} onBlur={salvar} className={inp} /></Campito>
+      </div>
+      <label className="mt-2 block text-[10px] text-slate-400">Técnicos</label>
+      <input value={tecnicos} onChange={(e) => setTecnicos(e.target.value)} onBlur={salvar} placeholder="Nomes dos técnicos" className={inp} />
+      <label className="mt-2 block text-[10px] text-slate-400">Nº do chip</label>
+      <input value={chip} onChange={(e) => setChip(e.target.value)} onBlur={salvar} placeholder="Nº do chip" className={inp} />
+    </Gate>
+  );
+}
+
+/** Cheque · Monitoramento: os 5 flags de revisão antes da auditoria. */
+function ChecklistChequeMonitoramento({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  function toggle(id: string, rotulo: string) {
+    const existe = card.checklist.find((c) => c.id === id);
+    const novo = existe
+      ? card.checklist.map((c) => (c.id === id ? { ...c, concluido: !c.concluido } : c))
+      : [...card.checklist, { id, etapa: "CHEQUE_MONITORAMENTO" as const, rotulo, concluido: true, obrigatorio: true }];
+    patch({ checklist: novo });
+  }
+  return (
+    <Gate titulo="Cheque · Monitoramento">
+      <ul className="space-y-1.5">
+        {CHECKLIST_CHEQUE_MONITORAMENTO.map((it) => {
           const done = card.checklist.some((c) => c.id === it.id && c.concluido);
           return (
             <li key={it.id}>
@@ -564,32 +654,59 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
   const [chamado, setChamado] = useState(card.medicao?.chamado ?? card.chamado ?? "");
   const [cr, setCr] = useState(card.cr ?? "");
   const [comp, setComp] = useState(compParaInput(card.medicao?.competencia));
+  const [isenta, setIsenta] = useState(!!card.medicao?.visitaIsenta);
+  const [numOrc, setNumOrc] = useState(card.numeroOrcamento ?? "");
   useEffect(() => {
     setChamado(card.medicao?.chamado ?? card.chamado ?? "");
     setCr(card.cr ?? "");
     setComp(compParaInput(card.medicao?.competencia));
+    setIsenta(!!card.medicao?.visitaIsenta);
+    setNumOrc(card.numeroOrcamento ?? "");
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-  function salvar() {
+  function salvar(isentaAtual = isenta) {
     const c = chamado.trim();
     const comper = comp ? inputParaComp(comp) : undefined;
-    patch({ cr: cr.trim() || undefined, medicao: { ...card.medicao, chamado: c || undefined, competencia: comper } });
+    patch({
+      cr: cr.trim() || undefined,
+      numeroOrcamento: numOrc.trim() || undefined,
+      medicao: { ...card.medicao, chamado: c || undefined, competencia: comper, visitaIsenta: isentaAtual },
+    });
   }
 
-  const completo = !!chamado.trim() && !!cr.trim() && !!comp;
+  const completo = !!chamado.trim() && !!cr.trim() && !!comp && (!isenta || !!numOrc.trim());
 
   return (
     <Gate titulo="Medição · Dados para encerrar">
       <p className="text-xs text-slate-600 dark:text-slate-300">Informe o nº do chamado, o CR e a competência para encerrar a OS.</p>
       <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
-      <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={salvar} placeholder="Nº do chamado" className={inp} />
+      <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chamado" className={inp} />
       <label className="mt-2 block text-[10px] text-slate-400">CR (Centro de Resultado)</label>
-      <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={salvar} placeholder="CR" className={inp} />
+      <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={() => salvar()} placeholder="CR" className={inp} />
       <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
-      <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={salvar} className={inp} />
-      <button onClick={salvar} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+      <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
+
+      {/* Visita Isenta: quando marcada, o Nº do orçamento é obrigatório. */}
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+        <input
+          type="checkbox"
+          checked={isenta}
+          onChange={(e) => { const v = e.target.checked; setIsenta(v); salvar(v); }}
+          className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
+        />
+        Visita Isenta
+      </label>
+      {isenta && (
+        <>
+          <label className="mt-2 block text-[10px] text-slate-400">Nº do orçamento *</label>
+          <input value={numOrc} onChange={(e) => setNumOrc(e.target.value)} onBlur={() => salvar()} placeholder="Obrigatório na visita isenta" className={inp} />
+          {!numOrc.trim() && <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">Visita Isenta exige o Nº do orçamento.</p>}
+        </>
+      )}
+
+      <button onClick={() => salvar()} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         {card.medicao?.chamado && card.cr && card.medicao?.competencia ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>

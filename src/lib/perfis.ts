@@ -177,6 +177,7 @@ const DONO_DA_ETAPA: Record<EtapaImplantacao, Perfil> = {
   SUPRIMENTOS: "SUPRIMENTOS",
   MONITORAMENTO: "SUPERVISOR_MONITORAMENTO",
   TECNICA: "SUPERVISOR_TECNICO",
+  CHEQUE_MONITORAMENTO: "SUPERVISOR_MONITORAMENTO",
   COORDENACAO_AUDITORIA: "COORDENADOR",
   MEDICAO: "MEDICAO",
   ENCERRADOS: "MEDICAO", // etapa final (arquivo) — sem gate a executar
@@ -213,7 +214,7 @@ export interface PerfilConfig {
 
 /** Todas as etapas das duas esteiras (MEDICAO/ENCERRADOS são compartilhadas). */
 export const TODAS_ETAPAS: EtapaId[] = [
-  "COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "COORDENACAO_AUDITORIA",
+  "COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "CHEQUE_MONITORAMENTO", "COORDENACAO_AUDITORIA",
   "AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO", "SEPARACAO", "COMPRA",
   "MEDICAO", "ENCERRADOS",
 ];
@@ -234,7 +235,7 @@ export const CONFIG_PADRAO: Record<Perfil, PerfilConfig> = {
   ASSISTENTE_2: { etapas: ["ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO"], capacidades: cap({ editarCard: true }), acoes: PERFIL_META.ASSISTENTE_2.acoes },
   ALMOXARIFADO: { etapas: ["ALMOXARIFADO", "SEPARACAO"], capacidades: cap({}), acoes: PERFIL_META.ALMOXARIFADO.acoes },
   SUPRIMENTOS: { etapas: ["SUPRIMENTOS", "COMPRA"], capacidades: cap({}), acoes: PERFIL_META.SUPRIMENTOS.acoes },
-  SUPERVISOR_MONITORAMENTO: { etapas: ["MONITORAMENTO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_MONITORAMENTO.acoes },
+  SUPERVISOR_MONITORAMENTO: { etapas: ["MONITORAMENTO", "CHEQUE_MONITORAMENTO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_MONITORAMENTO.acoes },
   SUPERVISOR_TECNICO: { etapas: ["TECNICA", "CHEQUE"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_TECNICO.acoes },
   MEDICAO: { etapas: ["MEDICAO", "ENCERRADOS"], capacidades: cap({ editarCard: true, gerarRelatorio: true }), acoes: PERFIL_META.MEDICAO.acoes },
   ADMINISTRATIVO: { etapas: [], capacidades: cap({ gerarRelatorio: true, gerenciarItens: true, gerenciarUsuarios: true }), acoes: PERFIL_META.ADMINISTRATIVO.acoes },

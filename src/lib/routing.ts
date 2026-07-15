@@ -24,6 +24,15 @@ export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
   { id: "tec-comunicando", rotulo: "Sistema comunicando" },
 ];
 
+/** Flags obrigatórios da etapa Cheque · Monitoramento (Implantação). */
+export const CHECKLIST_CHEQUE_MONITORAMENTO: { id: string; rotulo: string }[] = [
+  { id: "cm-usuarios-senhas", rotulo: "Revisados usuários e senhas" },
+  { id: "cm-setorizacao", rotulo: "Revisados setorização" },
+  { id: "cm-localizacao", rotulo: "Localização dos equipamentos" },
+  { id: "cm-senha-conexao", rotulo: "Senha de conexão" },
+  { id: "cm-vias-comunicacao", rotulo: "Vias de comunicação" },
+];
+
 /** Ordem visual das colunas no board de Implantação. */
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
@@ -32,6 +41,7 @@ export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "SUPRIMENTOS",
   "MONITORAMENTO",
   "TECNICA",
+  "CHEQUE_MONITORAMENTO",
   "COORDENACAO_AUDITORIA",
   "MEDICAO",
   "ENCERRADOS",
@@ -77,6 +87,8 @@ export function proximaEtapa(
     case "MONITORAMENTO":
       return "TECNICA";
     case "TECNICA":
+      return "CHEQUE_MONITORAMENTO";
+    case "CHEQUE_MONITORAMENTO":
       return "COORDENACAO_AUDITORIA";
     case "COORDENACAO_AUDITORIA":
       return "MEDICAO";
@@ -145,9 +157,20 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       break;
 
     case "TECNICA":
+      // Período de execução alimenta o calendário — obrigatório antes de seguir.
+      if (!card.dataInicioExecucao || !card.dataFimExecucao) {
+        return { ok: false, motivo: "Informe as datas de início e fim da execução (calendário)." };
+      }
       // a Técnica não encerra: precisa concluir o checklist da execução
       if (!CHECKLIST_TECNICA.every((it) => card.checklist.some((c) => c.id === it.id && c.concluido))) {
         return { ok: false, motivo: "Conclua o checklist da Técnica (conclusão do projeto e sistema comunicando)." };
+      }
+      break;
+
+    case "CHEQUE_MONITORAMENTO":
+      // Monitoramento precisa revisar os 5 itens antes da auditoria.
+      if (!CHECKLIST_CHEQUE_MONITORAMENTO.every((it) => card.checklist.some((c) => c.id === it.id && c.concluido))) {
+        return { ok: false, motivo: "Conclua os 5 itens do Cheque · Monitoramento antes de avançar." };
       }
       break;
 
@@ -286,6 +309,7 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
     SUPRIMENTOS: "Suprimentos",
     MONITORAMENTO: "Monitoramento",
     TECNICA: "Técnica",
+    CHEQUE_MONITORAMENTO: "Cheque · Monitoramento",
     COORDENACAO_AUDITORIA: "Coordenação · Auditoria",
     MEDICAO: "Medição",
     // Manutenção

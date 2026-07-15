@@ -168,6 +168,13 @@ model Card {
   dataPrevisaoInstalacao DateTime?
   dataConclusao          DateTime?
 
+  // Implantação · Técnica-Execução: período em que a equipe está em campo
+  // (o card aparece no calendário durante todo o intervalo) + equipe e chip.
+  dataInicioExecucao DateTime?
+  dataFimExecucao    DateTime?
+  tecnicos           String? // nomes dos técnicos da execução
+  numeroChip         String? // Nº do chip instalado
+
   // Gates e estruturas aninhadas (jsonb)
   aprovacaoInicial Json?
   auditoriaFinal   Json?
