@@ -283,12 +283,12 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {linha("Tipo de cliente", card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—")}
           {linha("Criticidade", crit ? CRITICIDADE_META[crit].rotulo : "—")}
           {linha("Número da conta", card.numeroConta ?? "—")}
-          {linha("Data da visita", dataBR(m.dataVisita))}
+          {m.tipo !== "ORCAMENTO" && linha("Data da visita", dataBR(m.dataVisita))}
           {linha("Turno", m.turno ? (TURNO_ROTULO[m.turno] ?? m.turno) : "—")}
           {linha("Agendado", m.agendado ? "Sim" : "Não")}
           {m.tipo && linha("Tipo de entrada", m.tipo === "ORCAMENTO" ? "Orçamento" : "Visita")}
           {m.tipo === "ORCAMENTO" && linha("Período", `${dataBR(m.dataInicio)} – ${dataBR(m.dataFim)}`)}
-          {linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
+          {m.tipo !== "ORCAMENTO" && linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
           {m.visitaCobrada && m.tipo !== "ORCAMENTO" && linha("Valor da visita", formatarBRL(m.valorVisita))}
           {linha("Técnico", m.tecnico ?? "—")}
           {linha("Auxiliar técnico", m.auxiliarTecnico ?? "—")}

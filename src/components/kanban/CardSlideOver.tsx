@@ -199,8 +199,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         {man.tipo === "ORCAMENTO" && <Campo rotulo="Data de fim" valor={fmtData(man.dataFim)} />}
                         <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                         <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
-                        <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />
-                        <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />
+                        {man.tipo !== "ORCAMENTO" && <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />}
+                        {man.tipo !== "ORCAMENTO" && <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />}
                         {man.visitaCobrada && man.tipo !== "ORCAMENTO" && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
                         {card.medicao?.visitaIsenta && <Campo rotulo="Visita Isenta" valor="Sim" destaque />}
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />

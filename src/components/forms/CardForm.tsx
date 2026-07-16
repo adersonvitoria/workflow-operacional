@@ -438,7 +438,11 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                           setM("dataInicio", undefined);
                           setM("dataFim", undefined);
                         }
-                        if (t === "ORCAMENTO") setM("valorVisita", undefined);
+                        if (t === "ORCAMENTO") {
+                          setM("valorVisita", undefined);
+                          setM("dataVisita", undefined);
+                          setM("visitaCobrada", undefined);
+                        }
                       }}
                       className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", man.tipo === t ? TIPO_ENTRADA_META[t].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}
                     >
@@ -460,11 +464,15 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                 </div>
               )}
 
-              <Campo label="Data da visita">
-                <input type="date" value={man.dataVisita ?? ""} onChange={(e) => setM("dataVisita", e.target.value || undefined)} className={inputCls} />
-              </Campo>
+              {/* Data da visita e Visita cobrada somem no tipo Orçamento. */}
+              {man.tipo !== "ORCAMENTO" && (
+                <Campo label="Data da visita">
+                  <input type="date" value={man.dataVisita ?? ""} onChange={(e) => setM("dataVisita", e.target.value || undefined)} className={inputCls} />
+                </Campo>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
+                {man.tipo !== "ORCAMENTO" && (
                 <Campo label="Visita cobrada">
                   <select
                     value={man.visitaCobrada ? "sim" : "nao"}
@@ -480,6 +488,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                     <option value="sim">Sim</option>
                   </select>
                 </Campo>
+                )}
                 <Campo label="Turno">
                   <select value={man.turno ?? ""} onChange={(e) => setM("turno", (e.target.value || undefined) as Turno | undefined)} className={inputCls}>
                     <option value="">—</option>
