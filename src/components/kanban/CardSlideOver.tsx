@@ -527,7 +527,7 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
 
   return (
     <Gate titulo="Execução em campo · agenda">
-      <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário durante todo o período informado.</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário nos dias úteis do período informado (sem fins de semana).</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
         <Campito label="Data de fim *"><input type="date" min={inicio || undefined} value={fim} onChange={(e) => setFim(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>

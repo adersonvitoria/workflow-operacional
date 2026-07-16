@@ -81,8 +81,8 @@ export function CalendarioView() {
   const agendados = useMemo(() => porFluxo("MANUTENCAO").filter((c) => !!diaVisita(c)), [porFluxo]);
   const semData = useMemo(() => porFluxo("MANUTENCAO").filter((c) => c.etapa === "ROTINA" && !diaVisita(c)).length, [porFluxo]);
 
-  // Implantação · Técnica-Execução: o card ocupa a agenda em TODOS os dias do
-  // período [início, fim] enquanto estiver na coluna de execução.
+  // Implantação · Técnica-Execução: o card ocupa a agenda nos dias ÚTEIS do
+  // período [início, fim] (sem fins de semana) enquanto estiver na execução.
   const execucoes = useMemo(
     () => porFluxo("IMPLANTACAO").filter((c) => c.etapa === "TECNICA" && c.dataInicioExecucao && c.dataFimExecucao),
     [porFluxo],
@@ -105,7 +105,8 @@ export function CalendarioView() {
     const mapa = new Map<string, Card[]>();
     for (const d of dias) {
       const ds = ymd(d);
-      mapa.set(ds, execucoes.filter((c) => ymdIso(c.dataInicioExecucao!) <= ds && ds <= ymdIso(c.dataFimExecucao!)));
+      const fimDeSemana = d.getDay() === 0 || d.getDay() === 6; // dom/sáb ficam fora
+      mapa.set(ds, fimDeSemana ? [] : execucoes.filter((c) => ymdIso(c.dataInicioExecucao!) <= ds && ds <= ymdIso(c.dataFimExecucao!)));
     }
     return mapa;
   }, [dias, execucoes]);
@@ -213,7 +214,7 @@ export function CalendarioView() {
                       ))}
                     </div>
                   )}
-                  {/* Implantação em execução: o card ocupa todos os dias do período. */}
+                  {/* Implantação em execução: ocupa os dias úteis do período (sem fds). */}
                   {execs.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
