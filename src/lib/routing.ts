@@ -251,12 +251,15 @@ export function destinosManutencao(etapa: EtapaManutencao): EtapaManutencao[] {
 /**
  * Destinos válidos de um card de manutenção. Os orçamentos complementares seguem
  * exatamente o mesmo fluxo dos cards comuns (a tag "Complementar" é só para
- * identificação, não altera o roteamento).
+ * identificação, não altera o roteamento). Cards do tipo "Visita" não passam
+ * pelo caminho de orçamento: no Cheque vão direto para Medição ou Encerrados.
  */
 export function destinosManutencaoCard(
-  card: Pick<Card, "etapa" | "complementar">,
+  card: Pick<Card, "etapa" | "complementar" | "manutencao">,
 ): EtapaManutencao[] {
-  return destinosManutencao(card.etapa as EtapaManutencao);
+  const etapa = card.etapa as EtapaManutencao;
+  if (etapa === "CHEQUE" && card.manutencao?.tipo === "VISITA") return ["ENCERRADOS", "MEDICAO"];
+  return destinosManutencao(etapa);
 }
 
 /** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */

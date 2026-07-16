@@ -95,7 +95,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ erro: "Use o botão Avançar para mover o card na Implantação." }, { status: 422 });
   }
   if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
-    const destinos = destinosManutencaoCard({ etapa: existente.etapa as EtapaManutencao, complementar: existente.complementar });
+    const destinos = destinosManutencaoCard({
+      etapa: existente.etapa as EtapaManutencao,
+      complementar: existente.complementar,
+      manutencao: (existente.manutencao as Card["manutencao"]) ?? undefined,
+    });
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
     }
