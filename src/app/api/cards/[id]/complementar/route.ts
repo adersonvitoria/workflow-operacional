@@ -33,7 +33,9 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ erro: "Seu perfil não pode gerar orçamento complementar nesta etapa." }, { status: 403 });
   }
 
-  const man = (origem.manutencao as { regiao?: string; tecnico?: string } | null) ?? {};
+  const man = (origem.manutencao as { regiao?: string; tecnico?: string; ordemServico?: string } | null) ?? {};
+  // Observações automáticas com base na Ordem de serviço da OS de origem.
+  const osRef = man.ordemServico?.trim() || `#${origem.codigo}`;
   const agora = new Date().toISOString();
   const qtd = await prisma.card.count({ where: { fluxo: "MANUTENCAO" } });
 
@@ -49,11 +51,12 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       clienteNome: origem.clienteNome,
       clienteTipo: origem.clienteTipo,
       numeroConta: origem.numeroConta,
-      manutencao: { regiao: man.regiao, tecnico: man.tecnico },
+      // Nasce como tipo Orçamento (esconde os campos de visita).
+      manutencao: { tipo: "ORCAMENTO", regiao: man.regiao, tecnico: man.tecnico },
       // Demais campos ficam em branco para edição posterior (Setor, valores, etc.)
       responsavelSetor: "ADMINISTRATIVO",
       responsavelPessoa: s.nome,
-      observacoes: `Orçamento complementar da OS #${origem.codigo}.`,
+      observacoes: `Orçamento Complementar da OS ${osRef}`,
       historico: [
         {
           id: "h0",

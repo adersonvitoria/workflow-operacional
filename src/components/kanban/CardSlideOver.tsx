@@ -195,6 +195,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     <Secao titulo="Atendimento">
                       <dl className="grid grid-cols-2 gap-3 text-sm">
                         {man.tipo && <Campo rotulo="Tipo de entrada" valor={man.tipo === "ORCAMENTO" ? "Orçamento" : "Visita"} destaque />}
+                        {man.tipo === "ORCAMENTO" && <Campo rotulo="Data de início" valor={fmtData(man.dataInicio)} />}
+                        {man.tipo === "ORCAMENTO" && <Campo rotulo="Data de fim" valor={fmtData(man.dataFim)} />}
                         <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                         <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
                         <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />

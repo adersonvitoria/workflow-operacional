@@ -102,6 +102,9 @@ export type TipoEntradaManutencao = "ORCAMENTO" | "VISITA";
 export interface DadosManutencao {
   /** Orçamento ou Visita — escolhido na criação/edição (novos cards). */
   tipo?: TipoEntradaManutencao;
+  /** Período do orçamento (YYYY-MM-DD) — exibido quando tipo = ORCAMENTO. */
+  dataInicio?: string;
+  dataFim?: string;
   visitaCobrada?: boolean;
   /** Valor da visita (R$) — só faz sentido quando visitaCobrada === true. */
   valorVisita?: number;

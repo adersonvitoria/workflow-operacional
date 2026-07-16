@@ -432,7 +432,12 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                       onClick={() => {
                         setM("tipo", t);
                         // Limpa os campos que não pertencem ao tipo escolhido.
-                        if (t === "VISITA") { set("numeroOrcamento", undefined); set("total", undefined); }
+                        if (t === "VISITA") {
+                          set("numeroOrcamento", undefined);
+                          set("total", undefined);
+                          setM("dataInicio", undefined);
+                          setM("dataFim", undefined);
+                        }
                         if (t === "ORCAMENTO") setM("valorVisita", undefined);
                       }}
                       className={["flex-1 rounded-lg px-3 py-2 text-sm font-semibold ring-1 ring-inset transition", man.tipo === t ? TIPO_ENTRADA_META[t].classe : "bg-white text-slate-500 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"].join(" ")}
@@ -442,6 +447,18 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
                   ))}
                 </div>
               </Campo>
+
+              {/* Período do orçamento: só aparece no tipo Orçamento. */}
+              {man.tipo === "ORCAMENTO" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Campo label="Data de início">
+                    <input type="date" value={man.dataInicio ?? ""} onChange={(e) => setM("dataInicio", e.target.value || undefined)} className={inputCls} />
+                  </Campo>
+                  <Campo label="Data de fim">
+                    <input type="date" value={man.dataFim ?? ""} onChange={(e) => setM("dataFim", e.target.value || undefined)} className={inputCls} />
+                  </Campo>
+                </div>
+              )}
 
               <Campo label="Data da visita">
                 <input type="date" value={man.dataVisita ?? ""} onChange={(e) => setM("dataVisita", e.target.value || undefined)} className={inputCls} />

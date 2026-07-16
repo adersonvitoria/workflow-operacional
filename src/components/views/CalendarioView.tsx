@@ -287,6 +287,7 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {linha("Turno", m.turno ? (TURNO_ROTULO[m.turno] ?? m.turno) : "—")}
           {linha("Agendado", m.agendado ? "Sim" : "Não")}
           {m.tipo && linha("Tipo de entrada", m.tipo === "ORCAMENTO" ? "Orçamento" : "Visita")}
+          {m.tipo === "ORCAMENTO" && linha("Período", `${dataBR(m.dataInicio)} – ${dataBR(m.dataFim)}`)}
           {linha("Visita cobrada", m.visitaCobrada ? "Sim" : "Não")}
           {m.visitaCobrada && m.tipo !== "ORCAMENTO" && linha("Valor da visita", formatarBRL(m.valorVisita))}
           {linha("Técnico", m.tecnico ?? "—")}
