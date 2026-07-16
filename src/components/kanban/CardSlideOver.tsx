@@ -323,14 +323,17 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       bloqueado = true;
                       aviso = "Informe o número e o valor do orçamento antes de enviar.";
                     }
-                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && (!card.medicao?.chamado?.trim() || !card.cr?.trim() || !card.medicao?.competencia?.trim())) {
-                      bloqueado = true;
-                      aviso = "Informe o nº do chamado, o CR e a competência para encerrar.";
-                    }
-                    // Visita Isenta exige o Nº do orçamento para encerrar.
-                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS" && card.medicao?.visitaIsenta && !card.numeroOrcamento?.trim()) {
-                      bloqueado = true;
-                      aviso = "Visita Isenta: informe o Nº do orçamento para encerrar.";
+                    // Visita Isenta: exige só o Nº do orçamento (chamado/CR/competência dispensados).
+                    if (card.etapa === "MEDICAO" && d === "ENCERRADOS") {
+                      if (card.medicao?.visitaIsenta) {
+                        if (!card.numeroOrcamento?.trim()) {
+                          bloqueado = true;
+                          aviso = "Visita Isenta: informe o Nº do orçamento para encerrar.";
+                        }
+                      } else if (!card.medicao?.chamado?.trim() || !card.cr?.trim() || !card.medicao?.competencia?.trim()) {
+                        bloqueado = true;
+                        aviso = "Informe o nº do chamado, o CR e a competência para encerrar.";
+                      }
                     }
                     return (
                       <div key={d}>
@@ -719,17 +722,25 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
     });
   }
 
-  const completo = !!chamado.trim() && !!cr.trim() && !!comp && (!isenta || !!numOrc.trim());
+  // Visita Isenta: só o Nº do orçamento é exigido; caso contrário, chamado + CR + competência.
+  const completo = isenta ? !!numOrc.trim() : !!chamado.trim() && !!cr.trim() && !!comp;
+  const salvo = isenta ? !!card.numeroOrcamento : !!(card.medicao?.chamado && card.cr && card.medicao?.competencia);
 
   return (
     <Gate titulo="Medição · Dados para encerrar">
-      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o nº do chamado, o CR e a competência para encerrar a OS.</p>
-      <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
-      <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chamado" className={inp} />
-      <label className="mt-2 block text-[10px] text-slate-400">CR (Centro de Resultado)</label>
-      <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={() => salvar()} placeholder="CR" className={inp} />
-      <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
-      <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        {isenta ? "Visita Isenta: informe o Nº do orçamento para encerrar a OS." : "Informe o nº do chamado, o CR e a competência para encerrar a OS."}
+      </p>
+      {!isenta && (
+        <>
+          <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
+          <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chamado" className={inp} />
+          <label className="mt-2 block text-[10px] text-slate-400">CR (Centro de Resultado)</label>
+          <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={() => salvar()} placeholder="CR" className={inp} />
+          <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
+          <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
+        </>
+      )}
 
       {/* Visita Isenta: quando marcada, o Nº do orçamento é obrigatório. */}
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -750,7 +761,7 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
       )}
 
       <button onClick={() => salvar()} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
-        {card.medicao?.chamado && card.cr && card.medicao?.competencia ? "✓ Dados salvos · atualizar" : "Salvar dados"}
+        {salvo ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
   );

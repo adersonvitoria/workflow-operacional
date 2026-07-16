@@ -111,20 +111,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         return NextResponse.json({ erro: "Informe o número e o valor do orçamento antes de enviar." }, { status: 422 });
       }
     }
-    // Medição → Encerrados exige nº do chamado, CR e competência (mês/ano).
+    // Medição → Encerrados: Visita Isenta exige só o Nº do orçamento; caso
+    // contrário, nº do chamado, CR e competência (mês/ano).
     if (existente.etapa === "MEDICAO" && body.etapa === "ENCERRADOS") {
       const medExistente = existente.medicao as { chamado?: string; competencia?: string; visitaIsenta?: boolean } | null;
-      const chamado = body.medicao?.chamado ?? medExistente?.chamado;
-      const competencia = body.medicao?.competencia ?? medExistente?.competencia;
-      const cr = body.cr ?? existente.cr;
-      if (!chamado || !String(chamado).trim() || !cr || !String(cr).trim() || !competencia || !String(competencia).trim()) {
-        return NextResponse.json({ erro: "Informe o nº do chamado, o CR e a competência antes de encerrar." }, { status: 422 });
-      }
-      // Visita Isenta exige o Nº do orçamento.
       const visitaIsenta = body.medicao?.visitaIsenta ?? medExistente?.visitaIsenta;
-      const numeroOrcamento = body.numeroOrcamento ?? existente.numeroOrcamento;
-      if (visitaIsenta && (!numeroOrcamento || !String(numeroOrcamento).trim())) {
-        return NextResponse.json({ erro: "Visita Isenta: informe o Nº do orçamento antes de encerrar." }, { status: 422 });
+      if (visitaIsenta) {
+        const numeroOrcamento = body.numeroOrcamento ?? existente.numeroOrcamento;
+        if (!numeroOrcamento || !String(numeroOrcamento).trim()) {
+          return NextResponse.json({ erro: "Visita Isenta: informe o Nº do orçamento antes de encerrar." }, { status: 422 });
+        }
+      } else {
+        const chamado = body.medicao?.chamado ?? medExistente?.chamado;
+        const competencia = body.medicao?.competencia ?? medExistente?.competencia;
+        const cr = body.cr ?? existente.cr;
+        if (!chamado || !String(chamado).trim() || !cr || !String(cr).trim() || !competencia || !String(competencia).trim()) {
+          return NextResponse.json({ erro: "Informe o nº do chamado, o CR e a competência antes de encerrar." }, { status: 422 });
+        }
       }
     }
   }
