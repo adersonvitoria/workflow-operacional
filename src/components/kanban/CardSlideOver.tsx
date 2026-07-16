@@ -553,6 +553,13 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
       />
       <label className="mt-2 block text-[10px] text-slate-400">Nº do chip</label>
       <input value={chip} onChange={(e) => setChip(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chip" className={inp} />
+      <button
+        onClick={() => salvar()}
+        disabled={periodoInvalido}
+        className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300"
+      >
+        {card.dataInicioExecucao && card.dataFimExecucao ? "✓ Dados salvos · atualizar" : "Salvar dados"}
+      </button>
     </Gate>
   );
 }
