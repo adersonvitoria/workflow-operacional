@@ -88,6 +88,13 @@ export function CalendarioView() {
     [porFluxo],
   );
 
+  // Manutenção · tipo Orçamento: preenche a agenda no período [início, fim],
+  // pulando os finais de semana. Sai da agenda ao encerrar.
+  const orcamentos = useMemo(
+    () => porFluxo("MANUTENCAO").filter((c) => c.etapa !== "ENCERRADOS" && c.manutencao?.tipo === "ORCAMENTO" && c.manutencao?.dataInicio && c.manutencao?.dataFim),
+    [porFluxo],
+  );
+
   const eventosPorDia = useMemo(() => {
     const mapa = new Map<string, Evento[]>();
     for (const d of dias) { const ds = ymd(d); mapa.set(ds, montarEventos(agendados.filter((c) => diaVisita(c) === ds))); }
@@ -103,9 +110,19 @@ export function CalendarioView() {
     return mapa;
   }, [dias, execucoes]);
 
+  const orcamentosPorDia = useMemo(() => {
+    const mapa = new Map<string, Card[]>();
+    for (const d of dias) {
+      const ds = ymd(d);
+      const fimDeSemana = d.getDay() === 0 || d.getDay() === 6; // dom/sáb ficam fora
+      mapa.set(ds, fimDeSemana ? [] : orcamentos.filter((c) => c.manutencao!.dataInicio! <= ds && ds <= c.manutencao!.dataFim!));
+    }
+    return mapa;
+  }, [dias, orcamentos]);
+
   const diasVisiveis = useMemo(
-    () => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) + (execucoesPorDia.get(ymd(d))?.length ?? 0) > 0),
-    [dias, eventosPorDia, execucoesPorDia],
+    () => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) + (execucoesPorDia.get(ymd(d))?.length ?? 0) + (orcamentosPorDia.get(ymd(d))?.length ?? 0) > 0),
+    [dias, eventosPorDia, execucoesPorDia, orcamentosPorDia],
   );
 
   // Técnicos (somente tipo TÉCNICO, não terceiros) sem OS hoje.
@@ -121,13 +138,14 @@ export function CalendarioView() {
   const rangeLabel = `${dias[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${dias[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
   const totalSemana = dias.reduce((s, d) => s + (eventosPorDia.get(ymd(d))?.length ?? 0), 0);
   const totalExec = dias.reduce((s, d) => s + (execucoesPorDia.get(ymd(d))?.length ?? 0), 0);
+  const totalOrc = dias.reduce((s, d) => s + (orcamentosPorDia.get(ymd(d))?.length ?? 0), 0);
 
   return (
     <>
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3 dark:border-slate-800 dark:bg-slate-900">
         <div>
           <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Calendário</h1>
-          <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){totalExec > 0 ? ` · ${totalExec} execução(ões) de implantação` : ""}{semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
+          <p className="text-xs text-slate-400">Semana · {totalSemana} visita(s){totalOrc > 0 ? ` · ${totalOrc} orçamento(s)` : ""}{totalExec > 0 ? ` · ${totalExec} execução(ões) de implantação` : ""}{semData > 0 ? ` · ${semData} rotina(s) a agendar` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="mr-2 hidden items-center gap-2 text-[11px] text-slate-500 sm:flex dark:text-slate-400">
@@ -159,6 +177,7 @@ export function CalendarioView() {
           {diasVisiveis.map((d) => {
             const evs = eventosPorDia.get(ymd(d)) ?? [];
             const execs = execucoesPorDia.get(ymd(d)) ?? [];
+            const orcs = orcamentosPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
               <div key={ymd(d)} className={["flex w-60 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
@@ -168,6 +187,32 @@ export function CalendarioView() {
                 </header>
 
                 <div className="flex-1 space-y-3 p-2">
+                  {/* Orçamentos (Manutenção): ocupam o período útil (sem fins de semana). */}
+                  {orcs.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
+                        <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                        Orçamentos <span className="text-slate-300 dark:text-slate-600">· {orcs.length}</span>
+                      </p>
+                      {orcs.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelecionado(c)}
+                          className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-indigo-50 text-indigo-800 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:ring-indigo-500/40"
+                        >
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="font-semibold">{dataBR(c.manutencao?.dataInicio)} – {dataBR(c.manutencao?.dataFim)}</span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />Orçamento</span>
+                          </div>
+                          <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
+                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.manutencao?.tecnico || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Região:</span> {c.manutencao?.regiao || "—"}</p>
+                          <p className="break-words"><span className="opacity-70">Nº orçamento:</span> {c.numeroOrcamento || "—"}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {/* Implantação em execução: o card ocupa todos os dias do período. */}
                   {execs.length > 0 && (
                     <div className="space-y-1.5">
@@ -275,7 +320,6 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
             {linha("Aux. Técnico", card.auxiliarTecnico ?? "—")}
             {linha("Nº do chip", card.numeroChip ?? "—")}
             {linha("Valor total", formatarBRL(card.valores.total))}
-            {linha("Data de cadastro", dataBR(card.datas?.abertura))}
             {card.observacoes && linha("Observações", card.observacoes)}
           </dl>
         ) : (
@@ -300,7 +344,6 @@ function DetalheCard({ card, onFechar }: { card: Card; onFechar: () => void }) {
           {m.tipo !== "VISITA" && linha("Valor do orçamento", formatarBRL(card.valores.total))}
           {linha("CR", card.cr ?? "—")}
           {linha("Chamado", card.medicao?.chamado ?? card.chamado ?? "—")}
-          {linha("Data de cadastro", dataBR(card.datas?.abertura))}
           {card.datas?.conclusao && linha("Encerrado em", dataBR(card.datas.conclusao))}
           {card.observacoes && linha("Observações", card.observacoes)}
         </dl>

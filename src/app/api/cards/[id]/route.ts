@@ -129,6 +129,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
+  // A data de fim nunca pode ser anterior à data de início (comparação por dia).
+  const dia = (v?: string | null) => (v ? String(v).slice(0, 10) : undefined);
+  const iniExec = body.dataInicioExecucao !== undefined ? dia(body.dataInicioExecucao) : dia(existente.dataInicioExecucao?.toISOString());
+  const fimExec = body.dataFimExecucao !== undefined ? dia(body.dataFimExecucao) : dia(existente.dataFimExecucao?.toISOString());
+  if (iniExec && fimExec && fimExec < iniExec) {
+    return NextResponse.json({ erro: "A data de fim não pode ser anterior à data de início." }, { status: 422 });
+  }
+  const manNova = (body.manutencao ?? existente.manutencao) as { dataInicio?: string; dataFim?: string } | null;
+  if (manNova?.dataInicio && manNova?.dataFim && dia(manNova.dataFim)! < dia(manNova.dataInicio)!) {
+    return NextResponse.json({ erro: "A data de fim não pode ser anterior à data de início." }, { status: 422 });
+  }
+
   const data = patchToData(body);
   // Ao retroceder na Implantação, desliga a tag de conferência (rewind manual).
   if (retrocessoCoordImpl) data.conferenciaSuprimentos = false;

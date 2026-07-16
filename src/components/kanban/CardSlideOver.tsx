@@ -154,7 +154,6 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           {card.crDedicado && <Campo rotulo="Nº do CR" valor={card.cr ?? "—"} />}
                           {card.temInvestimento && <Campo rotulo="Nº do chamado de investimento" valor={card.chamadoInvestimento ?? "—"} />}
                           <Campo rotulo="Documento" valor={card.cliente.documento ?? "—"} />
-                          <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                           {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                           {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
                         </dl>
@@ -216,7 +215,6 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
                         <Campo rotulo="CR" valor={card.cr ?? "—"} />
                         <Campo rotulo="Competência" valor={card.medicao?.competencia ?? "—"} />
-                        <Campo rotulo="Data de cadastro" valor={fmtData(card.datas?.abertura)} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
                         {man.tipo !== "VISITA" && <Campo rotulo="Valor do orçamento" valor={formatarBRL(card.valores.total)} destaque />}
@@ -510,15 +508,21 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
+  // A data de fim nunca pode ser anterior à data de início.
+  const periodoInvalido = !!inicio && !!fim && fim < inicio;
+
   function salvar(over: Partial<Card> = {}) {
-    patch({
-      dataInicioExecucao: inicio || undefined,
-      dataFimExecucao: fim || undefined,
+    const base: Partial<Card> = {
       tecnicos: tecnico.trim() || undefined,
       auxiliarTecnico: auxiliar.trim() || undefined,
       numeroChip: chip.trim() || undefined,
-      ...over,
-    });
+    };
+    // Período inválido não é salvo (aviso na tela).
+    if (!periodoInvalido) {
+      base.dataInicioExecucao = inicio || undefined;
+      base.dataFimExecucao = fim || undefined;
+    }
+    patch({ ...base, ...over });
   }
 
   return (
@@ -526,8 +530,11 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
       <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário durante todo o período informado.</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
-        <Campito label="Data de fim *"><input type="date" value={fim} onChange={(e) => setFim(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
+        <Campito label="Data de fim *"><input type="date" min={inicio || undefined} value={fim} onChange={(e) => setFim(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>
       </div>
+      {periodoInvalido && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ A data de fim não pode ser anterior à data de início.</p>
+      )}
       <label className="mt-2 block text-[10px] text-slate-400">Técnico</label>
       <ComboPessoa
         value={tecnico}

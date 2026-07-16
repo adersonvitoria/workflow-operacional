@@ -69,6 +69,10 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   if (!b.clienteNome) return NextResponse.json({ erro: "Informe o cliente." }, { status: 400 });
+  // Período do orçamento (Manutenção): fim nunca anterior ao início.
+  if (b.manutencao?.dataInicio && b.manutencao?.dataFim && String(b.manutencao.dataFim) < String(b.manutencao.dataInicio)) {
+    return NextResponse.json({ erro: "A data de fim não pode ser anterior à data de início." }, { status: 422 });
+  }
 
   const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : "IMPLANTACAO";
   await carregarConfigPerfis();

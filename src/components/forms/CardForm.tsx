@@ -158,6 +158,10 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
       return;
     }
     // Manutenção: sem valores/itens — só os campos da entrada.
+    const m = form.manutencao ?? {};
+    if (m.dataInicio && m.dataFim && m.dataFim < m.dataInicio) {
+      return setErro("A data de fim não pode ser anterior à data de início.");
+    }
     onSubmit({ ...form });
   }
 
@@ -454,14 +458,19 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
 
               {/* Período do orçamento: só aparece no tipo Orçamento. */}
               {man.tipo === "ORCAMENTO" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Campo label="Data de início">
-                    <input type="date" value={man.dataInicio ?? ""} onChange={(e) => setM("dataInicio", e.target.value || undefined)} className={inputCls} />
-                  </Campo>
-                  <Campo label="Data de fim">
-                    <input type="date" value={man.dataFim ?? ""} onChange={(e) => setM("dataFim", e.target.value || undefined)} className={inputCls} />
-                  </Campo>
-                </div>
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Data de início">
+                      <input type="date" value={man.dataInicio ?? ""} onChange={(e) => setM("dataInicio", e.target.value || undefined)} className={inputCls} />
+                    </Campo>
+                    <Campo label="Data de fim">
+                      <input type="date" min={man.dataInicio} value={man.dataFim ?? ""} onChange={(e) => setM("dataFim", e.target.value || undefined)} className={inputCls} />
+                    </Campo>
+                  </div>
+                  {man.dataInicio && man.dataFim && man.dataFim < man.dataInicio && (
+                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ A data de fim não pode ser anterior à data de início.</p>
+                  )}
+                </>
               )}
 
               {/* Data da visita e Visita cobrada somem no tipo Orçamento. */}
