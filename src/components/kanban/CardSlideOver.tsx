@@ -409,7 +409,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     }
                     if (card.etapa === "CLASSIFICACAO" && d === "PEDIDO_FORNECEDOR" && !classificacaoComprasCompleta(card)) {
                       bloqueado = true;
-                      aviso = "Classifique todos os itens (tipo de custo e centro de custo) antes de avançar.";
+                      aviso = "Classifique os itens a comprar (tipo de custo e centro de custo) — itens em estoque dispensam.";
                     }
                     return (
                       <div key={d}>
@@ -831,10 +831,14 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
               </div>
             )}
             {modo === "classificacao" && (
-              <div className="mt-1.5 flex gap-2">
-                <input value={i.tipoCusto ?? ""} onChange={(e) => set(i.id, { tipoCusto: e.target.value })} placeholder="Tipo de custo" className={inp} />
-                <input value={i.centroCusto ?? ""} onChange={(e) => set(i.id, { centroCusto: e.target.value })} placeholder="Centro de custo" className={inp} />
-              </div>
+              i.estoque === "EM_ESTOQUE" ? (
+                <p className="mt-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">✓ Em estoque — dispensa tipo de custo e centro de custo.</p>
+              ) : (
+                <div className="mt-1.5 flex gap-2">
+                  <input value={i.tipoCusto ?? ""} onChange={(e) => set(i.id, { tipoCusto: e.target.value })} placeholder="Tipo de custo" className={inp} />
+                  <input value={i.centroCusto ?? ""} onChange={(e) => set(i.id, { centroCusto: e.target.value })} placeholder="Centro de custo" className={inp} />
+                </div>
+              )
             )}
             {modo === "pedido" && (
               <div className="mt-1.5 flex gap-2">

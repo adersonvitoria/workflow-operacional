@@ -114,7 +114,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (existente.etapa === "CLASSIFICACAO" && body.etapa === "PEDIDO_FORNECEDOR") {
       const itens = (body.itensCompra ?? existente.itensCompra ?? []) as Card["itensCompra"];
       if (!classificacaoComprasCompleta({ itensCompra: itens ?? [] })) {
-        return NextResponse.json({ erro: "Classifique todos os itens (tipo de custo e centro de custo) antes de avançar." }, { status: 422 });
+        return NextResponse.json({ erro: "Classifique os itens a comprar (tipo de custo e centro de custo) antes de avançar — itens em estoque dispensam." }, { status: 422 });
       }
     }
   }

@@ -345,10 +345,15 @@ export function etapaAnteriorCompras(etapa: EtapaCompras): EtapaCompras | null {
   return i > 0 ? ORDEM_COMPRAS[i - 1] : null;
 }
 
-/** Gate da Classificação: todo item precisa de tipo de custo + centro de custo. */
+/**
+ * Gate da Classificação: só os itens a COMPRAR (não marcados como em estoque)
+ * precisam de tipo de custo + centro de custo — item em estoque dispensa.
+ */
 export function classificacaoComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
   const itens = card.itensCompra ?? [];
-  return itens.length > 0 && itens.every((i) => !!i.tipoCusto?.trim() && !!i.centroCusto?.trim());
+  return itens.length > 0 && itens.every(
+    (i) => i.estoque === "EM_ESTOQUE" || (!!i.tipoCusto?.trim() && !!i.centroCusto?.trim()),
+  );
 }
 
 /** Gate da Entrega: quando há itens, todos precisam da data de entrega. */
