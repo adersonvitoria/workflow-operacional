@@ -894,17 +894,21 @@ function inputParaComp(v: string): string {
  * de gate que o perfil Medição tem permissão de gravar nesta etapa).
  */
 function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
+  // Valor sugerido: total do orçamento ou, na falta, a visita cobrada.
+  const valorSugerido = card.valores.total ?? (card.manutencao?.visitaCobrada ? card.manutencao.valorVisita : undefined);
   const [chamado, setChamado] = useState(card.medicao?.chamado ?? card.chamado ?? "");
   const [cr, setCr] = useState(card.cr ?? "");
   const [comp, setComp] = useState(compParaInput(card.medicao?.competencia));
   const [isenta, setIsenta] = useState(!!card.medicao?.visitaIsenta);
   const [numOrc, setNumOrc] = useState(card.numeroOrcamento ?? "");
+  const [valor, setValor] = useState(card.medicao?.valorMedicao != null ? String(card.medicao.valorMedicao) : (valorSugerido != null ? String(valorSugerido) : ""));
   useEffect(() => {
     setChamado(card.medicao?.chamado ?? card.chamado ?? "");
     setCr(card.cr ?? "");
     setComp(compParaInput(card.medicao?.competencia));
     setIsenta(!!card.medicao?.visitaIsenta);
     setNumOrc(card.numeroOrcamento ?? "");
+    setValor(card.medicao?.valorMedicao != null ? String(card.medicao.valorMedicao) : (valorSugerido != null ? String(valorSugerido) : ""));
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -912,10 +916,11 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
   function salvar(isentaAtual = isenta) {
     const c = chamado.trim();
     const comper = comp ? inputParaComp(comp) : undefined;
+    const v = valor.trim() ? Number(valor.replace(",", ".")) : undefined;
     patch({
       cr: cr.trim() || undefined,
       numeroOrcamento: numOrc.trim() || undefined,
-      medicao: { ...card.medicao, chamado: c || undefined, competencia: comper, visitaIsenta: isentaAtual },
+      medicao: { ...card.medicao, chamado: c || undefined, competencia: comper, visitaIsenta: isentaAtual, valorMedicao: Number.isFinite(v) ? v : undefined },
     });
   }
 
@@ -937,6 +942,12 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
           <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
           <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
         </>
+      )}
+
+      <label className="mt-2 block text-[10px] text-slate-400">Valor da medição (R$)</label>
+      <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
+      {valorSugerido != null && !valor.trim() && (
+        <p className="mt-1 text-[11px] text-slate-400">Sugerido: {formatarBRL(valorSugerido)} ({card.valores.total != null ? "orçamento" : "visita cobrada"}).</p>
       )}
 
       {/* Visita Isenta: quando marcada, o Nº do orçamento é obrigatório. */}

@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useCards } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { podeGerarRelatorio } from "@/lib/perfis";
-import { competenciaDoCard, formatarBRL, STATUS_META, valorDoCard } from "@/lib/flows";
+import { competenciaDoCard, formatarBRL, origemValorDoCard, STATUS_META, valorDoCard, valorVisitaDoCard } from "@/lib/flows";
 import { rotuloEtapa } from "@/lib/routing";
-import type { Card } from "@/types";
+import type { Card, Fluxo } from "@/types";
 
 const PGTO: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado" };
+const FLUXO_ROTULO: Record<Fluxo, string> = { IMPLANTACAO: "Implantação", MANUTENCAO: "Manutenção", COMPRAS: "Compras" };
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 function dataBR(iso?: string) {
@@ -68,6 +69,12 @@ export function RelatoriosView() {
 
   // Tudo filtrado pela competência informada na Medição.
   const daComp = useMemo(() => cards.filter((c) => competenciaDoCard(c) === competencia), [cards, competencia]);
+  // OS encerradas sem competência de medição não entram em nenhuma competência —
+  // o aviso dá visibilidade para a Medição regularizar.
+  const encerradosSemComp = useMemo(
+    () => cards.filter((c) => c.etapa === "ENCERRADOS" && !competenciaDoCard(c)).length,
+    [cards],
+  );
   const implComp = daComp.filter((c) => c.fluxo === "IMPLANTACAO");
   // Manutenção no relatório: somente as OS encerradas.
   const manutComp = daComp.filter((c) => c.fluxo === "MANUTENCAO" && c.etapa === "ENCERRADOS");
@@ -138,6 +145,11 @@ export function RelatoriosView() {
 
       <div className="flex-1 overflow-y-auto bg-surface-app p-6 scrollbar-hide dark:bg-slate-950">
         <div className="print-area mx-auto max-w-4xl rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
+          {!cardUnico && modo !== "cliente" && encerradosSemComp > 0 && (
+            <p className="no-print mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">
+              ⚠ {encerradosSemComp} card(s) encerrado(s) sem competência de medição — não aparecem em nenhuma competência destes relatórios.
+            </p>
+          )}
           {cardUnico ? (
             <RelatorioCard card={cardUnico} />
           ) : modo === "esteiras" ? (
@@ -186,6 +198,7 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
               <th className="py-1.5 pr-2 font-medium">Cliente</th>
               <th className="py-1.5 pr-2 font-medium">Etapa</th>
               <th className="py-1.5 pr-2 font-medium">Status</th>
+              <th className="py-1.5 pr-2 font-medium">Origem do valor</th>
               <th className="py-1.5 pr-2 text-right font-medium">Valor</th>
             </tr>
           </thead>
@@ -196,13 +209,14 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
                 <td className="py-1.5 pr-2">{c.cliente.nome}</td>
                 <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
                 <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
+                <td className="py-1.5 pr-2">{origemValorDoCard(c)}</td>
                 <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(valorDoCard(c))}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={4}>Subtotal {titulo}</td>
+              <td className="py-2" colSpan={5}>Subtotal {titulo}</td>
               <td className="py-2 text-right">{formatarBRL(total)}</td>
             </tr>
           </tfoot>
@@ -215,12 +229,16 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
 function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; impl: Card[]; manut: Card[] }) {
   const totImpl = impl.reduce((s, c) => s + valorDoCard(c), 0);
   const totManut = manut.reduce((s, c) => s + valorDoCard(c), 0);
+  // Visitas cobradas da competência (recorte informativo — já compõem o total).
+  const comVisita = manut.filter((c) => valorVisitaDoCard(c) > 0);
+  const totVisitas = comVisita.reduce((s, c) => s + valorVisitaDoCard(c), 0);
   return (
     <>
       <Cabecalho subtitulo={`Resultados das esteiras · Competência ${compLabel(competencia)}`} />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <ResumoBox titulo="Implantação" qtd={impl.length} valor={totImpl} />
         <ResumoBox titulo="Manutenção (encerrados)" qtd={manut.length} valor={totManut} />
+        <ResumoBox titulo="Visitas cobradas" qtd={comVisita.length} valor={totVisitas} />
         <ResumoBox titulo="Total geral" qtd={impl.length + manut.length} valor={totImpl + totManut} destaque />
       </div>
       <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
@@ -256,7 +274,7 @@ function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
             {cards.map((c) => (
               <tr key={c.id} className="text-slate-700 dark:text-slate-200">
                 <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
-                <td className="py-1.5 pr-2">{c.fluxo === "IMPLANTACAO" ? "Implantação" : "Manutenção"}</td>
+                <td className="py-1.5 pr-2">{FLUXO_ROTULO[c.fluxo]}</td>
                 <td className="py-1.5 pr-2">{c.cliente.nome}</td>
                 <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
                 <td className="py-1.5 pr-2">{competenciaDoCard(c) || "—"}</td>
@@ -300,7 +318,7 @@ function RelatorioCompetencia({ competencia, cards, total }: { competencia: stri
             {cards.map((c) => (
               <tr key={c.id} className="text-slate-700 dark:text-slate-200">
                 <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
-                <td className="py-1.5 pr-2">{c.fluxo === "IMPLANTACAO" ? "Implantação" : "Manutenção"}</td>
+                <td className="py-1.5 pr-2">{FLUXO_ROTULO[c.fluxo]}</td>
                 <td className="py-1.5 pr-2">{c.cliente.nome}</td>
                 <td className="py-1.5 pr-2">{c.cr ?? "—"}</td>
                 <td className="py-1.5 pr-2">{c.medicao?.chamado ?? c.chamado ?? "—"}</td>
@@ -329,18 +347,26 @@ function RelatorioCard({ card }: { card: Card }) {
       <span className="font-medium text-slate-800 dark:text-slate-100">{v}</span>
     </div>
   );
+  const man = card.manutencao;
   return (
     <>
       <Cabecalho subtitulo={`Relatório de Medição · Card #${card.codigo}`} />
+      {linha("Esteira", FLUXO_ROTULO[card.fluxo])}
       {linha("Nº Implantar", m.numeroImplantar ?? card.codigo)}
       {linha("Competência", compLabel(m.competencia ?? ""))}
       {linha("Cliente", card.cliente.nome)}
       {linha("CR", card.cr ?? "—")}
       {linha("Chamado", m.chamado ?? card.chamado ?? "—")}
+      {man?.tipo && linha("Tipo de entrada", man.tipo === "ORCAMENTO" ? "Orçamento" : "Visita")}
+      {card.numeroOrcamento && linha("Nº do orçamento", card.numeroOrcamento)}
+      {card.valores.total != null && linha("Valor do orçamento", formatarBRL(card.valores.total))}
+      {man?.visitaCobrada && linha("Visita cobrada", formatarBRL(man.valorVisita))}
+      {m.visitaIsenta && linha("Visita Isenta", "Sim")}
       {linha("Data de abertura", dataBR(m.dataAbertura))}
       {linha("Forma de pagamento", PGTO[m.formaPagamento ?? ""] ?? "—")}
       {linha("Parcelas", m.parcelas ?? "—")}
       {linha("Valor da medição", formatarBRL(m.valorMedicao))}
+      {linha("Valor considerado nos relatórios", `${formatarBRL(valorDoCard(card))} (${origemValorDoCard(card)})`)}
       {m.finalizadoPor && <p className="mt-3 text-[11px] text-slate-400">Finalizado por {m.finalizadoPor} em {dataBR(m.finalizadoEm)}.</p>}
     </>
   );

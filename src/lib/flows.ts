@@ -357,9 +357,32 @@ export function mesDoCard(c: Pick<Card, "datas">): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Valor de referência do card: medição (faturado) > total > mensal. */
-export function valorDoCard(c: Pick<Card, "medicao" | "valores">): number {
-  return c.medicao?.valorMedicao ?? c.valores?.total ?? c.valores?.mensal ?? 0;
+/** Valor da visita (Manutenção): só conta quando a visita é cobrada. */
+export function valorVisitaDoCard(c: Pick<Card, "manutencao">): number {
+  return c.manutencao?.visitaCobrada ? c.manutencao.valorVisita ?? 0 : 0;
+}
+
+/**
+ * Valor de referência do card:
+ * 1. Medição (faturado), quando registrada — é o valor definitivo;
+ * 2. senão, o total do orçamento/projeto + a visita cobrada (Manutenção);
+ * 3. sem total, a recorrência (locação + mensalidade) + a visita cobrada.
+ */
+export function valorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">): number {
+  if (c.medicao?.valorMedicao != null) return c.medicao.valorMedicao;
+  const recorrente = (c.valores?.locacao ?? 0) + (c.valores?.mensal ?? 0);
+  const base = c.valores?.total ?? recorrente;
+  return base + valorVisitaDoCard(c);
+}
+
+/** De onde veio o valor de referência (exibido nos relatórios). */
+export function origemValorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">): string {
+  if (c.medicao?.valorMedicao != null) return "Medição";
+  const partes: string[] = [];
+  if (c.valores?.total != null) partes.push("Orçamento/Total");
+  else if ((c.valores?.locacao ?? 0) + (c.valores?.mensal ?? 0) > 0) partes.push("Locação/Mensal");
+  if (valorVisitaDoCard(c) > 0) partes.push("Visita");
+  return partes.join(" + ") || "—";
 }
 
 /**
