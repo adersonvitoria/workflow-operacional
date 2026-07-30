@@ -370,6 +370,13 @@ export interface Card {
   /** Compras: itens do orçamento (um card por orçamento, itens dentro). */
   itensCompra?: ItemCompra[];
 
+  /**
+   * Compras: esteira de ORIGEM do card. Define a volta ao concluir a Entrega
+   * (Manutenção → Agendamento · Implantação → Monitoramento) e a tag de
+   * identificação no board de Compras.
+   */
+  origemCompras?: "MANUTENCAO" | "IMPLANTACAO";
+
   sigma?: SigmaSync;
   manutencao?: DadosManutencao;
   observacoes?: string;

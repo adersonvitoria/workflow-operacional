@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   COMPLEMENTAR_META,
   CONFERENCIA_META,
+  ORIGEM_IMPLANTACAO_META,
   criticidadeDoCard,
   CRITICIDADE_META,
   duracaoAteEncerrar,
@@ -43,10 +44,10 @@ interface CardSlideOverProps {
   onExcluir: () => void;
   /** Manutenção · Cheque: gera um Orçamento Complementar na coluna Orçamento. */
   onOrcamentoComplementar: () => void;
-  /** Manutenção · Aprovado: envia o card para a esteira de Compras (Separação). */
+  /** Envia o card à esteira de Compras (Manutenção·Aprovado ou Implantação·Coordenação). */
   onEnviarCompras: () => void;
-  /** Compras · Entrega (final): devolve a OS à Manutenção (Agendamento). */
-  onEnviarManutencao: () => void;
+  /** Compras · Entrega (final): devolve o card à esteira de origem. */
+  onConcluirEntrega: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -55,7 +56,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras, onEnviarManutencao }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras, onConcluirEntrega }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -102,6 +103,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 {card.complementar && <Tag classe={COMPLEMENTAR_META.classe}>{COMPLEMENTAR_META.rotulo}</Tag>}
+                {card.fluxo === "COMPRAS" && card.origemCompras === "IMPLANTACAO" && (
+                  <Tag classe={ORIGEM_IMPLANTACAO_META.classe}>{ORIGEM_IMPLANTACAO_META.rotulo}</Tag>
+                )}
                 {card.conferenciaSuprimentos && <Tag classe={CONFERENCIA_META.classe}>{CONFERENCIA_META.rotulo}</Tag>}
                 {card.modalidade && <Tag classe={MODALIDADE_META[card.modalidade].classe}>{MODALIDADE_META[card.modalidade].rotulo}</Tag>}
                 <Tag classe={STATUS_META[card.status].classe}>{STATUS_META[card.status].rotulo}</Tag>
@@ -336,16 +340,31 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
 
             {card.fluxo === "IMPLANTACAO" ? (
               <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-                {podeAgir && !validacao.ok && validacao.motivo && (
-                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {validacao.motivo}</p>
+                {/* Coordenação: o cheque aprova o escopo e envia o card à esteira de Compras. */}
+                {card.etapa === "COORDENACAO_APROVACAO" ? (
+                  podeAgir && (
+                    <button
+                      onClick={onEnviarCompras}
+                      className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                      title="Aprova o escopo e envia o card à esteira de Compras (Separação); após a Entrega ele volta ao Monitoramento"
+                    >
+                      ✓ Dar cheque e enviar para Compras · Separação →
+                    </button>
+                  )
+                ) : (
+                  <>
+                    {podeAgir && !validacao.ok && validacao.motivo && (
+                      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {validacao.motivo}</p>
+                    )}
+                    <button
+                      onClick={onAvancar}
+                      disabled={!validacao.ok || !podeAgir}
+                      className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", validacao.ok && podeAgir ? "bg-brand text-white hover:bg-brand-700" : "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"].join(" ")}
+                    >
+                      {validacao.ok && validacao.proxima ? `Avançar para ${rotuloEtapa(validacao.proxima)} →` : "Avançar etapa"}
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={onAvancar}
-                  disabled={!validacao.ok || !podeAgir}
-                  className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", validacao.ok && podeAgir ? "bg-brand text-white hover:bg-brand-700" : "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"].join(" ")}
-                >
-                  {validacao.ok && validacao.proxima ? `Avançar para ${rotuloEtapa(validacao.proxima)} →` : "Avançar etapa"}
-                </button>
                 {ehCoordenador && anteriorImpl && (
                   <button
                     onClick={() => onPatch({ etapa: anteriorImpl })}
@@ -359,21 +378,22 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
             ) : card.fluxo === "COMPRAS" ? (
               ((podeAgir && (destinosCompra.length > 0 || card.etapa === "ENTREGA")) || (ehCoordenador && anteriorCompra)) && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-                  {/* Entrega (final): concluída, a OS volta ao Agendamento da Manutenção. */}
+                  {/* Entrega (final): concluída, o card volta à esteira de ORIGEM. */}
                   {podeAgir && card.etapa === "ENTREGA" && (() => {
                     const bloqueado = !entregaComprasCompleta(card);
+                    const destino = card.origemCompras === "IMPLANTACAO" ? "Implantação (Monitoramento)" : "Manutenção (Agendamento)";
                     return (
                       <div>
                         {bloqueado && (
                           <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ Registre a data de entrega de todos os itens antes de concluir.</p>
                         )}
                         <button
-                          onClick={() => !bloqueado && onEnviarManutencao()}
+                          onClick={() => !bloqueado && onConcluirEntrega()}
                           disabled={bloqueado}
                           className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", bloqueado ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500" : "bg-brand text-white hover:bg-brand-700"].join(" ")}
-                          title="A OS volta para a esteira de Manutenção, na coluna Agendamento"
+                          title={`O card volta para a esteira de origem: ${destino}`}
                         >
-                          Concluir entrega · Manutenção (Agendamento) →
+                          Concluir entrega · {destino} →
                         </button>
                       </div>
                     );
@@ -512,7 +532,17 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
   }
 
   if (etapa === "COORDENACAO_APROVACAO") {
-    return <AprovacaoCoordenacao card={card} patch={patch} />;
+    // O cheque (botão no rodapé) aprova o escopo e envia o card à esteira de
+    // Compras — a classificação dos itens acontece lá (Classificação).
+    return (
+      <Gate titulo="Coordenação · cheque">
+        <p className="text-xs text-slate-600 dark:text-slate-300">
+          {card.aprovacaoInicial?.aprovado
+            ? "✓ Escopo aprovado."
+            : "Dê o cheque no rodapé para aprovar o escopo e enviar o card à esteira de Compras (Separação). Após a Entrega, ele volta ao Monitoramento."}
+        </p>
+      </Gate>
+    );
   }
 
   if (etapa === "ALMOXARIFADO") {

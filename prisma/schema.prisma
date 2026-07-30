@@ -189,6 +189,10 @@ model Card {
   historico        Json @default("[]")
   itensCompra      Json @default("[]") // Compras: itens do orçamento (card por orçamento)
 
+  // Compras: esteira de ORIGEM do card (MANUTENCAO ou IMPLANTACAO). Define a
+  // volta ao concluir a Entrega: Manutenção→Agendamento · Implantação→Monitoramento.
+  origemCompras String?
+
   observacoes String?
 
   // Manutenção · coluna Orçamento: nome do PDF anexado (obrigatório p/ enviar

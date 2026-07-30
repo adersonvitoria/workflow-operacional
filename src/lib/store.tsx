@@ -62,10 +62,10 @@ interface CardsContextValue {
   obter: (id: string) => Card | undefined;
   criar: (input: NovoCardInput) => Promise<Card | null>;
   criarComplementar: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
-  /** Aprovado (Manutenção): envia o card para a esteira de Compras (Separação). */
+  /** Envia o card à esteira de Compras (Manutenção·Aprovado ou Implantação·Coordenação). */
   enviarParaCompras: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
-  /** Entrega (Compras): devolve a OS à Manutenção (Agendamento). */
-  enviarParaManutencao: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
+  /** Entrega (Compras): devolve o card à esteira de origem (Manutenção ou Implantação). */
+  concluirEntrega: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
   atualizar: (id: string, patch: Partial<Card>) => Promise<void>;
   avancar: (id: string) => Promise<{ ok: boolean; motivo?: string }>;
   remover: (id: string) => Promise<void>;
@@ -157,8 +157,8 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
     return { ok: true, card };
   }, []);
 
-  const enviarParaManutencao = useCallback(async (id: string) => {
-    const { ok, json } = await api(`/api/cards/${id}/enviar-manutencao`, { method: "POST" });
+  const concluirEntrega = useCallback(async (id: string) => {
+    const { ok, json } = await api(`/api/cards/${id}/concluir-entrega`, { method: "POST" });
     if (!ok) return { ok: false, motivo: json.erro as string };
     const card = json.card as Card;
     setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));
@@ -185,8 +185,8 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<CardsContextValue>(
-    () => ({ cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, enviarParaManutencao, atualizar, avancar, remover, recarregar }),
-    [cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, enviarParaManutencao, atualizar, avancar, remover, recarregar],
+    () => ({ cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover, recarregar }),
+    [cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover, recarregar],
   );
 
   return <CardsContext.Provider value={value}>{children}</CardsContext.Provider>;

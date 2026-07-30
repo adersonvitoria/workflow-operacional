@@ -101,22 +101,8 @@ export const COLUNAS_IMPLANTACAO: ColunaConfig[] = [
     id: "COORDENACAO_APROVACAO",
     titulo: "Coordenação · Aprovação",
     setorResponsavel: "COORDENACAO",
-    descricao: "Avaliação do escopo — precisa de aprovação para seguir",
+    descricao: "Cheque da Coordenação — envia o card para a esteira de Compras",
     accent: "bg-amber-500",
-  },
-  {
-    id: "ALMOXARIFADO",
-    titulo: "Almoxarifado",
-    setorResponsavel: "ALMOXARIFADO",
-    descricao: "Somente Venda · confere item a item (em estoque x faltante)",
-    accent: "bg-purple-500",
-  },
-  {
-    id: "SUPRIMENTOS",
-    titulo: "Suprimentos",
-    setorResponsavel: "COMPRAS",
-    descricao: "Compra os faltantes (Venda) / 100% dos itens (Locação)",
-    accent: "bg-indigo-500",
   },
   {
     id: "MONITORAMENTO",
@@ -234,6 +220,13 @@ export const CONFERENCIA_META = {
   rotulo: "Conferência",
   classe: "bg-cyan-50 text-cyan-700 ring-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-500/30",
   ponto: "bg-cyan-500",
+} as const;
+
+/** Tag de origem IMPLANTAÇÃO (esteira de Compras) — azul. */
+export const ORIGEM_IMPLANTACAO_META = {
+  rotulo: "Implantação",
+  classe: "bg-blue-50 text-blue-700 ring-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-500/30",
+  ponto: "bg-blue-600",
 } as const;
 
 /**

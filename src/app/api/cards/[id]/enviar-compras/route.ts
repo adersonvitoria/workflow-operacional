@@ -5,13 +5,16 @@ import { podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { extracaoConfigurada, extrairOrcamentoPdf } from "@/lib/extrair-orcamento";
 import { rowToCard } from "@/lib/mappers";
+import type { ItemMaterial } from "@/types";
 
 export const maxDuration = 60; // extração de itens do PDF pode levar alguns segundos
 
 /**
- * Aprovado (Manutenção): o card muda de esteira — vai para COMPRAS, entrando
- * na coluna Separação (Almoxarifado). Na falta de itens, eles são extraídos
- * do PDF do orçamento anexado pela IA (melhor esforço).
+ * Envia um card para a esteira de COMPRAS (coluna Separação), guardando a
+ * esteira de origem para a volta ao concluir a Entrega:
+ * - MANUTENÇÃO · Aprovado → origem MANUTENCAO (volta ao Agendamento);
+ * - IMPLANTAÇÃO · Coordenação → o cheque da Coordenação aprova o escopo e
+ *   envia — origem IMPLANTACAO (volta ao Monitoramento).
  */
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const s = await obterSessao();
@@ -20,19 +23,34 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const original = await prisma.card.findUnique({ where: { id: params.id } });
   if (!original) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
-  if (original.fluxo !== "MANUTENCAO" || original.etapa !== "ORC_APROVADO") {
-    return NextResponse.json({ erro: "Só cards Aprovados da Manutenção podem ser enviados às Compras." }, { status: 422 });
+
+  const deManutencao = original.fluxo === "MANUTENCAO" && original.etapa === "ORC_APROVADO";
+  const deImplantacao = original.fluxo === "IMPLANTACAO" && original.etapa === "COORDENACAO_APROVACAO";
+  if (!deManutencao && !deImplantacao) {
+    return NextResponse.json({ erro: "Só cards Aprovados (Manutenção) ou na Coordenação (Implantação) vão para Compras." }, { status: 422 });
   }
-  if (!podeExecutarEtapa(s.perfil, "ORC_APROVADO")) {
+  if (!podeExecutarEtapa(s.perfil, original.etapa, original.modalidade ?? undefined)) {
     return NextResponse.json({ erro: "Seu perfil não pode executar a ação desta etapa." }, { status: 403 });
   }
 
   const agora = new Date().toISOString();
 
-  // Itens da esteira de Compras: os já existentes no card ou, na falta, os
-  // extraídos do PDF anexado pela IA (melhor esforço — sem itens, edita depois).
+  // Itens da esteira de Compras: os já existentes no card; na falta,
+  // Implantação usa os itens do projeto (materiais) e Manutenção extrai do
+  // PDF do orçamento anexado via IA (melhor esforço).
   let itens = Array.isArray(original.itensCompra) ? (original.itensCompra as object[]) : [];
-  if (itens.length === 0 && extracaoConfigurada()) {
+  if (itens.length === 0 && deImplantacao) {
+    const materiais = (Array.isArray(original.materiais) ? original.materiais : []) as unknown as ItemMaterial[];
+    itens = materiais
+      .filter((m) => m && typeof m.descricao === "string" && m.descricao.trim())
+      .map((m, idx) => ({
+        id: `ic-${idx}-${agora.slice(-6)}`,
+        quantidade: Number.isFinite(Number(m.quantidade)) && Number(m.quantidade) > 0 ? Number(m.quantidade) : 1,
+        material: m.descricao.trim(),
+        statusPagamento: "PENDENTE",
+      }));
+  }
+  if (itens.length === 0 && deManutencao && extracaoConfigurada()) {
     const anexo = await prisma.orcamentoPdf.findUnique({ where: { cardId: original.id } });
     if (anexo) {
       try {
@@ -52,17 +70,26 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     }
   }
 
+  const origem = deImplantacao ? "IMPLANTACAO" : "MANUTENCAO";
+  const acao = deImplantacao
+    ? "Cheque da Coordenação: escopo aprovado e card enviado à esteira de Compras (Separação)"
+    : "Aprovado: card enviado à esteira de Compras (Separação)";
   const hist = Array.isArray(original.historico) ? (original.historico as unknown[]) : [];
   const atualizado = await prisma.card.update({
     where: { id: original.id },
     data: {
       fluxo: "COMPRAS",
       etapa: "SEPARACAO",
+      origemCompras: origem,
       responsavelSetor: "ALMOXARIFADO",
       itensCompra: itens,
+      // Implantação: o cheque também registra a aprovação do escopo.
+      ...(deImplantacao
+        ? { aprovacaoInicial: { aprovado: true, por: s.nome, em: agora }, status: "EM_ANDAMENTO" }
+        : {}),
       historico: [
         ...hist,
-        { id: `h${hist.length}`, data: agora, setor: "ALMOXARIFADO", autor: s.nome, acao: "Aprovado: card enviado à esteira de Compras (Separação)", de: "ORC_APROVADO", para: "SEPARACAO" },
+        { id: `h${hist.length}`, data: agora, setor: "ALMOXARIFADO", autor: s.nome, acao, de: original.etapa, para: "SEPARACAO" },
       ] as unknown as object[],
     },
   });

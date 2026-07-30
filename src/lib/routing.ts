@@ -33,12 +33,14 @@ export const CHECKLIST_CHEQUE_MONITORAMENTO: { id: string; rotulo: string }[] = 
   { id: "cm-vias-comunicacao", rotulo: "Vias de comunicação" },
 ];
 
-/** Ordem visual das colunas no board de Implantação. */
+/**
+ * Ordem visual das colunas no board de Implantação. ALMOXARIFADO e SUPRIMENTOS
+ * saíram do board: a fase de material roda na esteira de COMPRAS (o cheque da
+ * Coordenação envia o card para lá; a Entrega devolve ao Monitoramento).
+ */
 export const ORDEM_IMPLANTACAO: EtapaImplantacao[] = [
   "COMERCIAL",
   "COORDENACAO_APROVACAO",
-  "ALMOXARIFADO",
-  "SUPRIMENTOS",
   "MONITORAMENTO",
   "TECNICA",
   "CHEQUE_MONITORAMENTO",
@@ -75,14 +77,12 @@ export function proximaEtapa(
     case "COMERCIAL":
       return "COORDENACAO_APROVACAO";
     case "COORDENACAO_APROVACAO":
-      return modalidade === "VENDA" ? "ALMOXARIFADO" : "SUPRIMENTOS";
-    case "ALMOXARIFADO":
-      // Volta da conferência (material recebido) → Monitoramento. 1ª passada:
-      // se está tudo em estoque, não há o que comprar — pula o Suprimentos e vai
-      // direto ao Monitoramento; senão, segue p/ Suprimentos comprar os faltantes.
+      // O cheque da Coordenação envia o card à esteira de COMPRAS (endpoint
+      // /enviar-compras); ao concluir a Entrega lá, ele volta ao Monitoramento.
+      return null;
+    case "ALMOXARIFADO": // legado (coluna extinta — material roda em Compras)
       return conferencia || tudoEmEstoque ? "MONITORAMENTO" : "SUPRIMENTOS";
-    case "SUPRIMENTOS":
-      // Após comprar, volta ao Almoxarifado p/ conferência (Locação e Venda).
+    case "SUPRIMENTOS": // legado (coluna extinta)
       return "ALMOXARIFADO";
     case "MONITORAMENTO":
       return "TECNICA";
@@ -127,13 +127,9 @@ export function podeAvancar(card: Card): ResultadoTransicao {
       break;
 
     case "COORDENACAO_APROVACAO":
-      if (!card.aprovacaoInicial?.aprovado) {
-        return { ok: false, motivo: "Aguardando aprovação da Coordenação." };
-      }
-      if (card.materiais.some((m) => !m.alocacao?.trim() || !m.cr?.trim())) {
-        return { ok: false, motivo: "Defina Alocação e CR de todos os itens (Coordenação)." };
-      }
-      break;
+      // O cheque da Coordenação move o card para a esteira de Compras
+      // (botão dedicado no painel — endpoint /enviar-compras).
+      return { ok: false, motivo: "O cheque da Coordenação envia o card para a esteira de Compras.", proxima: null };
 
     case "ALMOXARIFADO":
       // Só Venda chega aqui. O Almoxarifado precisa conferir todos os itens

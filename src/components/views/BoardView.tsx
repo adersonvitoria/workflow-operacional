@@ -44,7 +44,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, enviarParaManutencao, atualizar, avancar, remover } = useCards();
+  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtros, setFiltros] = useState<FiltrosBoard>(FILTROS_VAZIO);
@@ -182,12 +182,13 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
         onEnviarCompras={async () => {
           if (!abertoId) return;
           const r = await enviarParaCompras(abertoId);
-          setToast(r.ok ? `OS #${r.card?.codigo} enviada para a esteira de Compras (Separação).` : (r.motivo ?? "Não foi possível enviar para Compras."));
+          setToast(r.ok ? `Card #${r.card?.codigo} enviado para a esteira de Compras (Separação).` : (r.motivo ?? "Não foi possível enviar para Compras."));
         }}
-        onEnviarManutencao={async () => {
+        onConcluirEntrega={async () => {
           if (!abertoId) return;
-          const r = await enviarParaManutencao(abertoId);
-          setToast(r.ok ? `OS #${r.card?.codigo} devolvida à Manutenção (Agendamento).` : (r.motivo ?? "Não foi possível devolver à Manutenção."));
+          const r = await concluirEntrega(abertoId);
+          const destino = r.card?.fluxo === "IMPLANTACAO" ? "Implantação (Monitoramento)" : "Manutenção (Agendamento)";
+          setToast(r.ok ? `Card #${r.card?.codigo} devolvido à ${destino}.` : (r.motivo ?? "Não foi possível concluir a entrega."));
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
         onExcluir={() => {
