@@ -69,8 +69,9 @@ export function RelatoriosView() {
 
   // Tudo filtrado pela competência informada na Medição.
   const daComp = useMemo(() => cards.filter((c) => competenciaDoCard(c) === competencia), [cards, competencia]);
-  // OS encerradas sem competência de medição não entram em nenhuma competência —
-  // o aviso dá visibilidade para a Medição regularizar.
+  // OS encerradas sem competência de medição caem no mês do encerramento
+  // (fallback em competenciaDoCard). O aviso cobre só as que também não têm
+  // data de conclusão — essas seguem fora de qualquer competência.
   const encerradosSemComp = useMemo(
     () => cards.filter((c) => c.etapa === "ENCERRADOS" && !competenciaDoCard(c)).length,
     [cards],
@@ -147,7 +148,7 @@ export function RelatoriosView() {
         <div className="print-area mx-auto max-w-4xl rounded-card border border-slate-200 bg-white p-6 shadow-card dark:border-slate-800 dark:bg-slate-900">
           {!cardUnico && modo !== "cliente" && encerradosSemComp > 0 && (
             <p className="no-print mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">
-              ⚠ {encerradosSemComp} card(s) encerrado(s) sem competência de medição — não aparecem em nenhuma competência destes relatórios.
+              ⚠ {encerradosSemComp} card(s) encerrado(s) sem competência de medição e sem data de conclusão — não aparecem em nenhuma competência destes relatórios.
             </p>
           )}
           {cardUnico ? (

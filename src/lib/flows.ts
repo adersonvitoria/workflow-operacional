@@ -387,10 +387,14 @@ export function origemValorDoCard(c: Pick<Card, "medicao" | "valores" | "manuten
 
 /**
  * Competência do card para relatórios: a competência (mês/ano) informada na
- * Medição. Cards ainda não medidos retornam "" (fora dos relatórios por competência).
+ * Medição. OS encerradas sem competência de medição caem, como fallback, no
+ * mês do encerramento (data de conclusão). Sem medição e sem conclusão → ""
+ * (fora dos relatórios por competência).
  */
-export function competenciaDoCard(c: Pick<Card, "medicao">): string {
-  return c.medicao?.competencia ?? "";
+export function competenciaDoCard(c: Pick<Card, "medicao" | "datas">): string {
+  if (c.medicao?.competencia) return c.medicao.competencia;
+  const m = c.datas?.conclusao ? String(c.datas.conclusao).match(/^(\d{4})-(\d{2})/) : null;
+  return m ? `${m[2]}/${m[1]}` : "";
 }
 
 /**
