@@ -327,3 +327,8 @@ export function podeGerenciarPerfis(perfil: Perfil | undefined): boolean {
 export function podeGerenciarTecnicos(perfil: Perfil | undefined): boolean {
   return perfil === "COORDENADOR";
 }
+
+/** Assistente GPSTec (chat com os dados da plataforma): somente o Coordenador. */
+export function podeUsarAssistente(perfil: Perfil | undefined): boolean {
+  return perfil === "COORDENADOR";
+}
