@@ -219,13 +219,13 @@ export function movimentoValido(card: Card, destino: EtapaImplantacao): Resultad
 
 /**
  * Transições permitidas na Manutenção. O AGENDAMENTO alimenta a ROTINA; o CHEQUE
- * é o gate de 3 saídas; a SEPARACAO bifurca (COMPRA se faltar item, AGENDAMENTO
- * quando o material está pronto) e a COMPRA devolve à SEPARACAO.
+ * é o gate de 3 saídas.
  *
  * Regras de negócio:
  * - AGENDAMENTO → ROTINA (entra na rotina do dia).
  * - ORC_NAO_APROVADO volta para ORCAMENTO (renegociar).
- * - ORC_APROVADO vai para SEPARACAO (comum e complementar seguem o mesmo fluxo).
+ * - ORC_APROVADO envia o card para a esteira de COMPRAS (coluna Separação),
+ *   via endpoint /enviar-compras. Sem destinos de drag a partir daqui.
  * - MEDICAO, depois de faturar, arquiva em ENCERRADOS.
  * - ENCERRADOS é a única etapa final.
  */
@@ -236,11 +236,7 @@ export const TRANSICOES_MANUTENCAO: Record<EtapaManutencao, EtapaManutencao[]> =
   ORCAMENTO: ["ORC_AGUARDANDO"],
   ORC_AGUARDANDO: ["ORC_NAO_APROVADO", "ORC_APROVADO"],
   ORC_NAO_APROVADO: ["ORCAMENTO"], // renegociar
-  // Aprovado não segue mais dentro da Manutenção: o avanço envia o card para a
-  // esteira de COMPRAS (Classificação) — transição cross-esteira tratada na API.
   ORC_APROVADO: [],
-  SEPARACAO: ["COMPRA", "AGENDAMENTO"],
-  COMPRA: ["SEPARACAO"],
   MEDICAO: ["ENCERRADOS"], // após faturar
   ENCERRADOS: [],
 };
@@ -267,7 +263,7 @@ export function destinosManutencaoCard(
 /** Ordem das raias da Manutenção (esquerda → direita), para detectar retrocesso. */
 export const ORDEM_MANUTENCAO: EtapaManutencao[] = [
   "AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO",
-  "SEPARACAO", "COMPRA", "MEDICAO", "ENCERRADOS",
+  "MEDICAO", "ENCERRADOS",
 ];
 
 /** True se mover de `de` para `para` é um retrocesso (raia anterior). */
@@ -311,15 +307,16 @@ export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao, 
 
 /**
  * Transições da esteira de Compras (um card por orçamento, itens dentro).
- * Fluxo linear: Classificação (Coordenador) → Pedido ao Fornecedor → Entrega →
- * Pagamento → Tabela de Valores → Revisão → SC → Pedido de Compra → PC enviado
- * → Encerrados. O Coordenador pode retroceder para qualquer coluna anterior.
+ * Fluxo linear: Separação (Almoxarifado) → Classificação (Coordenador) →
+ * Pedido ao Fornecedor → Entrega → Tabela de Valores → Revisão → SC →
+ * Pedido de Compra → PC enviado → Encerrados. O Coordenador pode retroceder
+ * para qualquer coluna anterior.
  */
 export const TRANSICOES_COMPRAS: Record<EtapaCompras, EtapaCompras[]> = {
+  SEPARACAO: ["CLASSIFICACAO"],
   CLASSIFICACAO: ["PEDIDO_FORNECEDOR"],
   PEDIDO_FORNECEDOR: ["ENTREGA"],
-  ENTREGA: ["PAGAMENTO"],
-  PAGAMENTO: ["TABELA_VALORES"],
+  ENTREGA: ["TABELA_VALORES"],
   TABELA_VALORES: ["REVISAO_VALORES"],
   REVISAO_VALORES: ["SOLICITACAO_COMPRA"],
   SOLICITACAO_COMPRA: ["PEDIDO_COMPRA"],
@@ -335,7 +332,7 @@ export function destinosCompras(etapa: EtapaCompras): EtapaCompras[] {
 
 /** Ordem das raias da esteira de Compras (esquerda → direita). */
 export const ORDEM_COMPRAS: EtapaCompras[] = [
-  "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "PAGAMENTO", "TABELA_VALORES",
+  "SEPARACAO", "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "TABELA_VALORES",
   "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO", "ENCERRADOS",
 ];
 
@@ -395,13 +392,13 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
     ORC_NAO_APROVADO: "Não Aprovado",
     ORC_APROVADO: "Aprovado",
     SEPARACAO: "Separação",
-    COMPRA: "Suprimentos",
+    COMPRA: "Suprimentos", // legado (etapa extinta da Manutenção — histórico antigo)
     AGENDAMENTO: "Agendamento",
     // Compras
     CLASSIFICACAO: "Classificação",
     PEDIDO_FORNECEDOR: "Pedido ao Fornecedor",
     ENTREGA: "Entrega",
-    PAGAMENTO: "Pagamento",
+    PAGAMENTO: "Pagamento", // legado (coluna extinta da esteira de Compras)
     TABELA_VALORES: "Tabela de Valores",
     REVISAO_VALORES: "Revisão de Valores",
     SOLICITACAO_COMPRA: "Solicitação de Compra",

@@ -43,6 +43,8 @@ interface CardSlideOverProps {
   onExcluir: () => void;
   /** Manutenção · Cheque: gera um Orçamento Complementar na coluna Orçamento. */
   onOrcamentoComplementar: () => void;
+  /** Manutenção · Aprovado: envia o card para a esteira de Compras (Separação). */
+  onEnviarCompras: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -51,7 +53,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -387,14 +389,14 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
             ) : (
               ((podeAgir && (destinosMan.length > 0 || card.etapa === "ORC_APROVADO")) || (ehCoordenador && anteriorMan)) && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
-                  {/* Aprovado: o avanço envia o card para a esteira de Compras (Classificação). */}
+                  {/* Aprovado: o avanço envia o card para a esteira de Compras (Separação). */}
                   {podeAgir && card.etapa === "ORC_APROVADO" && (
                     <button
-                      onClick={() => onPatch({ etapa: "CLASSIFICACAO" })}
+                      onClick={onEnviarCompras}
                       className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
-                      title="O card muda para a esteira de Compras, na coluna Classificação"
+                      title="O card muda para a esteira de Compras, entrando na coluna Separação"
                     >
-                      Avançar para Compras · Classificação →
+                      Avançar para Compras · Separação →
                     </button>
                   )}
                   {podeAgir && destinosMan.map((d) => {
@@ -695,12 +697,15 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
   useEffect(() => setItens(card.itensCompra ?? []), [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const etapa = card.etapa as EtapaCompras;
+  // Sem a coluna Pagamento, o Pendente/Pago por item é marcado nas etapas do
+  // portal interno em diante (Tabela de Valores → PC enviado).
+  const ETAPAS_PAGAMENTO: EtapaCompras[] = ["TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO"];
   const modo: "classificacao" | "pedido" | "entrega" | "pagamento" | "leitura" =
     !podeAgir ? "leitura"
     : etapa === "CLASSIFICACAO" ? "classificacao"
     : etapa === "PEDIDO_FORNECEDOR" ? "pedido"
     : etapa === "ENTREGA" ? "entrega"
-    : etapa === "PAGAMENTO" ? "pagamento"
+    : ETAPAS_PAGAMENTO.includes(etapa) ? "pagamento"
     : "leitura";
 
   const inp = "w-full rounded border border-slate-200 px-2 py-1 text-xs focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";

@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : b.fluxo === "COMPRAS" ? "COMPRAS" : "IMPLANTACAO";
   await carregarConfigPerfis();
   if (!podeCriarCard(s.perfil, fluxo)) return NextResponse.json({ erro: "Sem permissão para cadastrar." }, { status: 403 });
-  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : fluxo === "COMPRAS" ? "CLASSIFICACAO" : "ROTINA";
+  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : fluxo === "COMPRAS" ? "SEPARACAO" : "ROTINA";
   const qtd = await prisma.card.count({ where: { fluxo } });
   const agora = new Date().toISOString();
 

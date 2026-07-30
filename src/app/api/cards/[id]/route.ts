@@ -4,13 +4,9 @@ import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, ehRetrocessoCompras, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa } from "@/lib/routing";
-import { extracaoConfigurada, extrairOrcamentoPdf } from "@/lib/extrair-orcamento";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
-
-// A conversão Aprovado → Compras pode extrair itens do PDF por IA (demora alguns segundos).
-export const maxDuration = 60;
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "crMensalidade", "margemVenda", "temContrato", "crDedicado", "temInvestimento", "chamadoInvestimento", "chamado", "numeroOrcamento", "numeroConta", "regiao", "datas", "observacoes", "pagamento"];
@@ -115,11 +111,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
   }
-  // Aprovado (Manutenção) → esteira de Compras: o avanço muda a ESTEIRA do card
-  // (fluxo COMPRAS, primeira coluna = Classificação). Transição cross-esteira.
-  const enviaParaCompras = mudaEtapa && existente.fluxo === "MANUTENCAO"
-    && existente.etapa === "ORC_APROVADO" && body.etapa === "CLASSIFICACAO";
-  if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord && !enviaParaCompras) {
+  // Aprovado (Manutenção) não avança por PATCH: a mudança de esteira (o card
+  // vai para Compras · Separação) é feita pelo endpoint dedicado /enviar-compras.
+  if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
     const destinos = destinosManutencaoCard({
       etapa: existente.etapa as EtapaManutencao,
       complementar: existente.complementar,
@@ -175,35 +169,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const data = patchToData(body);
   // Ao retroceder na Implantação, desliga a tag de conferência (rewind manual).
   if (retrocessoCoordImpl) data.conferenciaSuprimentos = false;
-
-  // Envio para a esteira de Compras: muda o fluxo e, se o card não tem itens,
-  // tenta extraí-los do PDF do orçamento anexado (melhor esforço — sem IA ou em
-  // falha, o card chega sem itens e eles podem ser editados pelo Coordenador).
-  if (enviaParaCompras) {
-    data.fluxo = "COMPRAS";
-    data.responsavelSetor = "COMPRAS";
-    const temItens = Array.isArray(existente.itensCompra) && (existente.itensCompra as unknown[]).length > 0;
-    if (!temItens && existente.orcamentoPdfNome && extracaoConfigurada()) {
-      try {
-        const anexo = await prisma.orcamentoPdf.findUnique({ where: { cardId: existente.id } });
-        if (anexo) {
-          const extraido = await extrairOrcamentoPdf(anexo.dados);
-          const itens = (extraido.itens ?? [])
-            .filter((i) => i && typeof i.material === "string" && i.material.trim())
-            .map((i, idx) => ({
-              id: `ic-${idx}-${Date.now().toString(36)}`,
-              quantidade: Number.isFinite(Number(i.quantidade)) && Number(i.quantidade) > 0 ? Number(i.quantidade) : 1,
-              material: i.material.trim(),
-              setor: i.setor?.toString().trim() || undefined,
-              statusPagamento: "PENDENTE",
-            }));
-          if (itens.length > 0) data.itensCompra = itens as unknown as object[];
-        }
-      } catch {
-        // melhor esforço — segue sem itens
-      }
-    }
-  }
   // Histórico de movimentações: toda mudança de etapa via PATCH é registrada.
   if (body.etapa != null && body.etapa !== existente.etapa) {
     const hist = Array.isArray(existente.historico) ? (existente.historico as unknown[]) : [];
@@ -211,11 +176,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const col = colunasDoFluxo(existente.fluxo as Fluxo).find((c) => c.id === body.etapa);
     const acao = encerrando
       ? "OS encerrada"
-      : enviaParaCompras
-        ? "Enviado para a esteira de Compras (Classificação)"
-        : (retrocessoCoord || retrocessoCoordImpl || retrocessoCoordCompras)
-          ? `Retrocedido para ${rotuloEtapa(body.etapa)}`
-          : `Movido para ${rotuloEtapa(body.etapa)}`;
+      : (retrocessoCoord || retrocessoCoordImpl || retrocessoCoordCompras)
+        ? `Retrocedido para ${rotuloEtapa(body.etapa)}`
+        : `Movido para ${rotuloEtapa(body.etapa)}`;
     const evento = {
       id: `h${hist.length}`,
       data: new Date().toISOString(),

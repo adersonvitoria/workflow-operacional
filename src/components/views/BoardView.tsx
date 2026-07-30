@@ -44,7 +44,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, criarComplementar, atualizar, avancar, remover } = useCards();
+  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtros, setFiltros] = useState<FiltrosBoard>(FILTROS_VAZIO);
@@ -122,7 +122,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   }
 
   const titulo = fluxo === "IMPLANTACAO" ? "Esteira de Implantação" : fluxo === "COMPRAS" ? "Esteira de Compras" : "Esteira de Manutenção";
-  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : fluxo === "COMPRAS" ? "Orçamentos aprovados · Classificação → PC enviado" : "Serviços extras e orçamentos";
+  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : fluxo === "COMPRAS" ? "Orçamentos aprovados · Separação → PC enviado" : "Serviços extras e orçamentos";
 
   async function criarDeOrcamento(dados: OrcamentoImportado) {
     const novo = await criar({
@@ -134,7 +134,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
       itensCompra: dados.itens,
     });
     if (!novo) throw new Error("Não foi possível criar o card.");
-    setToast(`Orçamento de ${dados.cliente} criado com ${dados.itens.length} item(ns) na Classificação.`);
+    setToast(`Orçamento de ${dados.cliente} criado com ${dados.itens.length} item(ns) na Separação.`);
   }
 
   return (
@@ -178,6 +178,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           if (!abertoId) return;
           const r = await criarComplementar(abertoId);
           setToast(r.ok ? `Orçamento complementar criado (#${r.card?.codigo}) na coluna Orçamento.` : (r.motivo ?? "Não foi possível gerar o complementar."));
+        }}
+        onEnviarCompras={async () => {
+          if (!abertoId) return;
+          const r = await enviarParaCompras(abertoId);
+          setToast(r.ok ? `OS #${r.card?.codigo} enviada para a esteira de Compras (Separação).` : (r.motivo ?? "Não foi possível enviar para Compras."));
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
         onExcluir={() => {

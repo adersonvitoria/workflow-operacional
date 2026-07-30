@@ -54,9 +54,9 @@ export type EtapaImplantacao =
  * ENCERRADOS (OK, sem serviço extra), MEDICAO (RQ, pequeno reparo já feito no
  * ato) ou ORCAMENTO (reparo maior, vai orçar). O orçamento, depois de enviado
  * ao cliente, fica explícito em três colunas (aguardando/não aprovado/aprovado)
- * para dar visão de distribuição. ORC_APROVADO libera SEPARACAO ⇄ COMPRA e, com o
- * material pronto, o card vai para AGENDAMENTO → ROTINA. Os complementares seguem
- * o mesmo fluxo dos comuns. AGENDAMENTO é a 1ª coluna (antes da Rotina).
+ * para dar visão de distribuição. ORC_APROVADO envia o card para a esteira de
+ * COMPRAS (coluna Separação) via endpoint /enviar-compras. Os complementares
+ * seguem o mesmo fluxo dos comuns. AGENDAMENTO é a 1ª coluna (antes da Rotina).
  */
 export type EtapaManutencao =
   | "AGENDAMENTO" // 1. Agendamento da OS (antes da rotina); recebe complementares aprovados
@@ -65,11 +65,9 @@ export type EtapaManutencao =
   | "ORCAMENTO" // 4. Administrativo 2 gera o orçamento e envia ao cliente
   | "ORC_AGUARDANDO" // 5. Aguardando retorno do cliente (7 dias → Não Aprovado)
   | "ORC_NAO_APROVADO" // 6. Cliente reprovou (arquiva)
-  | "ORC_APROVADO" // 7. Cliente aprovou — libera Separação (ou Agendamento, se complementar)
-  | "SEPARACAO" // 8. Almoxarifado separa os itens
-  | "COMPRA" // 9. Suprimentos compra os faltantes e devolve ao Almox.
-  | "MEDICAO" // 10. Faturamento + relatório (também recebe a RQ do Cheque)
-  | "ENCERRADOS"; // 11. OS de rotina encerrada no Cheque (OK)
+  | "ORC_APROVADO" // 7. Cliente aprovou — o card segue para a esteira de Compras
+  | "MEDICAO" // 8. Faturamento + relatório (também recebe a RQ do Cheque)
+  | "ENCERRADOS"; // 9. OS de rotina encerrada no Cheque (OK)
 
 /**
  * Etapas do Fluxo de Compras (ordem canônica do board).
@@ -81,10 +79,10 @@ export type EtapaManutencao =
  * em outro portal — aqui só acompanhamos o status.
  */
 export type EtapaCompras =
-  | "CLASSIFICACAO" // 1. Coordenador aponta tipo de custo + CC de cada item
-  | "PEDIDO_FORNECEDOR" // 2. Suprimentos faz o pedido (fornecedor + nº por item)
-  | "ENTREGA" // 3. Registro da data de entrega de cada item
-  | "PAGAMENTO" // 4. Itens nascem PENDENTE; marcar os pagos
+  | "SEPARACAO" // 1. Almoxarifado separa os itens em estoque
+  | "CLASSIFICACAO" // 2. Coordenador aponta tipo de custo + CC de cada item
+  | "PEDIDO_FORNECEDOR" // 3. Suprimentos faz o pedido (fornecedor + nº por item)
+  | "ENTREGA" // 4. Registro da data de entrega de cada item
   | "TABELA_VALORES" // 5. Interno (outro portal)
   | "REVISAO_VALORES" // 6. Interno (outro portal)
   | "SOLICITACAO_COMPRA" // 7. Interno (outro portal)
