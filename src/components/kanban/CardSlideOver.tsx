@@ -15,7 +15,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, entregaComprasCompleta, etapaAnteriorCompras, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, entregaComprasCompleta, etapaAnteriorCompras, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa, separacaoComprasCompleta } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { useTecnicos } from "@/lib/tecnicos-store";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
@@ -399,12 +399,22 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     );
                   })()}
                   {podeAgir && destinosCompra.map((d) => {
-                    // Gate: Classificação → Pedido ao Fornecedor exige todos os itens classificados.
-                    const bloqueado = card.etapa === "CLASSIFICACAO" && d === "PEDIDO_FORNECEDOR" && !classificacaoComprasCompleta(card);
+                    // Gates: Separação exige em estoque/falta por item;
+                    // Classificação exige tipo de custo + CC por item.
+                    let bloqueado = false;
+                    let aviso = "";
+                    if (card.etapa === "SEPARACAO" && d === "CLASSIFICACAO" && !separacaoComprasCompleta(card)) {
+                      bloqueado = true;
+                      aviso = "Marque cada item (em estoque ou falta) antes de avançar.";
+                    }
+                    if (card.etapa === "CLASSIFICACAO" && d === "PEDIDO_FORNECEDOR" && !classificacaoComprasCompleta(card)) {
+                      bloqueado = true;
+                      aviso = "Classifique todos os itens (tipo de custo e centro de custo) antes de avançar.";
+                    }
                     return (
                       <div key={d}>
                         {bloqueado && (
-                          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ Classifique todos os itens (tipo de custo e centro de custo) antes de avançar.</p>
+                          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ {aviso}</p>
                         )}
                         <button
                           onClick={() => !bloqueado && onPatch({ etapa: d })}
@@ -751,8 +761,9 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
   // Sem a coluna Pagamento, o Pendente/Pago por item é marcado nas etapas do
   // portal interno em diante (Tabela de Valores → PC enviado).
   const ETAPAS_PAGAMENTO: EtapaCompras[] = ["TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO"];
-  const modo: "classificacao" | "pedido" | "entrega" | "pagamento" | "leitura" =
+  const modo: "separacao" | "classificacao" | "pedido" | "entrega" | "pagamento" | "leitura" =
     !podeAgir ? "leitura"
+    : etapa === "SEPARACAO" ? "separacao"
     : etapa === "CLASSIFICACAO" ? "classificacao"
     : etapa === "PEDIDO_FORNECEDOR" ? "pedido"
     : etapa === "ENTREGA" ? "entrega"
@@ -764,6 +775,7 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
     setItens((prev) => prev.map((i) => (i.id === id ? { ...i, ...patchItem } : i)));
 
   const titulos: Record<typeof modo, string> = {
+    separacao: "Separação · marque cada item: em estoque ou falta",
     classificacao: "Classificação · tipo de custo e centro de custo por item",
     pedido: "Pedido ao Fornecedor · fornecedor e nº do pedido por item",
     entrega: "Entrega · data de entrega por item",
@@ -782,8 +794,15 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
                 <span className="font-semibold">{i.quantidade}x</span> {i.material}
                 {i.setor && <span className="text-slate-400"> · {i.setor}</span>}
               </p>
-              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${i.statusPagamento === "PAGO" ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30"}`}>
-                {i.statusPagamento === "PAGO" ? "Pago" : "Pgto. pendente"}
+              <span className="flex shrink-0 items-center gap-1">
+                {i.estoque && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${i.estoque === "EM_ESTOQUE" ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" : "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30"}`}>
+                    {i.estoque === "EM_ESTOQUE" ? "Em estoque" : "Falta"}
+                  </span>
+                )}
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${i.statusPagamento === "PAGO" ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30"}`}>
+                  {i.statusPagamento === "PAGO" ? "Pago" : "Pgto. pendente"}
+                </span>
               </span>
             </div>
 
@@ -797,6 +816,20 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
               </p>
             )}
 
+            {modo === "separacao" && (
+              <div className="mt-1.5 flex gap-1">
+                {([["EM_ESTOQUE", "Em estoque"], ["FALTA", "Falta"]] as const).map(([st, rot]) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => set(i.id, { estoque: st })}
+                    className={`rounded px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${i.estoque === st ? (st === "EM_ESTOQUE" ? "bg-emerald-600 text-white ring-emerald-600" : "bg-rose-500 text-white ring-rose-500") : "bg-white text-slate-500 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"}`}
+                  >
+                    {rot}
+                  </button>
+                ))}
+              </div>
+            )}
             {modo === "classificacao" && (
               <div className="mt-1.5 flex gap-2">
                 <input value={i.tipoCusto ?? ""} onChange={(e) => set(i.id, { tipoCusto: e.target.value })} placeholder="Tipo de custo" className={inp} />

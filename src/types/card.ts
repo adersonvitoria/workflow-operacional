@@ -101,6 +101,8 @@ export interface ItemCompra {
   material: string;
   /** Setor onde o item será utilizado. */
   setor?: string;
+  /** Separação (Almoxarifado): o item está em estoque ou falta comprar. */
+  estoque?: "EM_ESTOQUE" | "FALTA";
   // Classificação (Coordenador)
   tipoCusto?: string;
   centroCusto?: string;

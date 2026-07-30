@@ -44,16 +44,18 @@ export function AssistenteProvider({ children }: { children: React.ReactNode }) 
 
   const marcarLido = useCallback(() => setNaoLidas(0), []);
 
+  // Espelho síncrono das mensagens: o updater do setState só roda no próximo
+  // render, então o histórico enviado ao fetch precisa vir de um ref.
+  const mensagensRef = useRef<MensagemAssistente[]>([]);
+
   const enviar = useCallback(async (texto: string) => {
     const q = texto.trim();
     if (!q) return;
     setErro(null);
     setCarregando(true);
-    let historico: MensagemAssistente[] = [];
-    setMensagens((prev) => {
-      historico = [...prev, { papel: "usuario", texto: q }];
-      return historico;
-    });
+    const historico: MensagemAssistente[] = [...mensagensRef.current, { papel: "usuario", texto: q }];
+    mensagensRef.current = historico;
+    setMensagens(historico);
     try {
       const res = await fetch("/api/assistente", {
         method: "POST",
@@ -63,7 +65,8 @@ export function AssistenteProvider({ children }: { children: React.ReactNode }) 
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.erro ?? "Falha ao consultar o assistente.");
-      setMensagens((prev) => [...prev, { papel: "assistente", texto: json.resposta as string }]);
+      mensagensRef.current = [...mensagensRef.current, { papel: "assistente", texto: json.resposta as string }];
+      setMensagens(mensagensRef.current);
       // Chegou resposta com o chat fechado → notifica (badge no botão flutuante).
       if (!abertoRef.current) setNaoLidas((n) => n + 1);
     } catch (e) {
@@ -74,6 +77,7 @@ export function AssistenteProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const limpar = useCallback(() => {
+    mensagensRef.current = [];
     setMensagens([]);
     setErro(null);
     setNaoLidas(0);

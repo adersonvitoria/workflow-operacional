@@ -357,6 +357,12 @@ export function entregaComprasCompleta(card: Pick<Card, "itensCompra">): boolean
   return itens.every((i) => !!i.dataEntrega?.trim());
 }
 
+/** Gate da Separação: quando há itens, todos marcados (em estoque ou falta). */
+export function separacaoComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
+  const itens = card.itensCompra ?? [];
+  return itens.every((i) => i.estoque === "EM_ESTOQUE" || i.estoque === "FALTA");
+}
+
 /** Valida o drag-and-drop na esteira de Compras. */
 export function movimentoValidoCompras(card: Card, destino: EtapaCompras, retroceder = false): ResultadoTransicao {
   if (card.fluxo !== "COMPRAS") {

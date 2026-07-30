@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, ehRetrocessoCompras, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa } from "@/lib/routing";
+import { classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, ehRetrocessoCompras, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa, separacaoComprasCompleta } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
 import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
@@ -102,6 +102,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const destinos = destinosCompras(existente.etapa as EtapaCompras);
     if (!destinos.includes(body.etapa as EtapaCompras)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Compras." }, { status: 422 });
+    }
+    // Separação → Classificação exige cada item marcado: em estoque ou falta.
+    if (existente.etapa === "SEPARACAO" && body.etapa === "CLASSIFICACAO") {
+      const itens = (body.itensCompra ?? existente.itensCompra ?? []) as Card["itensCompra"];
+      if (!separacaoComprasCompleta({ itensCompra: itens ?? [] })) {
+        return NextResponse.json({ erro: "Marque cada item (em estoque ou falta) antes de avançar." }, { status: 422 });
+      }
     }
     // Classificação → Pedido ao Fornecedor exige tipo de custo + CC em todos os itens.
     if (existente.etapa === "CLASSIFICACAO" && body.etapa === "PEDIDO_FORNECEDOR") {

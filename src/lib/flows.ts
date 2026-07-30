@@ -172,7 +172,7 @@ export const COLUNAS_MANUTENCAO: ColunaConfig[] = [
  * Tabela de Valores em diante são processos internos em outro portal.
  */
 export const COLUNAS_COMPRAS: ColunaConfig[] = [
-  { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado separa os itens em estoque", accent: "bg-purple-500" },
+  { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado marca cada item: em estoque ou falta comprar", accent: "bg-purple-500" },
   { id: "CLASSIFICACAO", titulo: "Classificação", setorResponsavel: "COORDENACAO", descricao: "Coordenador aponta tipo de custo + centro de custo de cada item", accent: "bg-amber-500" },
   { id: "PEDIDO_FORNECEDOR", titulo: "Pedido ao Fornecedor", setorResponsavel: "COMPRAS", descricao: "Suprimentos faz o pedido: fornecedor e nº do pedido por item", accent: "bg-indigo-500" },
   { id: "TABELA_VALORES", titulo: "Tabela de Valores", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
