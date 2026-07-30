@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeUsarAssistente } from "@/lib/perfis";
 
-export const maxDuration = 60; // a resposta da IA pode levar alguns segundos
+export const maxDuration = 120; // folga p/ a IA responder sem derrubar a função
 
 interface MensagemChat {
   papel: "usuario" | "assistente";
@@ -90,11 +90,11 @@ Abaixo está o retrato completo e atual do banco (todos os cards das 3 esteiras)
 
 ## Regras de resposta
 
-- Faça as contas com cuidado, passo a passo, antes de responder.
-- Sempre que somar valores, liste os cards que compõem a soma (código, cliente, valor) para conferência.
+- Responda RÁPIDO e de forma CONCISA: vá direto ao número pedido.
+- Ao somar valores, mostre a composição de forma enxuta: até 10 cards (código, cliente, valor); acima disso, os 10 maiores + "e mais N cards somando R$ X".
 - Formate valores como R$ 1.234,56 e datas como DD/MM/AAAA.
 - Se a informação não existir nos dados, diga claramente que não há registro — nunca invente.
-- Seja direto e organizado (listas com "-"); sem tabelas complexas.
+- Listas com "-"; sem tabelas complexas; sem repetir a pergunta.
 
 DADOS:
 ${JSON.stringify(dados)}`;
@@ -118,23 +118,29 @@ export async function POST(req: Request) {
 
   const dados = await montarDados();
   const hoje = new Date().toISOString().slice(0, 10);
+  const messages = [
+    { role: "system", content: promptSistema(dados, hoje) },
+    ...mensagens.map((m) => ({ role: m.papel === "usuario" ? "user" : "assistant", content: m.texto })),
+  ];
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-5.5",
-      messages: [
-        { role: "system", content: promptSistema(dados, hoje) },
-        ...mensagens.map((m) => ({ role: m.papel === "usuario" ? "user" : "assistant", content: m.texto })),
-      ],
-    }),
-  });
+  const chamar = (extras: Record<string, unknown>) =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({ model: process.env.OPENAI_MODEL ?? "gpt-5.5", messages, ...extras }),
+    });
 
-  const json = await res.json().catch(() => ({}));
+  // Latência: raciocínio no mínimo e resposta limitada. Se o modelo não
+  // aceitar os parâmetros, repete a chamada sem eles.
+  let res = await chamar({ reasoning_effort: process.env.OPENAI_REASONING ?? "low", max_completion_tokens: 1500 });
+  let json = await res.json().catch(() => ({}));
+  if (!res.ok && res.status === 400) {
+    res = await chamar({});
+    json = await res.json().catch(() => ({}));
+  }
   if (!res.ok) {
     const msg = json?.error?.message ?? `HTTP ${res.status}`;
     return NextResponse.json({ erro: `Falha na IA: ${msg}` }, { status: 502 });
