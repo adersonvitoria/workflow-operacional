@@ -308,21 +308,21 @@ export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao, 
 /**
  * Transições da esteira de Compras (um card por orçamento, itens dentro).
  * Fluxo linear: Separação (Almoxarifado) → Classificação (Coordenador) →
- * Pedido ao Fornecedor → Entrega → Tabela de Valores → Revisão → SC →
- * Pedido de Compra → PC enviado → Encerrados. O Coordenador pode retroceder
+ * Pedido ao Fornecedor → Tabela de Valores → Revisão → SC → Pedido de Compra →
+ * PC enviado → Entrega (final). Concluída a Entrega, a OS volta à Manutenção
+ * (Agendamento) via endpoint /enviar-manutencao. O Coordenador pode retroceder
  * para qualquer coluna anterior.
  */
 export const TRANSICOES_COMPRAS: Record<EtapaCompras, EtapaCompras[]> = {
   SEPARACAO: ["CLASSIFICACAO"],
   CLASSIFICACAO: ["PEDIDO_FORNECEDOR"],
-  PEDIDO_FORNECEDOR: ["ENTREGA"],
-  ENTREGA: ["TABELA_VALORES"],
+  PEDIDO_FORNECEDOR: ["TABELA_VALORES"],
   TABELA_VALORES: ["REVISAO_VALORES"],
   REVISAO_VALORES: ["SOLICITACAO_COMPRA"],
   SOLICITACAO_COMPRA: ["PEDIDO_COMPRA"],
   PEDIDO_COMPRA: ["PC_ENVIADO"],
-  PC_ENVIADO: ["ENCERRADOS"],
-  ENCERRADOS: [],
+  PC_ENVIADO: ["ENTREGA"],
+  ENTREGA: [], // final: sai da esteira pelo /enviar-manutencao
 };
 
 /** Destinos válidos a partir da etapa atual de um card de compras. */
@@ -332,8 +332,8 @@ export function destinosCompras(etapa: EtapaCompras): EtapaCompras[] {
 
 /** Ordem das raias da esteira de Compras (esquerda → direita). */
 export const ORDEM_COMPRAS: EtapaCompras[] = [
-  "SEPARACAO", "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "TABELA_VALORES",
-  "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO", "ENCERRADOS",
+  "SEPARACAO", "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "TABELA_VALORES",
+  "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO", "ENTREGA",
 ];
 
 /** True se mover de `de` para `para` é um retrocesso na esteira de Compras. */
@@ -353,6 +353,12 @@ export function etapaAnteriorCompras(etapa: EtapaCompras): EtapaCompras | null {
 export function classificacaoComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
   const itens = card.itensCompra ?? [];
   return itens.length > 0 && itens.every((i) => !!i.tipoCusto?.trim() && !!i.centroCusto?.trim());
+}
+
+/** Gate da Entrega: quando há itens, todos precisam da data de entrega. */
+export function entregaComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
+  const itens = card.itensCompra ?? [];
+  return itens.every((i) => !!i.dataEntrega?.trim());
 }
 
 /** Valida o drag-and-drop na esteira de Compras. */

@@ -82,13 +82,12 @@ export type EtapaCompras =
   | "SEPARACAO" // 1. Almoxarifado separa os itens em estoque
   | "CLASSIFICACAO" // 2. Coordenador aponta tipo de custo + CC de cada item
   | "PEDIDO_FORNECEDOR" // 3. Suprimentos faz o pedido (fornecedor + nº por item)
-  | "ENTREGA" // 4. Registro da data de entrega de cada item
-  | "TABELA_VALORES" // 5. Interno (outro portal)
-  | "REVISAO_VALORES" // 6. Interno (outro portal)
-  | "SOLICITACAO_COMPRA" // 7. Interno (outro portal)
-  | "PEDIDO_COMPRA" // 8. Abertura de chamado p/ pedido de compra (interno)
-  | "PC_ENVIADO" // 9. Pedido de compra enviado ao fornecedor
-  | "ENCERRADOS"; // 10. Arquivo
+  | "TABELA_VALORES" // 4. Interno (outro portal)
+  | "REVISAO_VALORES" // 5. Interno (outro portal)
+  | "SOLICITACAO_COMPRA" // 6. Interno (outro portal)
+  | "PEDIDO_COMPRA" // 7. Abertura de chamado p/ pedido de compra (interno)
+  | "PC_ENVIADO" // 8. Pedido de compra enviado ao fornecedor
+  | "ENTREGA"; // 9. Final: data de entrega por item; concluída, a OS volta à Manutenção (Agendamento)
 
 export type EtapaId = EtapaImplantacao | EtapaManutencao | EtapaCompras;
 

@@ -19,7 +19,7 @@ const CAPS: { key: keyof Capacidades; rotulo: string }[] = [
 const GRUPOS_ETAPA: { titulo: string; etapas: EtapaId[] }[] = [
   { titulo: "Implantação", etapas: ["COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "CHEQUE_MONITORAMENTO", "COORDENACAO_AUDITORIA"] },
   { titulo: "Manutenção", etapas: ["AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO"] },
-  { titulo: "Compras", etapas: ["SEPARACAO", "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO"] },
+  { titulo: "Compras", etapas: ["SEPARACAO", "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO", "ENTREGA"] },
   { titulo: "Medição / Encerramento (ambas)", etapas: ["MEDICAO", "ENCERRADOS"] },
 ];
 

@@ -14,7 +14,7 @@ import {
   STATUS_META,
   TIPO_CLIENTE_META,
 } from "@/lib/flows";
-import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, etapaAnteriorCompras, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
+import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, entregaComprasCompleta, etapaAnteriorCompras, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { useTecnicos } from "@/lib/tecnicos-store";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
@@ -45,6 +45,8 @@ interface CardSlideOverProps {
   onOrcamentoComplementar: () => void;
   /** Manutenção · Aprovado: envia o card para a esteira de Compras (Separação). */
   onEnviarCompras: () => void;
+  /** Compras · Entrega (final): devolve a OS à Manutenção (Agendamento). */
+  onEnviarManutencao: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -53,7 +55,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras, onEnviarManutencao }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -355,8 +357,27 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 )}
               </footer>
             ) : card.fluxo === "COMPRAS" ? (
-              ((podeAgir && destinosCompra.length > 0) || (ehCoordenador && anteriorCompra)) && (
+              ((podeAgir && (destinosCompra.length > 0 || card.etapa === "ENTREGA")) || (ehCoordenador && anteriorCompra)) && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+                  {/* Entrega (final): concluída, a OS volta ao Agendamento da Manutenção. */}
+                  {podeAgir && card.etapa === "ENTREGA" && (() => {
+                    const bloqueado = !entregaComprasCompleta(card);
+                    return (
+                      <div>
+                        {bloqueado && (
+                          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">⚠ Registre a data de entrega de todos os itens antes de concluir.</p>
+                        )}
+                        <button
+                          onClick={() => !bloqueado && onEnviarManutencao()}
+                          disabled={bloqueado}
+                          className={["w-full rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition", bloqueado ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500" : "bg-brand text-white hover:bg-brand-700"].join(" ")}
+                          title="A OS volta para a esteira de Manutenção, na coluna Agendamento"
+                        >
+                          Concluir entrega · Manutenção (Agendamento) →
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {podeAgir && destinosCompra.map((d) => {
                     // Gate: Classificação → Pedido ao Fornecedor exige todos os itens classificados.
                     const bloqueado = card.etapa === "CLASSIFICACAO" && d === "PEDIDO_FORNECEDOR" && !classificacaoComprasCompleta(card);

@@ -44,7 +44,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, atualizar, avancar, remover } = useCards();
+  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, enviarParaManutencao, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtros, setFiltros] = useState<FiltrosBoard>(FILTROS_VAZIO);
@@ -122,7 +122,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   }
 
   const titulo = fluxo === "IMPLANTACAO" ? "Esteira de Implantação" : fluxo === "COMPRAS" ? "Esteira de Compras" : "Esteira de Manutenção";
-  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : fluxo === "COMPRAS" ? "Orçamentos aprovados · Separação → PC enviado" : "Serviços extras e orçamentos";
+  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : fluxo === "COMPRAS" ? "Orçamentos aprovados · Separação → Entrega" : "Serviços extras e orçamentos";
 
   async function criarDeOrcamento(dados: OrcamentoImportado) {
     const novo = await criar({
@@ -183,6 +183,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           if (!abertoId) return;
           const r = await enviarParaCompras(abertoId);
           setToast(r.ok ? `OS #${r.card?.codigo} enviada para a esteira de Compras (Separação).` : (r.motivo ?? "Não foi possível enviar para Compras."));
+        }}
+        onEnviarManutencao={async () => {
+          if (!abertoId) return;
+          const r = await enviarParaManutencao(abertoId);
+          setToast(r.ok ? `OS #${r.card?.codigo} devolvida à Manutenção (Agendamento).` : (r.motivo ?? "Não foi possível devolver à Manutenção."));
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
         onExcluir={() => {

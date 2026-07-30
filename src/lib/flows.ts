@@ -189,13 +189,12 @@ export const COLUNAS_COMPRAS: ColunaConfig[] = [
   { id: "SEPARACAO", titulo: "Separação", setorResponsavel: "ALMOXARIFADO", descricao: "Almoxarifado separa os itens em estoque", accent: "bg-purple-500" },
   { id: "CLASSIFICACAO", titulo: "Classificação", setorResponsavel: "COORDENACAO", descricao: "Coordenador aponta tipo de custo + centro de custo de cada item", accent: "bg-amber-500" },
   { id: "PEDIDO_FORNECEDOR", titulo: "Pedido ao Fornecedor", setorResponsavel: "COMPRAS", descricao: "Suprimentos faz o pedido: fornecedor e nº do pedido por item", accent: "bg-indigo-500" },
-  { id: "ENTREGA", titulo: "Entrega", setorResponsavel: "COMPRAS", descricao: "Registra a data de entrega de cada item", accent: "bg-teal-500" },
   { id: "TABELA_VALORES", titulo: "Tabela de Valores", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
   { id: "REVISAO_VALORES", titulo: "Revisão de Valores", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
   { id: "SOLICITACAO_COMPRA", titulo: "Solicitação de Compra", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
   { id: "PEDIDO_COMPRA", titulo: "Pedido de Compra", setorResponsavel: "COMPRAS", descricao: "Abertura de chamado para o pedido de compra", accent: "bg-indigo-500" },
   { id: "PC_ENVIADO", titulo: "PC enviado", setorResponsavel: "COMPRAS", descricao: "Pedido de compra enviado ao fornecedor", accent: "bg-emerald-600" },
-  { id: "ENCERRADOS", titulo: "Encerrados", setorResponsavel: "COMPRAS", descricao: "Compras concluídas", accent: "bg-slate-500" },
+  { id: "ENTREGA", titulo: "Entrega", setorResponsavel: "COMPRAS", descricao: "Data de entrega por item · concluída, a OS volta ao Agendamento da Manutenção", accent: "bg-teal-500" },
 ];
 
 export function colunasDoFluxo(fluxo: Fluxo): ColunaConfig[] {
