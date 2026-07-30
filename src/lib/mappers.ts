@@ -45,6 +45,7 @@ export function rowToCard(r: PrismaCard): Card {
     chamadoInvestimento: r.chamadoInvestimento ?? undefined,
     chamado: r.chamado ?? undefined,
     numeroOrcamento: r.numeroOrcamento ?? undefined,
+    orcamentoPdfNome: r.orcamentoPdfNome ?? undefined,
     numeroConta: r.numeroConta ?? undefined,
     regiao: r.regiao ?? undefined,
     valores: {

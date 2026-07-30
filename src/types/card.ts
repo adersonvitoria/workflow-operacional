@@ -311,6 +311,12 @@ export interface Card {
 
   chamado?: string;
   numeroOrcamento?: string;
+  /**
+   * Manutenção · coluna Orçamento: nome do PDF do orçamento anexado ao card.
+   * Obrigatório para enviar de Orçamento → Aguardando. O conteúdo é servido
+   * por GET /api/cards/{id}/orcamento-pdf.
+   */
+  orcamentoPdfNome?: string;
   /** Número da conta — identificador do cliente (ambas as esteiras). */
   numeroConta?: string;
   /** Região do atendimento (Implantação) — espelha a região da Manutenção. */

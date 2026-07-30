@@ -191,8 +191,23 @@ model Card {
 
   observacoes String?
 
+  // Manutenção · coluna Orçamento: nome do PDF anexado (obrigatório p/ enviar
+  // ao Aguardando). O conteúdo fica na tabela OrcamentoPdf (não pesa o board).
+  orcamentoPdfNome String?
+  orcamentoPdf     OrcamentoPdf?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([fluxo, etapa])
+}
+
+// PDF do orçamento anexado ao card (Manutenção · coluna Orçamento). Guardado
+// em tabela separada para o conteúdo (base64) não entrar nas listagens.
+model OrcamentoPdf {
+  cardId    String   @id
+  nome      String
+  dados     String // PDF em base64
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 }

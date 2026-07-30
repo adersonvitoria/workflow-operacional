@@ -120,12 +120,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!destinos.includes(body.etapa as EtapaManutencao)) {
       return NextResponse.json({ erro: "Transição inválida na esteira de Manutenção." }, { status: 422 });
     }
-    // Orçamento → Aguardando exige número e valor do orçamento.
+    // Orçamento → Aguardando exige número, valor e o PDF do orçamento anexado.
     if (existente.etapa === "ORCAMENTO" && body.etapa === "ORC_AGUARDANDO") {
       const numero = body.numeroOrcamento ?? existente.numeroOrcamento;
       const valor = body.valores?.total ?? existente.valorTotal;
       if (!numero || !String(numero).trim() || valor == null || Number(valor) <= 0) {
         return NextResponse.json({ erro: "Informe o número e o valor do orçamento antes de enviar." }, { status: 422 });
+      }
+      if (!existente.orcamentoPdfNome) {
+        return NextResponse.json({ erro: "Anexe o orçamento (PDF) antes de enviar para Aguardando." }, { status: 422 });
       }
     }
     // Medição → Encerrados: Visita Isenta exige só o Nº do orçamento; caso

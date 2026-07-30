@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   COMPLEMENTAR_META,
@@ -214,6 +214,16 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Auxiliar técnico" valor={man.auxiliarTecnico ?? "—"} />
                         <Campo rotulo="Tipo de atendimento" valor={man.tipoAtendimento ?? "—"} />
                         {man.tipo !== "VISITA" && <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />}
+                        {card.orcamentoPdfNome && (
+                          <div>
+                            <dt className="text-xs text-slate-400">Orçamento (PDF)</dt>
+                            <dd>
+                              <a href={`/api/cards/${card.id}/orcamento-pdf`} target="_blank" rel="noreferrer" className="truncate font-medium text-brand hover:underline" title={card.orcamentoPdfNome}>
+                                📄 {card.orcamentoPdfNome}
+                              </a>
+                            </dd>
+                          </div>
+                        )}
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
                         <Campo rotulo="CR" valor={card.cr ?? "—"} />
@@ -376,6 +386,11 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     if (card.etapa === "ORCAMENTO" && d === "ORC_AGUARDANDO" && (!card.numeroOrcamento?.trim() || !card.valores.total)) {
                       bloqueado = true;
                       aviso = "Informe o número e o valor do orçamento antes de enviar.";
+                    }
+                    // O PDF do orçamento é obrigatório para sair da coluna Orçamento.
+                    if (card.etapa === "ORCAMENTO" && d === "ORC_AGUARDANDO" && !card.orcamentoPdfNome) {
+                      bloqueado = true;
+                      aviso = "Anexe o orçamento (PDF) antes de enviar para Aguardando.";
                     }
                     // Visita Isenta: exige só o Nº do orçamento (chamado/CR/competência dispensados).
                     if (card.etapa === "MEDICAO" && d === "ENCERRADOS") {
@@ -932,28 +947,91 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
 function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const [numero, setNumero] = useState(card.numeroOrcamento ?? "");
   const [valor, setValor] = useState(card.valores.total != null ? String(card.valores.total) : "");
+  const [enviandoPdf, setEnviandoPdf] = useState(false);
+  const [avisoPdf, setAvisoPdf] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     setNumero(card.numeroOrcamento ?? "");
     setValor(card.valores.total != null ? String(card.valores.total) : "");
+    setAvisoPdf(null);
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-  function salvar() {
+  function salvar(over: Partial<Card> = {}) {
     const v = valor ? Number(valor.replace(",", ".")) : undefined;
-    patch({ numeroOrcamento: numero.trim() || undefined, valores: { ...card.valores, total: v } });
+    patch({ numeroOrcamento: numero.trim() || undefined, valores: { ...card.valores, total: v }, ...over });
+  }
+
+  /** Anexa o PDF (obrigatório) e pré-preenche nº/valor com a leitura da IA. */
+  async function anexarPdf(file: File) {
+    setAvisoPdf(null);
+    if (file.type !== "application/pdf") return setAvisoPdf("Selecione um arquivo PDF.");
+    if (file.size > 3 * 1024 * 1024) return setAvisoPdf("PDF muito grande (máx. 3 MB).");
+    setEnviandoPdf(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let bin = "";
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const res = await fetch(`/api/cards/${card.id}/orcamento-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ pdfBase64: btoa(bin), nome: file.name }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.erro ?? "Falha ao anexar o PDF.");
+      if (json.avisoIA) setAvisoPdf(json.avisoIA);
+      // Pré-preenche com a leitura da IA (o usuário revisa) e persiste — o
+      // PATCH também devolve o card atualizado com o nome do anexo.
+      const novoNumero = json.extraido?.numeroOrcamento || numero;
+      const novoValor = json.extraido?.valorTotal != null ? String(json.extraido.valorTotal) : valor;
+      setNumero(novoNumero);
+      setValor(novoValor);
+      const v = novoValor ? Number(String(novoValor).replace(",", ".")) : undefined;
+      patch({ numeroOrcamento: novoNumero.trim() || undefined, valores: { ...card.valores, total: v } });
+    } catch (e) {
+      setAvisoPdf(e instanceof Error ? e.message : "Falha ao anexar o PDF.");
+    } finally {
+      setEnviandoPdf(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   const completo = !!numero.trim() && !!valor && Number(valor.replace(",", ".")) > 0;
 
   return (
     <Gate titulo="Orçamento · dados para enviar">
-      <p className="text-xs text-slate-600 dark:text-slate-300">Informe o número e o valor do orçamento antes de enviar para Aguardando.</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">Anexe o PDF do orçamento (obrigatório) e informe o número e o valor antes de enviar para Aguardando.</p>
+
+      {/* Anexo obrigatório do orçamento em PDF (a IA pré-preenche nº e valor). */}
+      <label className="mt-2 block text-[10px] text-slate-400">Orçamento (PDF) *</label>
+      <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void anexarPdf(f); }} />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={enviandoPdf}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition ${card.orcamentoPdfNome ? "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700" : "bg-brand text-white ring-brand hover:bg-brand-700"} disabled:opacity-60`}
+        >
+          {enviandoPdf ? "Enviando…" : card.orcamentoPdfNome ? "Substituir PDF" : "📄 Anexar PDF"}
+        </button>
+        {card.orcamentoPdfNome ? (
+          <a href={`/api/cards/${card.id}/orcamento-pdf`} target="_blank" rel="noreferrer" className="min-w-0 truncate text-xs font-medium text-brand hover:underline" title={card.orcamentoPdfNome}>
+            ✓ {card.orcamentoPdfNome}
+          </a>
+        ) : (
+          <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">Nenhum PDF anexado.</span>
+        )}
+      </div>
+      {avisoPdf && <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">{avisoPdf}</p>}
+
       <label className="mt-2 block text-[10px] text-slate-400">Número do orçamento</label>
-      <input value={numero} onChange={(e) => setNumero(e.target.value)} onBlur={salvar} placeholder="Nº do orçamento" className={inp} />
+      <input value={numero} onChange={(e) => setNumero(e.target.value)} onBlur={() => salvar()} placeholder="Nº do orçamento" className={inp} />
       <label className="mt-2 block text-[10px] text-slate-400">Valor do orçamento (R$)</label>
-      <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={salvar} placeholder="0,00" className={inp} />
-      <button onClick={salvar} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+      <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
+      <button onClick={() => salvar()} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         {card.numeroOrcamento && card.valores.total ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
