@@ -356,10 +356,13 @@ export function classificacaoComprasCompleta(card: Pick<Card, "itensCompra">): b
   );
 }
 
-/** Gate da Entrega: quando há itens, todos precisam da data de entrega. */
+/**
+ * Gate da Entrega: itens a comprar precisam da data de entrega; itens EM
+ * ESTOQUE dispensam (o produto já existe no estoque da empresa).
+ */
 export function entregaComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
   const itens = card.itensCompra ?? [];
-  return itens.every((i) => !!i.dataEntrega?.trim());
+  return itens.every((i) => i.estoque === "EM_ESTOQUE" || !!i.dataEntrega?.trim());
 }
 
 /** Gate da Separação: quando há itens, todos marcados (em estoque ou falta). */

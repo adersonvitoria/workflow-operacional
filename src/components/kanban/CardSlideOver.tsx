@@ -261,10 +261,11 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                             </div>
                           )}
                           <Campo rotulo="Itens" valor={String((card.itensCompra ?? []).length)} />
+                          {/* Itens em estoque não geram pagamento — ficam fora do contador. */}
                           <Campo
                             rotulo="Pagamentos pendentes"
-                            valor={String((card.itensCompra ?? []).filter((i) => i.statusPagamento !== "PAGO").length)}
-                            destaque={(card.itensCompra ?? []).some((i) => i.statusPagamento !== "PAGO")}
+                            valor={String((card.itensCompra ?? []).filter((i) => i.estoque !== "EM_ESTOQUE" && i.statusPagamento !== "PAGO").length)}
+                            destaque={(card.itensCompra ?? []).some((i) => i.estoque !== "EM_ESTOQUE" && i.statusPagamento !== "PAGO")}
                           />
                         </dl>
                       </Secao>
@@ -800,9 +801,12 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
                     {i.estoque === "EM_ESTOQUE" ? "Em estoque" : "Falta"}
                   </span>
                 )}
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${i.statusPagamento === "PAGO" ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30"}`}>
-                  {i.statusPagamento === "PAGO" ? "Pago" : "Pgto. pendente"}
-                </span>
+                {/* Item em estoque não gera compra nem pagamento — sem chip de pgto. */}
+                {i.estoque !== "EM_ESTOQUE" && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${i.statusPagamento === "PAGO" ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30" : "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30"}`}>
+                    {i.statusPagamento === "PAGO" ? "Pago" : "Pgto. pendente"}
+                  </span>
+                )}
               </span>
             </div>
 
@@ -840,30 +844,44 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
                 </div>
               )
             )}
+            {/* Item EM ESTOQUE dispensa todo o resto (fornecedor, pedido,
+                entrega, pagamento) — o produto já existe no estoque. */}
             {modo === "pedido" && (
-              <div className="mt-1.5 flex gap-2">
-                <input value={i.fornecedor ?? ""} onChange={(e) => set(i.id, { fornecedor: e.target.value })} placeholder="Fornecedor" className={inp} />
-                <input value={i.numeroPedido ?? ""} onChange={(e) => set(i.id, { numeroPedido: e.target.value })} placeholder="Nº do pedido" className={inp} />
-              </div>
+              i.estoque === "EM_ESTOQUE" ? (
+                <p className="mt-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">✓ Em estoque — dispensa fornecedor e nº do pedido.</p>
+              ) : (
+                <div className="mt-1.5 flex gap-2">
+                  <input value={i.fornecedor ?? ""} onChange={(e) => set(i.id, { fornecedor: e.target.value })} placeholder="Fornecedor" className={inp} />
+                  <input value={i.numeroPedido ?? ""} onChange={(e) => set(i.id, { numeroPedido: e.target.value })} placeholder="Nº do pedido" className={inp} />
+                </div>
+              )
             )}
             {modo === "entrega" && (
-              <div className="mt-1.5">
-                <input type="date" value={i.dataEntrega ?? ""} onChange={(e) => set(i.id, { dataEntrega: e.target.value || undefined })} className={inp} />
-              </div>
+              i.estoque === "EM_ESTOQUE" ? (
+                <p className="mt-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">✓ Em estoque — dispensa a data de entrega.</p>
+              ) : (
+                <div className="mt-1.5">
+                  <input type="date" value={i.dataEntrega ?? ""} onChange={(e) => set(i.id, { dataEntrega: e.target.value || undefined })} className={inp} />
+                </div>
+              )
             )}
             {modo === "pagamento" && (
-              <div className="mt-1.5 flex gap-1">
-                {(["PENDENTE", "PAGO"] as const).map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => set(i.id, { statusPagamento: st })}
-                    className={`rounded px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${i.statusPagamento === st ? (st === "PAGO" ? "bg-emerald-600 text-white ring-emerald-600" : "bg-amber-500 text-white ring-amber-500") : "bg-white text-slate-500 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"}`}
-                  >
-                    {st === "PAGO" ? "Pago" : "Pendente"}
-                  </button>
-                ))}
-              </div>
+              i.estoque === "EM_ESTOQUE" ? (
+                <p className="mt-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">✓ Em estoque — sem pagamento a marcar.</p>
+              ) : (
+                <div className="mt-1.5 flex gap-1">
+                  {(["PENDENTE", "PAGO"] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => set(i.id, { statusPagamento: st })}
+                      className={`rounded px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${i.statusPagamento === st ? (st === "PAGO" ? "bg-emerald-600 text-white ring-emerald-600" : "bg-amber-500 text-white ring-amber-500") : "bg-white text-slate-500 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"}`}
+                    >
+                      {st === "PAGO" ? "Pago" : "Pendente"}
+                    </button>
+                  ))}
+                </div>
+              )
             )}
           </li>
         ))}
