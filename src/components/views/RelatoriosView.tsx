@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCards } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { podeGerarRelatorio } from "@/lib/perfis";
-import { competenciaDoCard, formatarBRL, origemValorDoCard, STATUS_META, valorDoCard, valorVisitaDoCard } from "@/lib/flows";
+import { competenciaDoCard, crsDoCard, formatarBRL, origemValorDoCard, STATUS_META, valorDoCard, valoresPorCr, valorVisitaDoCard } from "@/lib/flows";
 import { rotuloEtapa } from "@/lib/routing";
 import type { Card, Fluxo } from "@/types";
 
@@ -197,6 +197,7 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
             <tr>
               <th className="py-1.5 pr-2 font-medium">Código</th>
               <th className="py-1.5 pr-2 font-medium">Cliente</th>
+              <th className="py-1.5 pr-2 font-medium">CR</th>
               <th className="py-1.5 pr-2 font-medium">Etapa</th>
               <th className="py-1.5 pr-2 font-medium">Status</th>
               <th className="py-1.5 pr-2 font-medium">Origem do valor</th>
@@ -208,6 +209,7 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
               <tr key={c.id} className="text-slate-700 dark:text-slate-200">
                 <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
                 <td className="py-1.5 pr-2">{c.cliente.nome}</td>
+                <td className="py-1.5 pr-2">{crsDoCard(c)}</td>
                 <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
                 <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
                 <td className="py-1.5 pr-2">{origemValorDoCard(c)}</td>
@@ -217,7 +219,7 @@ function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[];
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={5}>Subtotal {titulo}</td>
+              <td className="py-2" colSpan={6}>Subtotal {titulo}</td>
               <td className="py-2 text-right">{formatarBRL(total)}</td>
             </tr>
           </tfoot>
@@ -254,7 +256,60 @@ function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; 
       </div>
       <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
       <SecaoEsteira titulo="Manutenção · Encerrados" cards={manut} total={totManut} />
+      <TotaisPorCr cards={[...impl, ...manut]} />
     </>
+  );
+}
+
+/**
+ * Totais por CR (Centro de Resultado) da competência: cada valor do card é
+ * vinculado ao seu CR (Venda: serviço/material/mensalidade; Locação:
+ * monitoramento/locação; Manutenção: CR da OS).
+ */
+function TotaisPorCr({ cards }: { cards: Card[] }) {
+  const porCr = new Map<string, { qtd: Set<string>; valor: number }>();
+  for (const c of cards) {
+    for (const v of valoresPorCr(c)) {
+      const atual = porCr.get(v.cr) ?? { qtd: new Set<string>(), valor: 0 };
+      atual.qtd.add(c.id);
+      atual.valor += v.valor;
+      porCr.set(v.cr, atual);
+    }
+  }
+  const linhas = Array.from(porCr.entries()).sort((a, b) => b[1].valor - a[1].valor);
+  const total = linhas.reduce((s, [, v]) => s + v.valor, 0);
+  if (!linhas.length) return null;
+  return (
+    <section className="mt-5">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Totais por CR (Centro de Resultado)</h3>
+      <table className="w-full text-left text-xs">
+        <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          <tr>
+            <th className="py-1.5 pr-2 font-medium">CR</th>
+            <th className="py-1.5 pr-2 font-medium">Cards</th>
+            <th className="py-1.5 pr-2 text-right font-medium">Valor vinculado</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {linhas.map(([cr, v]) => (
+            <tr key={cr} className="text-slate-700 dark:text-slate-200">
+              <td className="py-1.5 pr-2 font-medium">{cr}</td>
+              <td className="py-1.5 pr-2">{v.qtd.size}</td>
+              <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(v.valor)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
+            <td className="py-2" colSpan={2}>Total vinculado aos CRs</td>
+            <td className="py-2 text-right">{formatarBRL(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="mt-1 text-[11px] text-slate-400">
+        Venda: serviço → CR de serviço, material → CR de material, mensalidade → CR de mensalidade. Locação: mensalidade → CR de monitoramento, locação → CR de locação. Demais cards: valor de referência no CR do card.
+      </p>
+    </section>
   );
 }
 
@@ -275,6 +330,7 @@ function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
               <th className="py-1.5 pr-2 font-medium">Código</th>
               <th className="py-1.5 pr-2 font-medium">Esteira</th>
               <th className="py-1.5 pr-2 font-medium">Cliente</th>
+              <th className="py-1.5 pr-2 font-medium">CR</th>
               <th className="py-1.5 pr-2 font-medium">Etapa</th>
               <th className="py-1.5 pr-2 font-medium">Competência</th>
               <th className="py-1.5 pr-2 font-medium">Status</th>
@@ -287,6 +343,7 @@ function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
                 <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
                 <td className="py-1.5 pr-2">{FLUXO_ROTULO[c.fluxo]}</td>
                 <td className="py-1.5 pr-2">{c.cliente.nome}</td>
+                <td className="py-1.5 pr-2">{crsDoCard(c)}</td>
                 <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
                 <td className="py-1.5 pr-2">{competenciaDoCard(c) || "—"}</td>
                 <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
@@ -296,7 +353,7 @@ function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={6}>Total</td>
+              <td className="py-2" colSpan={7}>Total</td>
               <td className="py-2 text-right">{formatarBRL(total)}</td>
             </tr>
           </tfoot>
@@ -366,7 +423,7 @@ function RelatorioCard({ card }: { card: Card }) {
       {linha("Nº Implantar", m.numeroImplantar ?? card.codigo)}
       {linha("Competência", compLabel(m.competencia ?? ""))}
       {linha("Cliente", card.cliente.nome)}
-      {linha("CR", card.cr ?? "—")}
+      {linha("CR", crsDoCard(card))}
       {linha("Chamado", m.chamado ?? card.chamado ?? "—")}
       {man?.tipo && linha("Tipo de entrada", man.tipo === "ORCAMENTO" ? "Orçamento" : "Visita")}
       {card.numeroOrcamento && linha("Nº do orçamento", card.numeroOrcamento)}
@@ -378,6 +435,13 @@ function RelatorioCard({ card }: { card: Card }) {
       {linha("Parcelas", m.parcelas ?? "—")}
       {linha("Valor da medição", formatarBRL(m.valorMedicao))}
       {linha("Valor considerado nos relatórios", `${formatarBRL(valorDoCard(card))} (${origemValorDoCard(card)})`)}
+      {valoresPorCr(card).length > 1 &&
+        valoresPorCr(card).map((v, i) => (
+          <div key={`${v.cr}-${i}`} className="flex justify-between border-b border-slate-100 py-1.5 text-sm dark:border-slate-800">
+            <span className="text-slate-500 dark:text-slate-400">CR {v.cr} · {v.origem}</span>
+            <span className="font-medium text-slate-800 dark:text-slate-100">{formatarBRL(v.valor)}</span>
+          </div>
+        ))}
       {m.finalizadoPor && <p className="mt-3 text-[11px] text-slate-400">Finalizado por {m.finalizadoPor} em {dataBR(m.finalizadoEm)}.</p>}
     </>
   );

@@ -374,6 +374,53 @@ export function valorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">)
   return base + valorVisitaDoCard(c);
 }
 
+type CardCr = Pick<
+  Card,
+  "fluxo" | "modalidade" | "cr" | "crServico" | "crMaterial" | "crMensalidade" | "crMonitoramento" | "crLocacao" | "valores" | "medicao" | "manutencao"
+>;
+
+export interface ValorPorCr {
+  cr: string;
+  origem: string;
+  valor: number;
+}
+
+const SEM_CR = "Sem CR";
+
+/**
+ * Vincula os valores do card aos seus CRs (Centros de Resultado):
+ * - Implantação · Venda: serviço → CR de serviço, material → CR de material,
+ *   mensalidade → CR de mensalidade;
+ * - Implantação · Locação: mensalidade → CR de monitoramento, locação → CR de locação;
+ * - Demais casos (Manutenção, Compras, sem CRs específicos): o valor de
+ *   referência inteiro vai para o CR do card (ou "Sem CR").
+ */
+export function valoresPorCr(c: CardCr): ValorPorCr[] {
+  const norm = (cr?: string) => cr?.trim() || SEM_CR;
+  if (c.fluxo === "IMPLANTACAO" && c.modalidade === "VENDA" && (c.crServico || c.crMaterial || c.crMensalidade)) {
+    const partes = [
+      { cr: norm(c.crServico), origem: "Serviço (M.O.)", valor: c.valores?.maoDeObra ?? 0 },
+      { cr: norm(c.crMaterial), origem: "Material", valor: c.valores?.equipamentos ?? 0 },
+      { cr: norm(c.crMensalidade), origem: "Mensalidade", valor: c.valores?.mensal ?? 0 },
+    ].filter((p) => p.cr !== SEM_CR || p.valor > 0);
+    if (partes.length) return partes;
+  }
+  if (c.fluxo === "IMPLANTACAO" && c.modalidade === "LOCACAO" && (c.crMonitoramento || c.crLocacao)) {
+    const partes = [
+      { cr: norm(c.crMonitoramento), origem: "Mensalidade (monitoramento)", valor: c.valores?.mensal ?? 0 },
+      { cr: norm(c.crLocacao), origem: "Locação", valor: c.valores?.locacao ?? 0 },
+    ].filter((p) => p.cr !== SEM_CR || p.valor > 0);
+    if (partes.length) return partes;
+  }
+  return [{ cr: norm(c.cr), origem: origemValorDoCard(c), valor: valorDoCard(c) }];
+}
+
+/** CRs do card para exibição (lista única, na ordem da alocação). */
+export function crsDoCard(c: CardCr): string {
+  const crs = Array.from(new Set(valoresPorCr(c).map((v) => v.cr).filter((cr) => cr !== SEM_CR)));
+  return crs.length ? crs.join(" · ") : "—";
+}
+
 /** De onde veio o valor de referência (exibido nos relatórios). */
 export function origemValorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">): string {
   if (c.medicao?.valorMedicao != null) return "Medição";
