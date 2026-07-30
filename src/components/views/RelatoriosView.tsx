@@ -79,7 +79,6 @@ export function RelatoriosView() {
   const implComp = daComp.filter((c) => c.fluxo === "IMPLANTACAO");
   // Manutenção no relatório: somente as OS encerradas.
   const manutComp = daComp.filter((c) => c.fluxo === "MANUTENCAO" && c.etapa === "ENCERRADOS");
-  const totalComp = daComp.reduce((s, c) => s + valorDoCard(c), 0);
 
   // Modo Cliente (todos os serviços por número da conta).
   const contas = useMemo(() => Array.from(new Set(cards.map((c) => c.numeroConta).filter(Boolean) as string[])).sort(), [cards]);
@@ -158,7 +157,7 @@ export function RelatoriosView() {
           ) : modo === "cliente" ? (
             <RelatorioCliente conta={conta} cards={resultadosCliente} />
           ) : (
-            <RelatorioCompetencia competencia={competencia} cards={daComp} total={totalComp} />
+            <RelatorioCompetencia competencia={competencia} cards={daComp} />
           )}
         </div>
       </div>
@@ -185,46 +184,97 @@ function ResumoBox({ titulo, qtd, valor, destaque }: { titulo: string; qtd: numb
   );
 }
 
-function SecaoEsteira({ titulo, cards, total }: { titulo: string; cards: Card[]; total: number }) {
+interface ColunaTab {
+  titulo: string;
+  valor: (c: Card) => string;
+  mono?: boolean;
+  direita?: boolean;
+}
+
+/**
+ * Tabela de relatório com FILTRO por coluna no cabeçalho: cada coluna ganha um
+ * campo "Filtrar…" (contém, sem diferenciar maiúsculas); o subtotal é
+ * recalculado com as linhas visíveis. A linha de filtros não sai na impressão.
+ */
+function TabelaFiltravel({ colunas, cards, rotuloTotal }: { colunas: ColunaTab[]; cards: Card[]; rotuloTotal: string }) {
+  const [filtros, setFiltros] = useState<string[]>(() => colunas.map(() => ""));
+  const visiveis = cards.filter((c) =>
+    colunas.every((col, i) => {
+      const f = filtros[i]?.trim().toLowerCase();
+      return !f || col.valor(c).toLowerCase().includes(f);
+    }),
+  );
+  const total = visiveis.reduce((s, c) => s + valorDoCard(c), 0);
+  const filtrando = filtros.some((f) => f.trim());
+  const setFiltro = (i: number, v: string) => setFiltros((prev) => prev.map((f, j) => (j === i ? v : f)));
+
+  return (
+    <table className="w-full text-left text-xs">
+      <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <tr>
+          {colunas.map((col) => (
+            <th key={col.titulo} className={["py-1.5 pr-2 font-medium", col.direita ? "text-right" : ""].join(" ")}>{col.titulo}</th>
+          ))}
+        </tr>
+        <tr className="no-print">
+          {colunas.map((col, i) => (
+            <th key={col.titulo} className="pb-1.5 pr-2 font-normal">
+              <input
+                value={filtros[i] ?? ""}
+                onChange={(e) => setFiltro(i, e.target.value)}
+                placeholder="Filtrar…"
+                className="w-full min-w-0 rounded border border-slate-200 px-1.5 py-1 text-[11px] font-normal text-slate-700 placeholder:text-slate-300 focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-600"
+              />
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        {visiveis.length === 0 && (
+          <tr>
+            <td className="py-2 text-slate-400" colSpan={colunas.length}>
+              {filtrando ? "Nenhuma linha corresponde aos filtros." : "Nenhum card nesta competência."}
+            </td>
+          </tr>
+        )}
+        {visiveis.map((c) => (
+          <tr key={c.id} className="text-slate-700 dark:text-slate-200">
+            {colunas.map((col) => (
+              <td key={col.titulo} className={["py-1.5 pr-2", col.mono ? "font-mono" : "", col.direita ? "text-right font-medium" : ""].join(" ")}>
+                {col.valor(c)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
+          <td className="py-2" colSpan={colunas.length - 1}>
+            {rotuloTotal}
+            {filtrando && <span className="font-normal text-slate-400"> · {visiveis.length} de {cards.length} linha(s) (filtro aplicado)</span>}
+          </td>
+          <td className="py-2 text-right">{formatarBRL(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  );
+}
+
+const COLUNAS_ESTEIRA: ColunaTab[] = [
+  { titulo: "Código", valor: (c) => `#${c.codigo}`, mono: true },
+  { titulo: "Cliente", valor: (c) => c.cliente.nome },
+  { titulo: "CR", valor: (c) => crsDoCard(c) },
+  { titulo: "Etapa", valor: (c) => rotuloEtapa(c.etapa) },
+  { titulo: "Status", valor: (c) => STATUS_META[c.status].rotulo },
+  { titulo: "Origem do valor", valor: (c) => origemValorDoCard(c) },
+  { titulo: "Valor", valor: (c) => formatarBRL(valorDoCard(c)), direita: true },
+];
+
+function SecaoEsteira({ titulo, cards }: { titulo: string; cards: Card[] }) {
   return (
     <section className="mt-5">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{titulo} · {cards.length} card(s)</h3>
-      {cards.length === 0 ? (
-        <p className="text-sm text-slate-400">Nenhum card nesta competência.</p>
-      ) : (
-        <table className="w-full text-left text-xs">
-          <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <tr>
-              <th className="py-1.5 pr-2 font-medium">Código</th>
-              <th className="py-1.5 pr-2 font-medium">Cliente</th>
-              <th className="py-1.5 pr-2 font-medium">CR</th>
-              <th className="py-1.5 pr-2 font-medium">Etapa</th>
-              <th className="py-1.5 pr-2 font-medium">Status</th>
-              <th className="py-1.5 pr-2 font-medium">Origem do valor</th>
-              <th className="py-1.5 pr-2 text-right font-medium">Valor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {cards.map((c) => (
-              <tr key={c.id} className="text-slate-700 dark:text-slate-200">
-                <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
-                <td className="py-1.5 pr-2">{c.cliente.nome}</td>
-                <td className="py-1.5 pr-2">{crsDoCard(c)}</td>
-                <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
-                <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
-                <td className="py-1.5 pr-2">{origemValorDoCard(c)}</td>
-                <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(valorDoCard(c))}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={6}>Subtotal {titulo}</td>
-              <td className="py-2 text-right">{formatarBRL(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      )}
+      <TabelaFiltravel colunas={COLUNAS_ESTEIRA} cards={cards} rotuloTotal={`Subtotal ${titulo}`} />
     </section>
   );
 }
@@ -254,8 +304,8 @@ function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; 
         </div>
         <ResumoBox titulo="Total geral" qtd={impl.length + manut.length} valor={totImpl + totManut} destaque />
       </div>
-      <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
-      <SecaoEsteira titulo="Manutenção · Encerrados" cards={manut} total={totManut} />
+      <SecaoEsteira titulo="Implantação" cards={impl} />
+      <SecaoEsteira titulo="Manutenção · Encerrados" cards={manut} />
       <TotaisPorCr cards={[...impl, ...manut]} />
     </>
   );
@@ -313,8 +363,18 @@ function TotaisPorCr({ cards }: { cards: Card[] }) {
   );
 }
 
+const COLUNAS_CLIENTE: ColunaTab[] = [
+  { titulo: "Código", valor: (c) => `#${c.codigo}`, mono: true },
+  { titulo: "Esteira", valor: (c) => FLUXO_ROTULO[c.fluxo] },
+  { titulo: "Cliente", valor: (c) => c.cliente.nome },
+  { titulo: "CR", valor: (c) => crsDoCard(c) },
+  { titulo: "Etapa", valor: (c) => rotuloEtapa(c.etapa) },
+  { titulo: "Competência", valor: (c) => competenciaDoCard(c) || "—" },
+  { titulo: "Status", valor: (c) => STATUS_META[c.status].rotulo },
+  { titulo: "Valor", valor: (c) => formatarBRL(valorDoCard(c)), direita: true },
+];
+
 function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
-  const total = cards.reduce((s, c) => s + valorDoCard(c), 0);
   const cliente = cards[0]?.cliente.nome;
   return (
     <>
@@ -324,85 +384,27 @@ function RelatorioCliente({ conta, cards }: { conta: string; cards: Card[] }) {
       ) : cards.length === 0 ? (
         <p className="text-sm text-slate-400">Nenhum serviço encontrado para a conta “{conta.trim()}”.</p>
       ) : (
-        <table className="w-full text-left text-xs">
-          <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <tr>
-              <th className="py-1.5 pr-2 font-medium">Código</th>
-              <th className="py-1.5 pr-2 font-medium">Esteira</th>
-              <th className="py-1.5 pr-2 font-medium">Cliente</th>
-              <th className="py-1.5 pr-2 font-medium">CR</th>
-              <th className="py-1.5 pr-2 font-medium">Etapa</th>
-              <th className="py-1.5 pr-2 font-medium">Competência</th>
-              <th className="py-1.5 pr-2 font-medium">Status</th>
-              <th className="py-1.5 pr-2 text-right font-medium">Valor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {cards.map((c) => (
-              <tr key={c.id} className="text-slate-700 dark:text-slate-200">
-                <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
-                <td className="py-1.5 pr-2">{FLUXO_ROTULO[c.fluxo]}</td>
-                <td className="py-1.5 pr-2">{c.cliente.nome}</td>
-                <td className="py-1.5 pr-2">{crsDoCard(c)}</td>
-                <td className="py-1.5 pr-2">{rotuloEtapa(c.etapa)}</td>
-                <td className="py-1.5 pr-2">{competenciaDoCard(c) || "—"}</td>
-                <td className="py-1.5 pr-2">{STATUS_META[c.status].rotulo}</td>
-                <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(valorDoCard(c))}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={7}>Total</td>
-              <td className="py-2 text-right">{formatarBRL(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <TabelaFiltravel colunas={COLUNAS_CLIENTE} cards={cards} rotuloTotal="Total" />
       )}
     </>
   );
 }
 
-function RelatorioCompetencia({ competencia, cards, total }: { competencia: string; cards: Card[]; total: number }) {
+const COLUNAS_MEDICAO: ColunaTab[] = [
+  { titulo: "Código", valor: (c) => `#${c.codigo}`, mono: true },
+  { titulo: "Esteira", valor: (c) => FLUXO_ROTULO[c.fluxo] },
+  { titulo: "Cliente", valor: (c) => c.cliente.nome },
+  { titulo: "CR", valor: (c) => crsDoCard(c) },
+  { titulo: "Chamado", valor: (c) => c.medicao?.chamado ?? c.chamado ?? "—" },
+  { titulo: "Conta", valor: (c) => c.numeroConta ?? "—" },
+  { titulo: "Valor", valor: (c) => formatarBRL(valorDoCard(c)), direita: true },
+];
+
+function RelatorioCompetencia({ competencia, cards }: { competencia: string; cards: Card[] }) {
   return (
     <>
       <Cabecalho subtitulo={`Relatório de Medição · Competência ${compLabel(competencia)} · ${cards.length} card(s)`} />
-      {cards.length === 0 ? (
-        <p className="text-sm text-slate-400">Nenhum card nesta competência.</p>
-      ) : (
-        <table className="w-full text-left text-xs">
-          <thead className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <tr>
-              <th className="py-1.5 pr-2 font-medium">Código</th>
-              <th className="py-1.5 pr-2 font-medium">Esteira</th>
-              <th className="py-1.5 pr-2 font-medium">Cliente</th>
-              <th className="py-1.5 pr-2 font-medium">CR</th>
-              <th className="py-1.5 pr-2 font-medium">Chamado</th>
-              <th className="py-1.5 pr-2 font-medium">Conta</th>
-              <th className="py-1.5 pr-2 text-right font-medium">Valor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {cards.map((c) => (
-              <tr key={c.id} className="text-slate-700 dark:text-slate-200">
-                <td className="py-1.5 pr-2 font-mono">#{c.codigo}</td>
-                <td className="py-1.5 pr-2">{FLUXO_ROTULO[c.fluxo]}</td>
-                <td className="py-1.5 pr-2">{c.cliente.nome}</td>
-                <td className="py-1.5 pr-2">{c.cr ?? "—"}</td>
-                <td className="py-1.5 pr-2">{c.medicao?.chamado ?? c.chamado ?? "—"}</td>
-                <td className="py-1.5 pr-2">{c.numeroConta ?? "—"}</td>
-                <td className="py-1.5 pr-2 text-right font-medium">{formatarBRL(valorDoCard(c))}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-300 font-bold text-slate-900 dark:border-slate-600 dark:text-white">
-              <td className="py-2" colSpan={6}>Total da competência</td>
-              <td className="py-2 text-right">{formatarBRL(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      )}
+      <TabelaFiltravel colunas={COLUNAS_MEDICAO} cards={cards} rotuloTotal="Total da competência" />
     </>
   );
 }
