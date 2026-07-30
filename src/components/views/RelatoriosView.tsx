@@ -233,13 +233,23 @@ function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; 
   // Visitas cobradas da competência (recorte informativo — já compõem o total).
   const comVisita = manut.filter((c) => valorVisitaDoCard(c) > 0);
   const totVisitas = comVisita.reduce((s, c) => s + valorVisitaDoCard(c), 0);
+  // Visitas NÃO cobradas: OS de visita (não Orçamento) feitas sem cobrança —
+  // visita não marcada como cobrada ou encerrada como Visita Isenta.
+  const naoCobradas = manut.filter(
+    (c) => c.manutencao?.tipo !== "ORCAMENTO" && (!c.manutencao?.visitaCobrada || c.medicao?.visitaIsenta),
+  );
   return (
     <>
       <Cabecalho subtitulo={`Resultados das esteiras · Competência ${compLabel(competencia)}`} />
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <ResumoBox titulo="Implantação" qtd={impl.length} valor={totImpl} />
         <ResumoBox titulo="Manutenção (encerrados)" qtd={manut.length} valor={totManut} />
         <ResumoBox titulo="Visitas cobradas" qtd={comVisita.length} valor={totVisitas} />
+        <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <p className="text-xs text-slate-500 dark:text-slate-400">Visitas não cobradas</p>
+          <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{naoCobradas.length}</p>
+          <p className="text-[11px] text-slate-400">visita(s) no período</p>
+        </div>
         <ResumoBox titulo="Total geral" qtd={impl.length + manut.length} valor={totImpl + totManut} destaque />
       </div>
       <SecaoEsteira titulo="Implantação" cards={impl} total={totImpl} />
