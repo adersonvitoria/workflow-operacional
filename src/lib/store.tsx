@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useAuth } from "@/lib/auth";
@@ -94,6 +95,37 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (atual) void recarregar();
     else { setCards([]); setCarregado(true); }
+  }, [atual, recarregar]);
+
+  // Tempo real (polling leve): a cada 5s consulta a versão da base; se algum
+  // card foi criado/movido/editado por OUTRO usuário, recarrega a lista para
+  // todos os perfis verem a movimentação. Também atualiza ao voltar o foco.
+  const versaoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!atual) return;
+    let ativo = true;
+    async function checar() {
+      if (!ativo || document.hidden) return;
+      try {
+        const res = await fetch("/api/cards/versao", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const { versao } = (await res.json()) as { versao: string };
+        if (versaoRef.current !== null && versaoRef.current !== versao) void recarregar();
+        versaoRef.current = versao;
+      } catch {
+        // rede instável — tenta no próximo ciclo
+      }
+    }
+    const timer = setInterval(() => void checar(), 5000);
+    const aoFocar = () => void checar();
+    window.addEventListener("focus", aoFocar);
+    document.addEventListener("visibilitychange", aoFocar);
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", aoFocar);
+      document.removeEventListener("visibilitychange", aoFocar);
+    };
   }, [atual, recarregar]);
 
   const porFluxo = useCallback((f: Fluxo) => cards.filter((c) => c.fluxo === f), [cards]);
