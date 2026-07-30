@@ -236,7 +236,9 @@ export const TRANSICOES_MANUTENCAO: Record<EtapaManutencao, EtapaManutencao[]> =
   ORCAMENTO: ["ORC_AGUARDANDO"],
   ORC_AGUARDANDO: ["ORC_NAO_APROVADO", "ORC_APROVADO"],
   ORC_NAO_APROVADO: ["ORCAMENTO"], // renegociar
-  ORC_APROVADO: ["SEPARACAO"],
+  // Aprovado não segue mais dentro da Manutenção: o avanço envia o card para a
+  // esteira de COMPRAS (Classificação) — transição cross-esteira tratada na API.
+  ORC_APROVADO: [],
   SEPARACAO: ["COMPRA", "AGENDAMENTO"],
   COMPRA: ["SEPARACAO"],
   MEDICAO: ["ENCERRADOS"], // após faturar

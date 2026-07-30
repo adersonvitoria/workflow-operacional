@@ -242,6 +242,16 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <dl className="grid grid-cols-2 gap-3 text-sm">
                           <Campo rotulo="Nº do orçamento" valor={card.numeroOrcamento ?? "—"} />
                           <Campo rotulo="Data solicitada (aprovação)" valor={fmtData(card.datas?.abertura)} />
+                          {card.orcamentoPdfNome && (
+                            <div>
+                              <dt className="text-xs text-slate-400">Orçamento (PDF)</dt>
+                              <dd>
+                                <a href={`/api/cards/${card.id}/orcamento-pdf`} target="_blank" rel="noreferrer" className="truncate font-medium text-brand hover:underline" title={card.orcamentoPdfNome}>
+                                  📄 {card.orcamentoPdfNome}
+                                </a>
+                              </dd>
+                            </div>
+                          )}
                           <Campo rotulo="Itens" valor={String((card.itensCompra ?? []).length)} />
                           <Campo
                             rotulo="Pagamentos pendentes"
@@ -375,8 +385,18 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                 </footer>
               )
             ) : (
-              ((podeAgir && destinosMan.length > 0) || (ehCoordenador && anteriorMan)) && (
+              ((podeAgir && (destinosMan.length > 0 || card.etapa === "ORC_APROVADO")) || (ehCoordenador && anteriorMan)) && (
                 <footer className="space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+                  {/* Aprovado: o avanço envia o card para a esteira de Compras (Classificação). */}
+                  {podeAgir && card.etapa === "ORC_APROVADO" && (
+                    <button
+                      onClick={() => onPatch({ etapa: "CLASSIFICACAO" })}
+                      className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+                      title="O card muda para a esteira de Compras, na coluna Classificação"
+                    >
+                      Avançar para Compras · Classificação →
+                    </button>
+                  )}
                   {podeAgir && destinosMan.map((d) => {
                     // Gates da Manutenção antes de avançar:
                     // · Orçamento → Aguardando: número e valor do orçamento.
