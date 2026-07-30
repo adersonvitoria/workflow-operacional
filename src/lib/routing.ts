@@ -16,7 +16,7 @@
  *               → MEDICAO                  (faturamento)
  */
 
-import type { Card, EtapaImplantacao, EtapaManutencao, Modalidade } from "@/types";
+import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, Modalidade } from "@/types";
 
 /** Itens obrigatórios do checklist da etapa Técnica · Execução. */
 export const CHECKLIST_TECNICA: { id: string; rotulo: string }[] = [
@@ -103,7 +103,7 @@ export function proximaEtapa(
 export interface ResultadoTransicao {
   ok: boolean;
   motivo?: string; // por que NÃO pode avançar (pronto para a UI)
-  proxima?: EtapaImplantacao | EtapaManutencao | null;
+  proxima?: EtapaImplantacao | EtapaManutencao | EtapaCompras | null;
 }
 
 /**
@@ -303,6 +303,76 @@ export function movimentoValidoManutencao(card: Card, destino: EtapaManutencao, 
   return { ok: false, motivo: `De "${rotuloEtapa(atual)}" só dá para mover para: ${lista}.` };
 }
 
+// ---------------------------------------------------------------------------
+// Fluxo de Compras — linear; da Tabela de Valores em diante é interno (outro portal)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transições da esteira de Compras (um card por orçamento, itens dentro).
+ * Fluxo linear: Classificação (Coordenador) → Pedido ao Fornecedor → Entrega →
+ * Pagamento → Tabela de Valores → Revisão → SC → Pedido de Compra → PC enviado
+ * → Encerrados. O Coordenador pode retroceder para qualquer coluna anterior.
+ */
+export const TRANSICOES_COMPRAS: Record<EtapaCompras, EtapaCompras[]> = {
+  CLASSIFICACAO: ["PEDIDO_FORNECEDOR"],
+  PEDIDO_FORNECEDOR: ["ENTREGA"],
+  ENTREGA: ["PAGAMENTO"],
+  PAGAMENTO: ["TABELA_VALORES"],
+  TABELA_VALORES: ["REVISAO_VALORES"],
+  REVISAO_VALORES: ["SOLICITACAO_COMPRA"],
+  SOLICITACAO_COMPRA: ["PEDIDO_COMPRA"],
+  PEDIDO_COMPRA: ["PC_ENVIADO"],
+  PC_ENVIADO: ["ENCERRADOS"],
+  ENCERRADOS: [],
+};
+
+/** Destinos válidos a partir da etapa atual de um card de compras. */
+export function destinosCompras(etapa: EtapaCompras): EtapaCompras[] {
+  return TRANSICOES_COMPRAS[etapa] ?? [];
+}
+
+/** Ordem das raias da esteira de Compras (esquerda → direita). */
+export const ORDEM_COMPRAS: EtapaCompras[] = [
+  "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "PAGAMENTO", "TABELA_VALORES",
+  "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO", "ENCERRADOS",
+];
+
+/** True se mover de `de` para `para` é um retrocesso na esteira de Compras. */
+export function ehRetrocessoCompras(de: EtapaCompras, para: EtapaCompras): boolean {
+  const a = ORDEM_COMPRAS.indexOf(de);
+  const b = ORDEM_COMPRAS.indexOf(para);
+  return a >= 0 && b >= 0 && b < a;
+}
+
+/** Etapa imediatamente anterior na esteira de Compras (ou null se for a primeira). */
+export function etapaAnteriorCompras(etapa: EtapaCompras): EtapaCompras | null {
+  const i = ORDEM_COMPRAS.indexOf(etapa);
+  return i > 0 ? ORDEM_COMPRAS[i - 1] : null;
+}
+
+/** Gate da Classificação: todo item precisa de tipo de custo + centro de custo. */
+export function classificacaoComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
+  const itens = card.itensCompra ?? [];
+  return itens.length > 0 && itens.every((i) => !!i.tipoCusto?.trim() && !!i.centroCusto?.trim());
+}
+
+/** Valida o drag-and-drop na esteira de Compras. */
+export function movimentoValidoCompras(card: Card, destino: EtapaCompras, retroceder = false): ResultadoTransicao {
+  if (card.fluxo !== "COMPRAS") {
+    return { ok: false, motivo: "Roteamento de compras não se aplica." };
+  }
+  const atual = card.etapa as EtapaCompras;
+  if (destino === atual) return { ok: true, proxima: destino };
+  if (retroceder && ehRetrocessoCompras(atual, destino)) return { ok: true, proxima: destino };
+  const permitidos = destinosCompras(atual);
+  if (permitidos.includes(destino)) return { ok: true, proxima: destino };
+  if (permitidos.length === 0) {
+    return { ok: false, motivo: `"${rotuloEtapa(atual)}" é uma etapa final.` };
+  }
+  const lista = permitidos.map((e) => `"${rotuloEtapa(e)}"`).join(", ");
+  return { ok: false, motivo: `De "${rotuloEtapa(atual)}" só dá para mover para: ${lista}.` };
+}
+
 export function rotuloEtapa(etapa: string | null | undefined): string {
   if (!etapa) return "—";
   const mapa: Record<string, string> = {
@@ -325,6 +395,16 @@ export function rotuloEtapa(etapa: string | null | undefined): string {
     SEPARACAO: "Separação",
     COMPRA: "Suprimentos",
     AGENDAMENTO: "Agendamento",
+    // Compras
+    CLASSIFICACAO: "Classificação",
+    PEDIDO_FORNECEDOR: "Pedido ao Fornecedor",
+    ENTREGA: "Entrega",
+    PAGAMENTO: "Pagamento",
+    TABELA_VALORES: "Tabela de Valores",
+    REVISAO_VALORES: "Revisão de Valores",
+    SOLICITACAO_COMPRA: "Solicitação de Compra",
+    PEDIDO_COMPRA: "Pedido de Compra",
+    PC_ENVIADO: "PC enviado ao Fornecedor",
     ENCERRADOS: "Encerrados",
   };
   return mapa[etapa] ?? etapa;

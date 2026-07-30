@@ -78,6 +78,7 @@ export function rowToCard(r: PrismaCard): Card {
     materiais: (r.materiais as unknown as ItemMaterial[]) ?? [],
     checklist: (r.checklist as unknown as ItemChecklist[]) ?? [],
     historico: (r.historico as unknown as EventoHistorico[]) ?? [],
+    itensCompra: (r.itensCompra as unknown as Card["itensCompra"]) ?? [],
     observacoes: r.observacoes ?? undefined,
   };
 }

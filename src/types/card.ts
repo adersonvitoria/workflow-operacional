@@ -25,7 +25,7 @@ export type Setor =
   | "TECNICA"
   | "MEDICAO";
 
-export type Fluxo = "IMPLANTACAO" | "MANUTENCAO";
+export type Fluxo = "IMPLANTACAO" | "MANUTENCAO" | "COMPRAS";
 
 /** Modalidade — define a bifurcação de suprimentos. Obrigatória na Implantação. */
 export type Modalidade = "LOCACAO" | "VENDA";
@@ -71,7 +71,49 @@ export type EtapaManutencao =
   | "MEDICAO" // 10. Faturamento + relatório (também recebe a RQ do Cheque)
   | "ENCERRADOS"; // 11. OS de rotina encerrada no Cheque (OK)
 
-export type EtapaId = EtapaImplantacao | EtapaManutencao;
+/**
+ * Etapas do Fluxo de Compras (ordem canônica do board).
+ *
+ * A esteira é alimentada pelos orçamentos aprovados (PDF padrão): cada card é
+ * um orçamento com seus itens dentro. O Coordenador classifica cada item
+ * (tipo de custo + centro de custo) na Classificação; o Suprimentos toca o
+ * restante. Da Tabela de Valores em diante são processos internos executados
+ * em outro portal — aqui só acompanhamos o status.
+ */
+export type EtapaCompras =
+  | "CLASSIFICACAO" // 1. Coordenador aponta tipo de custo + CC de cada item
+  | "PEDIDO_FORNECEDOR" // 2. Suprimentos faz o pedido (fornecedor + nº por item)
+  | "ENTREGA" // 3. Registro da data de entrega de cada item
+  | "PAGAMENTO" // 4. Itens nascem PENDENTE; marcar os pagos
+  | "TABELA_VALORES" // 5. Interno (outro portal)
+  | "REVISAO_VALORES" // 6. Interno (outro portal)
+  | "SOLICITACAO_COMPRA" // 7. Interno (outro portal)
+  | "PEDIDO_COMPRA" // 8. Abertura de chamado p/ pedido de compra (interno)
+  | "PC_ENVIADO" // 9. Pedido de compra enviado ao fornecedor
+  | "ENCERRADOS"; // 10. Arquivo
+
+export type EtapaId = EtapaImplantacao | EtapaManutencao | EtapaCompras;
+
+/** Status de pagamento de um item de compra. */
+export type StatusPagamentoItem = "PENDENTE" | "PAGO";
+
+/** Um item do orçamento dentro de um card da esteira de Compras. */
+export interface ItemCompra {
+  id: string;
+  quantidade: number;
+  material: string;
+  /** Setor onde o item será utilizado. */
+  setor?: string;
+  // Classificação (Coordenador)
+  tipoCusto?: string;
+  centroCusto?: string;
+  // Pedido / entrega (Suprimentos)
+  fornecedor?: string;
+  numeroPedido?: string;
+  dataEntrega?: string; // YYYY-MM-DD
+  /** Todo item nasce com o pagamento pendente. */
+  statusPagamento: StatusPagamentoItem;
+}
 
 // ---------------------------------------------------------------------------
 // Status semânticos (governam a cor das tags de status)
@@ -321,6 +363,9 @@ export interface Card {
   materiais: ItemMaterial[];
   checklist: ItemChecklist[];
   historico: EventoHistorico[];
+
+  /** Compras: itens do orçamento (um card por orçamento, itens dentro). */
+  itensCompra?: ItemCompra[];
 
   sigma?: SigmaSync;
   manutencao?: DadosManutencao;

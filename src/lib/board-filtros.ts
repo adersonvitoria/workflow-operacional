@@ -62,6 +62,8 @@ function textoBusca(card: Card): string {
       card.manutencao?.auxiliarTecnico,
       card.manutencao?.ordemServico,
       card.observacoes,
+      // Compras: material, fornecedor e nº do pedido de cada item
+      ...(card.itensCompra ?? []).flatMap((i) => [i.material, i.fornecedor, i.numeroPedido, i.centroCusto]),
     ]
       .filter(Boolean)
       .join(" "),

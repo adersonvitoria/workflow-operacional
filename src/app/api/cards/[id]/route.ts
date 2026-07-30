@@ -3,15 +3,16 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
-import { destinosManutencaoCard, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa } from "@/lib/routing";
+import { classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, ehRetrocessoCompras, ehRetrocessoImplantacao, ehRetrocessoManutencao, rotuloEtapa } from "@/lib/routing";
 import { colunasDoFluxo } from "@/lib/flows";
 import { rowToCard } from "@/lib/mappers";
-import type { Card, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
+import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 // Campos "editoriais" (dados do card) vs campos de "gate" (aprovar/checar).
 const CAMPOS_EDIT = ["cliente", "valores", "modalidade", "natureza", "prioridade", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "crMensalidade", "margemVenda", "temContrato", "crDedicado", "temInvestimento", "chamadoInvestimento", "chamado", "numeroOrcamento", "numeroConta", "regiao", "datas", "observacoes", "pagamento"];
-// Período de execução/equipe/chip são preenchidos pela Técnica no gate da etapa.
-const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual", "dataInicioExecucao", "dataFimExecucao", "tecnicos", "auxiliarTecnico", "numeroChip"];
+// Período de execução/equipe/chip são preenchidos pela Técnica no gate da etapa;
+// itensCompra é editado pelos gates da esteira de Compras (classificação, pedido, etc.).
+const CAMPOS_GATE = ["aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "checklist", "historico", "etapa", "status", "responsavelAtual", "dataInicioExecucao", "dataFimExecucao", "tecnicos", "auxiliarTecnico", "numeroChip", "itensCompra"];
 
 /** Traduz um Partial<Card> (vindo do front) para colunas do Prisma. */
 function patchToData(p: Partial<Card>): Record<string, unknown> {
@@ -33,7 +34,7 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   for (const k of ["modalidade", "natureza", "prioridade", "status", "etapa", "cr", "cc", "crMonitoramento", "crLocacao", "crServico", "crMaterial", "crMensalidade", "margemVenda", "temContrato", "crDedicado", "temInvestimento", "chamadoInvestimento", "chamado", "numeroOrcamento", "numeroConta", "regiao", "observacoes"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
   }
-  for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "manutencao", "materiais", "checklist", "historico"] as const) {
+  for (const k of ["pagamento", "aprovacaoInicial", "auditoriaFinal", "medicao", "almoxarifado", "sigma", "manutencao", "materiais", "checklist", "historico", "itensCompra"] as const) {
     if (p[k] !== undefined) d[k] = p[k];
   }
   if (p.datas) {
@@ -93,6 +94,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // é permitido o retrocesso do Coordenador.
   if (mudaEtapa && existente.fluxo === "IMPLANTACAO" && !retrocessoCoordImpl) {
     return NextResponse.json({ erro: "Use o botão Avançar para mover o card na Implantação." }, { status: 422 });
+  }
+  // Compras: fluxo linear; o Coordenador pode retroceder para qualquer raia anterior.
+  const retrocessoCoordCompras = mudaEtapa && existente.fluxo === "COMPRAS"
+    && s.perfil === "COORDENADOR" && ehRetrocessoCompras(existente.etapa as EtapaCompras, body.etapa as EtapaCompras);
+  if (mudaEtapa && existente.fluxo === "COMPRAS" && !retrocessoCoordCompras) {
+    const destinos = destinosCompras(existente.etapa as EtapaCompras);
+    if (!destinos.includes(body.etapa as EtapaCompras)) {
+      return NextResponse.json({ erro: "Transição inválida na esteira de Compras." }, { status: 422 });
+    }
+    // Classificação → Pedido ao Fornecedor exige tipo de custo + CC em todos os itens.
+    if (existente.etapa === "CLASSIFICACAO" && body.etapa === "PEDIDO_FORNECEDOR") {
+      const itens = (body.itensCompra ?? existente.itensCompra ?? []) as Card["itensCompra"];
+      if (!classificacaoComprasCompleta({ itensCompra: itens ?? [] })) {
+        return NextResponse.json({ erro: "Classifique todos os itens (tipo de custo e centro de custo) antes de avançar." }, { status: 422 });
+      }
+    }
   }
   if (body.etapa != null && body.etapa !== existente.etapa && existente.fluxo === "MANUTENCAO" && !retrocessoCoord) {
     const destinos = destinosManutencaoCard({
@@ -154,7 +171,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const col = colunasDoFluxo(existente.fluxo as Fluxo).find((c) => c.id === body.etapa);
     const acao = encerrando
       ? "OS encerrada"
-      : (retrocessoCoord || retrocessoCoordImpl)
+      : (retrocessoCoord || retrocessoCoordImpl || retrocessoCoordCompras)
         ? `Retrocedido para ${rotuloEtapa(body.etapa)}`
         : `Movido para ${rotuloEtapa(body.etapa)}`;
     const evento = {

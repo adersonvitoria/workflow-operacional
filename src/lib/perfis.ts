@@ -216,6 +216,7 @@ export interface PerfilConfig {
 export const TODAS_ETAPAS: EtapaId[] = [
   "COMERCIAL", "COORDENACAO_APROVACAO", "ALMOXARIFADO", "SUPRIMENTOS", "MONITORAMENTO", "TECNICA", "CHEQUE_MONITORAMENTO", "COORDENACAO_AUDITORIA",
   "AGENDAMENTO", "ROTINA", "CHEQUE", "ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO", "ORC_APROVADO", "SEPARACAO", "COMPRA",
+  "CLASSIFICACAO", "PEDIDO_FORNECEDOR", "ENTREGA", "PAGAMENTO", "TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO",
   "MEDICAO", "ENCERRADOS",
 ];
 
@@ -234,7 +235,8 @@ export const CONFIG_PADRAO: Record<Perfil, PerfilConfig> = {
   ASSISTENTE_1: { etapas: ["AGENDAMENTO", "ROTINA"], capacidades: cap({ criarManutencao: true, editarCard: true }), acoes: PERFIL_META.ASSISTENTE_1.acoes },
   ASSISTENTE_2: { etapas: ["ORCAMENTO", "ORC_AGUARDANDO", "ORC_NAO_APROVADO"], capacidades: cap({ editarCard: true }), acoes: PERFIL_META.ASSISTENTE_2.acoes },
   ALMOXARIFADO: { etapas: ["ALMOXARIFADO", "SEPARACAO"], capacidades: cap({}), acoes: PERFIL_META.ALMOXARIFADO.acoes },
-  SUPRIMENTOS: { etapas: ["SUPRIMENTOS", "COMPRA"], capacidades: cap({}), acoes: PERFIL_META.SUPRIMENTOS.acoes },
+  // Compras: o Coordenador só classifica (CLASSIFICACAO); o Suprimentos toca o resto.
+  SUPRIMENTOS: { etapas: ["SUPRIMENTOS", "COMPRA", "PEDIDO_FORNECEDOR", "ENTREGA", "PAGAMENTO", "TABELA_VALORES", "REVISAO_VALORES", "SOLICITACAO_COMPRA", "PEDIDO_COMPRA", "PC_ENVIADO"], capacidades: cap({}), acoes: PERFIL_META.SUPRIMENTOS.acoes },
   SUPERVISOR_MONITORAMENTO: { etapas: ["MONITORAMENTO", "CHEQUE_MONITORAMENTO"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_MONITORAMENTO.acoes },
   SUPERVISOR_TECNICO: { etapas: ["TECNICA", "CHEQUE"], capacidades: cap({}), acoes: PERFIL_META.SUPERVISOR_TECNICO.acoes },
   MEDICAO: { etapas: ["MEDICAO", "ENCERRADOS"], capacidades: cap({ editarCard: true, gerarRelatorio: true }), acoes: PERFIL_META.MEDICAO.acoes },
@@ -274,6 +276,8 @@ export function podeExecutarEtapa(perfil: Perfil | undefined, etapa: string, _mo
 export function podeCriarCard(perfil: Perfil | undefined, fluxo?: Fluxo): boolean {
   if (!perfil) return false;
   if (perfil === "COORDENADOR") return true;
+  // Compras: Suprimentos alimenta a esteira (importa/cadastra os orçamentos).
+  if (fluxo === "COMPRAS") return perfil === "SUPRIMENTOS";
   const c = configDoPerfil(perfil).capacidades;
   if (fluxo === "MANUTENCAO") return c.criarManutencao;
   if (fluxo === "IMPLANTACAO") return c.criarImplantacao;

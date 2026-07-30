@@ -182,8 +182,28 @@ export const COLUNAS_MANUTENCAO: ColunaConfig[] = [
   { id: "ENCERRADOS", titulo: "Encerrados", setorResponsavel: "SUPERVISAO", descricao: "OS de rotina encerrada no Cheque (OK)", accent: "bg-slate-500" },
 ];
 
+/**
+ * Fluxo de Compras: um card por orçamento aprovado (itens dentro). O Coordenador
+ * classifica os itens (tipo de custo + CC); o Suprimentos toca o restante. Da
+ * Tabela de Valores em diante são processos internos em outro portal.
+ */
+export const COLUNAS_COMPRAS: ColunaConfig[] = [
+  { id: "CLASSIFICACAO", titulo: "Classificação", setorResponsavel: "COORDENACAO", descricao: "Coordenador aponta tipo de custo + centro de custo de cada item", accent: "bg-amber-500" },
+  { id: "PEDIDO_FORNECEDOR", titulo: "Pedido ao Fornecedor", setorResponsavel: "COMPRAS", descricao: "Suprimentos faz o pedido: fornecedor e nº do pedido por item", accent: "bg-indigo-500" },
+  { id: "ENTREGA", titulo: "Entrega", setorResponsavel: "COMPRAS", descricao: "Registra a data de entrega de cada item", accent: "bg-teal-500" },
+  { id: "PAGAMENTO", titulo: "Pagamento", setorResponsavel: "COMPRAS", descricao: "Itens nascem pendentes — marque os pagos", accent: "bg-emerald-500" },
+  { id: "TABELA_VALORES", titulo: "Tabela de Valores", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
+  { id: "REVISAO_VALORES", titulo: "Revisão de Valores", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
+  { id: "SOLICITACAO_COMPRA", titulo: "Solicitação de Compra", setorResponsavel: "COMPRAS", descricao: "Processo interno (outro portal)", accent: "bg-slate-400", grupo: "Portal interno" },
+  { id: "PEDIDO_COMPRA", titulo: "Pedido de Compra", setorResponsavel: "COMPRAS", descricao: "Abertura de chamado para o pedido de compra", accent: "bg-indigo-500" },
+  { id: "PC_ENVIADO", titulo: "PC enviado", setorResponsavel: "COMPRAS", descricao: "Pedido de compra enviado ao fornecedor", accent: "bg-emerald-600" },
+  { id: "ENCERRADOS", titulo: "Encerrados", setorResponsavel: "COMPRAS", descricao: "Compras concluídas", accent: "bg-slate-500" },
+];
+
 export function colunasDoFluxo(fluxo: Fluxo): ColunaConfig[] {
-  return fluxo === "IMPLANTACAO" ? COLUNAS_IMPLANTACAO : COLUNAS_MANUTENCAO;
+  if (fluxo === "IMPLANTACAO") return COLUNAS_IMPLANTACAO;
+  if (fluxo === "COMPRAS") return COLUNAS_COMPRAS;
+  return COLUNAS_MANUTENCAO;
 }
 
 // ---------------------------------------------------------------------------

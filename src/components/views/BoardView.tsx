@@ -5,13 +5,14 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CardSlideOver } from "@/components/kanban/CardSlideOver";
 import { CardForm } from "@/components/forms/CardForm";
 import { BoardFiltros } from "@/components/kanban/BoardFiltros";
+import { ImportarOrcamento, type OrcamentoImportado } from "@/components/forms/ImportarOrcamento";
 import { useCards, type NovoCardInput } from "@/lib/store";
-import { ehRetrocessoImplantacao, movimentoValido, movimentoValidoManutencao } from "@/lib/routing";
+import { ehRetrocessoImplantacao, movimentoValido, movimentoValidoCompras, movimentoValidoManutencao } from "@/lib/routing";
 import { mesDoCard } from "@/lib/flows";
 import { cardCorrespondeFiltros, FILTROS_VAZIO, temFiltroAtivo, type FiltrosBoard } from "@/lib/board-filtros";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
-import type { Card, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
+import type { Card, EtapaCompras, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
   return {
@@ -38,6 +39,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
     valores: { maoDeObra: v.maoDeObra, equipamentos: v.equipamentos, total: v.total, mensal: v.mensal, locacao: v.locacao },
     observacoes: v.observacoes,
     materiais: v.materiais,
+    itensCompra: v.itensCompra,
   };
 }
 
@@ -53,6 +55,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [formAberto, setFormAberto] = useState(false);
+  const [importAberto, setImportAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -71,6 +74,18 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const aberto = abertoId ? obter(abertoId) ?? null : null;
 
   async function handleMover(id: string, destino: EtapaId) {
+    if (fluxo === "COMPRAS") {
+      const card = obter(id);
+      if (!card) return;
+      const podeRetroceder = atual?.perfil === "COORDENADOR";
+      const v = movimentoValidoCompras(card, destino as EtapaCompras, podeRetroceder);
+      if (!v.ok) {
+        setToast(v.motivo ?? "Movimento não permitido.");
+        return;
+      }
+      await atualizar(id, { etapa: destino });
+      return;
+    }
     if (fluxo === "MANUTENCAO") {
       const card = obter(id);
       if (!card) return;
@@ -106,8 +121,21 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
     setEditId(null);
   }
 
-  const titulo = fluxo === "IMPLANTACAO" ? "Esteira de Implantação" : "Esteira de Manutenção";
-  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : "Serviços extras e orçamentos";
+  const titulo = fluxo === "IMPLANTACAO" ? "Esteira de Implantação" : fluxo === "COMPRAS" ? "Esteira de Compras" : "Esteira de Manutenção";
+  const subtitulo = fluxo === "IMPLANTACAO" ? "Novos projetos · Comercial → Medição" : fluxo === "COMPRAS" ? "Orçamentos aprovados · Classificação → PC enviado" : "Serviços extras e orçamentos";
+
+  async function criarDeOrcamento(dados: OrcamentoImportado) {
+    const novo = await criar({
+      fluxo: "COMPRAS",
+      clienteNome: dados.cliente,
+      prioridade: "NORMAL",
+      numeroOrcamento: dados.numeroOrcamento,
+      dataCadastro: dados.dataAprovacao,
+      itensCompra: dados.itens,
+    });
+    if (!novo) throw new Error("Não foi possível criar o card.");
+    setToast(`Orçamento de ${dados.cliente} criado com ${dados.itens.length} item(ns) na Classificação.`);
+  }
 
   return (
     <>
@@ -120,6 +148,11 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
         </div>
         <div className="flex shrink-0 items-center gap-2.5">
           <BoardFiltros fluxo={fluxo} competencias={competencias} filtros={filtros} setFiltros={setFiltros} />
+          {podeCriar && fluxo === "COMPRAS" && (
+            <button onClick={() => setImportAberto(true)} className="shrink-0 rounded-lg border border-brand bg-brand/10 px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand/20">
+              📄 Importar orçamento (PDF)
+            </button>
+          )}
           {podeCriar && (
             <button onClick={() => { setEditId(null); setFormAberto(true); }} className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700">
               + Nova entrada
@@ -164,6 +197,10 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
         onFechar={() => { setFormAberto(false); setEditId(null); }}
         onSubmit={handleSubmit}
       />
+
+      {fluxo === "COMPRAS" && (
+        <ImportarOrcamento aberto={importAberto} onFechar={() => setImportAberto(false)} onCriar={criarDeOrcamento} />
+      )}
 
       {toast && (
         <div className="fixed bottom-5 left-1/2 z-[70] -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">

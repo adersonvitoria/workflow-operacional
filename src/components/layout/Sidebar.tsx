@@ -17,6 +17,7 @@ const NAV_BASE: ItemNav[] = [
   { href: "/dashboard", rotulo: "Dashboard", icone: "▦" },
   { href: "/implantacoes", rotulo: "Implantações", icone: "▤" },
   { href: "/manutencoes", rotulo: "Manutenções", icone: "▣" },
+  { href: "/compras", rotulo: "Compras", icone: "▨" },
   { href: "/calendario", rotulo: "Calendário", icone: "📅" },
   { href: "/estoque", rotulo: "Estoque", icone: "▥" },
 ];

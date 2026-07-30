@@ -29,6 +29,7 @@ enum Perfil {
 enum Fluxo {
   IMPLANTACAO
   MANUTENCAO
+  COMPRAS
 }
 
 enum CardStatus {
@@ -186,6 +187,7 @@ model Card {
   materiais        Json @default("[]")
   checklist        Json @default("[]")
   historico        Json @default("[]")
+  itensCompra      Json @default("[]") // Compras: itens do orçamento (card por orçamento)
 
   observacoes String?
 

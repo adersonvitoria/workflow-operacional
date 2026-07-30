@@ -74,10 +74,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "A data de fim não pode ser anterior à data de início." }, { status: 422 });
   }
 
-  const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : "IMPLANTACAO";
+  const fluxo: Fluxo = b.fluxo === "MANUTENCAO" ? "MANUTENCAO" : b.fluxo === "COMPRAS" ? "COMPRAS" : "IMPLANTACAO";
   await carregarConfigPerfis();
   if (!podeCriarCard(s.perfil, fluxo)) return NextResponse.json({ erro: "Sem permissão para cadastrar." }, { status: 403 });
-  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : "ROTINA";
+  const etapa = fluxo === "IMPLANTACAO" ? "COMERCIAL" : fluxo === "COMPRAS" ? "CLASSIFICACAO" : "ROTINA";
   const qtd = await prisma.card.count({ where: { fluxo } });
   const agora = new Date().toISOString();
 
@@ -117,11 +117,15 @@ export async function POST(req: Request) {
       valorTotal: b.total ?? null,
       valorMensal: b.mensal ?? null,
       valorLocacao: b.locacao ?? null,
-      responsavelSetor: "COMERCIAL",
+      responsavelSetor: fluxo === "COMPRAS" ? "COMPRAS" : "COMERCIAL",
       responsavelPessoa: s.nome,
       observacoes: b.observacoes ?? null,
       materiais: Array.isArray(b.materiais) ? b.materiais : [],
-      historico: [{ id: "h0", data: agora, setor: "COMERCIAL", autor: s.nome, acao: "Projeto cadastrado", para: etapa }],
+      // Compras: itens do orçamento — todo item nasce com o pagamento pendente.
+      itensCompra: Array.isArray(b.itensCompra)
+        ? b.itensCompra.map((i: Record<string, unknown>) => ({ statusPagamento: "PENDENTE", ...i }))
+        : [],
+      historico: [{ id: "h0", data: agora, setor: fluxo === "COMPRAS" ? "COMPRAS" : "COMERCIAL", autor: s.nome, acao: fluxo === "COMPRAS" ? "Orçamento inserido na esteira de Compras" : "Projeto cadastrado", para: etapa }],
     },
   });
   return NextResponse.json({ card: rowToCard(card) }, { status: 201 });

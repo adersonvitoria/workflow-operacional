@@ -7,7 +7,7 @@ import { useTecnicos } from "@/lib/tecnicos-store";
 import { REGIOES_POA } from "@/lib/regioes-poa";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import type { NovoCardInput } from "@/lib/store";
-import type { Card, DadosManutencao, Fluxo, ItemMaterial, Modalidade, Prioridade, TipoCliente, TipoEntradaManutencao, Turno } from "@/types";
+import type { Card, DadosManutencao, Fluxo, ItemCompra, ItemMaterial, Modalidade, Prioridade, TipoCliente, TipoEntradaManutencao, Turno } from "@/types";
 
 interface CardFormProps {
   aberto: boolean;
@@ -98,6 +98,7 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
         mensal: inicial.valores.mensal,
         locacao: inicial.valores.locacao,
         numeroOrcamento: inicial.numeroOrcamento,
+        itensCompra: inicial.itensCompra,
         manutencao: inicial.manutencao,
         observacoes: inicial.observacoes,
       });
@@ -157,6 +158,13 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
       onSubmit({ ...form, equipamentos: itemsCusto, total: totalLocacao, materiais: itens });
       return;
     }
+    // Compras: cliente + ao menos um item com material.
+    if (fluxo === "COMPRAS") {
+      const itens = (form.itensCompra ?? []).filter((i) => i.material.trim());
+      if (itens.length === 0) return setErro("Inclua ao menos um item no orçamento.");
+      onSubmit({ ...form, itensCompra: itens });
+      return;
+    }
     // Manutenção: sem valores/itens — só os campos da entrada.
     const m = form.manutencao ?? {};
     if (m.dataInicio && m.dataFim && m.dataFim < m.dataInicio) {
@@ -181,10 +189,57 @@ export function CardForm({ aberto, fluxo, inicial, onFechar, onSubmit }: CardFor
             <input value={form.clienteNome} onChange={(e) => set("clienteNome", e.target.value)} className={inputCls} placeholder="Razão social / nome" />
           </Campo>
 
+          {fluxo === "COMPRAS" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Nº do orçamento"><input value={form.numeroOrcamento ?? ""} onChange={(e) => set("numeroOrcamento", e.target.value)} className={inputCls} /></Campo>
+              <Campo label="Data de aprovação do orçamento">
+                <input type="date" value={form.dataCadastro ?? ""} onChange={(e) => set("dataCadastro", e.target.value || undefined)} className={inputCls} />
+              </Campo>
+            </div>
+          ) : (
           <Campo label="Data de cadastro">
             <input readOnly value={form.dataCadastro ? form.dataCadastro.split("-").reverse().join("/") : ""} className={`${inputCls} cursor-default bg-slate-50 text-slate-500 dark:bg-slate-800/60`} title="Preenchida automaticamente" />
             <span className="mt-0.5 block text-[10px] text-slate-400">Preenchida automaticamente — não editável.</span>
           </Campo>
+          )}
+
+          {/* COMPRAS: itens do orçamento (quantidade + material + setor). */}
+          {fluxo === "COMPRAS" && (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Itens do orçamento ({(form.itensCompra ?? []).length})</span>
+                <button
+                  type="button"
+                  onClick={() => set("itensCompra", [...(form.itensCompra ?? []), { id: `ic-${Date.now()}`, quantidade: 1, material: "", statusPagamento: "PENDENTE" } as ItemCompra])}
+                  className="text-xs font-medium text-brand hover:underline"
+                >
+                  + adicionar item
+                </button>
+              </div>
+              <ul className="space-y-1.5">
+                {(form.itensCompra ?? []).map((i) => (
+                  <li key={i.id} className="flex items-center gap-2">
+                    <input
+                      type="number" min={1} value={i.quantidade} title="Quantidade"
+                      onChange={(e) => set("itensCompra", (form.itensCompra ?? []).map((x) => (x.id === i.id ? { ...x, quantidade: Math.max(1, Number(e.target.value) || 1) } : x)))}
+                      className={`${inputCls} w-16 shrink-0`}
+                    />
+                    <input
+                      value={i.material} placeholder="Material"
+                      onChange={(e) => set("itensCompra", (form.itensCompra ?? []).map((x) => (x.id === i.id ? { ...x, material: e.target.value } : x)))}
+                      className={`${inputCls} flex-1`}
+                    />
+                    <input
+                      value={i.setor ?? ""} placeholder="Setor"
+                      onChange={(e) => set("itensCompra", (form.itensCompra ?? []).map((x) => (x.id === i.id ? { ...x, setor: e.target.value || undefined } : x)))}
+                      className={`${inputCls} w-32 shrink-0`}
+                    />
+                    <button type="button" onClick={() => set("itensCompra", (form.itensCompra ?? []).filter((x) => x.id !== i.id))} className="shrink-0 text-xs font-medium text-rose-600 hover:underline">remover</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {fluxo === "MANUTENCAO" && (
             <Campo label="Tipo de cliente">
