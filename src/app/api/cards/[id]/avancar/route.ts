@@ -20,11 +20,12 @@ const SETOR_DA_ETAPA: Record<string, Setor> = {
   ENCERRADOS: "MEDICAO",
 };
 
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
 
-  const row = await prisma.card.findUnique({ where: { id: params.id } });
+  const row = await prisma.card.findUnique({ where: { id: id } });
   if (!row) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
 
   const card = rowToCard(row);
@@ -57,7 +58,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   ];
 
   const atualizado = await prisma.card.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       etapa: destino,
       status,

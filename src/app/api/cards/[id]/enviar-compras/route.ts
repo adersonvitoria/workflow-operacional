@@ -16,12 +16,13 @@ export const maxDuration = 60; // extração de itens do PDF pode levar alguns s
  * - IMPLANTAÇÃO · Coordenação → o cheque da Coordenação aprova o escopo e
  *   envia — origem IMPLANTACAO (volta ao Monitoramento).
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const original = await prisma.card.findUnique({ where: { id: params.id } });
+  const original = await prisma.card.findUnique({ where: { id: id } });
   if (!original) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
 
   const deManutencao = original.fluxo === "MANUTENCAO" && original.etapa === "ORC_APROVADO";

@@ -56,20 +56,22 @@ function patchToData(p: Partial<Card>): Record<string, unknown> {
   return d;
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
-  const row = await prisma.card.findUnique({ where: { id: params.id } });
+  const row = await prisma.card.findUnique({ where: { id: id } });
   if (!row) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
   return NextResponse.json({ card: rowToCard(row) });
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const existente = await prisma.card.findUnique({ where: { id: params.id } });
+  const existente = await prisma.card.findUnique({ where: { id: id } });
   if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
 
   const body = (await req.json().catch(() => ({}))) as Partial<Card>;
@@ -201,16 +203,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (existente.etapa === "ENCERRADOS" && body.etapa !== "ENCERRADOS") data.dataConclusao = null;
   }
 
-  const row = await prisma.card.update({ where: { id: params.id }, data });
+  const row = await prisma.card.update({ where: { id: id }, data });
   return NextResponse.json({ card: rowToCard(row) });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const existente = await prisma.card.findUnique({ where: { id: params.id } });
+  const existente = await prisma.card.findUnique({ where: { id: id } });
   if (!existente) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
 
   // Excluir: somente Coordenador (qualquer etapa) e Comercial (etapa Comercial).
@@ -218,6 +221,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!podeExcluirCard(s.perfil, existente.etapa)) {
     return NextResponse.json({ erro: "Sem permissão para excluir este card." }, { status: 403 });
   }
-  await prisma.card.delete({ where: { id: params.id } });
+  await prisma.card.delete({ where: { id: id } });
   return NextResponse.json({ ok: true });
 }

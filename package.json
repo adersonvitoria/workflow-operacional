@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -17,6 +17,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "overrides": {
+    "sharp": "^0.35.0",
     "postcss": "^8.5.18"
   },
   "dependencies": {
@@ -27,16 +28,17 @@
     "@prisma/client": "^6.19.3",
     "@types/mapbox-gl": "^3.4.1",
     "bcryptjs": "^3.0.3",
+    "eslint-config-next": "^16.2.12",
     "jose": "^6.2.3",
     "mapbox-gl": "^3.25.0",
-    "next": "14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "next": "^16.2.12",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.5.18",
     "prisma": "^6.19.3",

@@ -14,12 +14,13 @@ export const maxDuration = 60;
  * e, com a IA configurada, o nº e o valor do orçamento são extraídos para
  * pré-preencher o gate — o usuário revisa antes de salvar.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const card = await prisma.card.findUnique({ where: { id: params.id } });
+  const card = await prisma.card.findUnique({ where: { id: id } });
   if (!card) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
   if (card.fluxo !== "MANUTENCAO") {
     return NextResponse.json({ erro: "O anexo de orçamento é da esteira de Manutenção." }, { status: 422 });
@@ -82,11 +83,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 /** Baixa/abre o PDF do orçamento anexado ao card. */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
 
-  const anexo = await prisma.orcamentoPdf.findUnique({ where: { cardId: params.id } });
+  const anexo = await prisma.orcamentoPdf.findUnique({ where: { cardId: id } });
   if (!anexo) return NextResponse.json({ erro: "Nenhum orçamento anexado." }, { status: 404 });
 
   const bytes = Buffer.from(anexo.dados, "base64");

@@ -4,7 +4,8 @@ import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarItens } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
@@ -18,20 +19,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (b.ativo != null) data.ativo = b.ativo;
 
   try {
-    const item = await prisma.item.update({ where: { id: params.id }, data });
+    const item = await prisma.item.update({ where: { id: id }, data });
     return NextResponse.json({ item });
   } catch {
     return NextResponse.json({ erro: "Item não encontrado ou descrição duplicada." }, { status: 400 });
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
   if (!podeGerenciarItens(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
   try {
-    await prisma.item.delete({ where: { id: params.id } });
+    await prisma.item.delete({ where: { id: id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ erro: "Item não encontrado." }, { status: 404 });

@@ -11,12 +11,13 @@ import type { Card } from "@/types";
  * Entrega (Compras, etapa final): concluída a entrega, o card volta para a
  * esteira de ORIGEM — Manutenção (Agendamento) ou Implantação (Monitoramento).
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const original = await prisma.card.findUnique({ where: { id: params.id } });
+  const original = await prisma.card.findUnique({ where: { id: id } });
   if (!original) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
   if (original.fluxo !== "COMPRAS" || original.etapa !== "ENTREGA") {
     return NextResponse.json({ erro: "Só cards na Entrega (Compras) concluem a entrega." }, { status: 422 });

@@ -15,12 +15,13 @@ import { rowToCard } from "@/lib/mappers";
  * Permissão: executar a etapa Cheque (Supervisão / Coordenador) — é uma ação do
  * Cheque, não um "cadastro" comum de card.
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const origem = await prisma.card.findUnique({ where: { id: params.id } });
+  const origem = await prisma.card.findUnique({ where: { id: id } });
   if (!origem) return NextResponse.json({ erro: "Card de origem não encontrado." }, { status: 404 });
 
   if (origem.fluxo !== "MANUTENCAO" || origem.etapa !== "CHEQUE") {

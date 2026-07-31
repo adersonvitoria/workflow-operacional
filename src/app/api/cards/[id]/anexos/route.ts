@@ -10,12 +10,13 @@ import { ehPdfValido, LIMITE_BASE64 } from "@/lib/pdf-seguro";
  * (Implantação) e no Pedido ao Fornecedor (Compras). Quem executa a etapa
  * atual pode anexar; qualquer usuário autenticado pode listar/abrir.
  */
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
 
-  const card = await prisma.card.findUnique({ where: { id: params.id } });
+  const card = await prisma.card.findUnique({ where: { id: id } });
   if (!card) return NextResponse.json({ erro: "Card não encontrado." }, { status: 404 });
   if (!podeExecutarEtapa(s.perfil, card.etapa, card.modalidade ?? undefined)) {
     return NextResponse.json({ erro: "Seu perfil não pode anexar PDF nesta etapa." }, { status: 403 });
@@ -53,11 +54,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 /** Lista os anexos do card (sem o conteúdo — leve para o painel). */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   const anexos = await prisma.anexoPdf.findMany({
-    where: { cardId: params.id },
+    where: { cardId: id },
     select: { id: true, nome: true, etapa: true, autor: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });

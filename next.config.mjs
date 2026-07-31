@@ -38,6 +38,8 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // não anuncia o framework
+  // A pasta-pai tem outro lockfile; fixa a raiz para o Turbopack não inferir errado.
+  turbopack: { root: import.meta.dirname },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -57,7 +57,7 @@ export async function verificarToken(token: string): Promise<Sessao | null> {
  * seu perfil tem efeito imediato, sem esperar o token expirar.
  */
 export async function obterSessao(): Promise<Sessao | null> {
-  const token = cookies().get(COOKIE_NOME)?.value;
+  const token = (await cookies()).get(COOKIE_NOME)?.value;
   if (!token) return null;
   const s = await verificarToken(token);
   if (!s) return null;

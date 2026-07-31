@@ -11,7 +11,8 @@ function publico(u: { id: string; nome: string; email: string; perfil: string; a
   return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo };
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
@@ -34,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // Escalonamento de privilégio: ninguém muda o próprio perfil, e só o
   // Coordenador promove alguém a Coordenador.
   if (body.perfil != null) {
-    if (params.id === s.userId) {
+    if (id === s.userId) {
       return NextResponse.json({ erro: "Você não pode alterar o seu próprio perfil." }, { status: 403 });
     }
     if (body.perfil === "COORDENADOR" && s.perfil !== "COORDENADOR") {
@@ -44,27 +45,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   // Desativar/reativar a si mesmo também fica bloqueado (evita auto-lockout
   // e manobras de reativação).
-  if (body.ativo != null && params.id === s.userId) {
+  if (body.ativo != null && id === s.userId) {
     return NextResponse.json({ erro: "Você não pode alterar o seu próprio status." }, { status: 403 });
   }
 
   try {
-    const u = await prisma.usuario.update({ where: { id: params.id }, data });
+    const u = await prisma.usuario.update({ where: { id: id }, data });
     return NextResponse.json({ usuario: publico(u) });
   } catch {
     return NextResponse.json({ erro: "Usuário não encontrado." }, { status: 404 });
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   await carregarConfigPerfis();
   if (!podeGerenciarUsuarios(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
-  if (params.id === s.userId) return NextResponse.json({ erro: "Você não pode remover a si mesmo." }, { status: 400 });
+  if (id === s.userId) return NextResponse.json({ erro: "Você não pode remover a si mesmo." }, { status: 400 });
 
   try {
-    await prisma.usuario.delete({ where: { id: params.id } });
+    await prisma.usuario.delete({ where: { id: id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ erro: "Usuário não encontrado." }, { status: 404 });

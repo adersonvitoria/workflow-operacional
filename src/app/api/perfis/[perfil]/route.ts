@@ -4,12 +4,13 @@ import { obterSessao } from "@/lib/server-auth";
 import { PERFIS, podeGerenciarPerfis, type Perfil } from "@/lib/perfis";
 
 /** Atualiza as permissões/ações de um perfil. Somente o Coordenador. */
-export async function PATCH(req: Request, { params }: { params: { perfil: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ perfil: string }> }) {
+  const { perfil: perfilParam } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   if (!podeGerenciarPerfis(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
-  const perfil = params.perfil as Perfil;
+  const perfil = perfilParam as Perfil;
   if (!PERFIS.includes(perfil)) return NextResponse.json({ erro: "Perfil inválido." }, { status: 400 });
   if (perfil === "COORDENADOR") return NextResponse.json({ erro: "O Coordenador tem acesso total e não é editável." }, { status: 400 });
 
@@ -27,12 +28,13 @@ export async function PATCH(req: Request, { params }: { params: { perfil: string
 }
 
 /** Restaura o perfil ao padrão de fábrica (remove o override). Só o Coordenador. */
-export async function DELETE(_req: Request, { params }: { params: { perfil: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ perfil: string }> }) {
+  const { perfil: perfilParam } = await params;
   const s = await obterSessao();
   if (!s) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
   if (!podeGerenciarPerfis(s.perfil)) return NextResponse.json({ erro: "Sem permissão." }, { status: 403 });
 
-  const perfil = params.perfil as Perfil;
+  const perfil = perfilParam as Perfil;
   if (!PERFIS.includes(perfil)) return NextResponse.json({ erro: "Perfil inválido." }, { status: 400 });
   await prisma.perfilConfig.deleteMany({ where: { perfil } });
   return NextResponse.json({ ok: true });
