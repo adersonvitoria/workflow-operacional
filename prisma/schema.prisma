@@ -102,6 +102,9 @@ model Usuario {
   senhaHash String
   perfil    Perfil
   ativo     Boolean  @default(true)
+  // Força a troca no próximo login (senha inicial gerada ou redefinida pelo
+  // gestor, e senhas antigas fracas migradas).
+  precisaTrocarSenha Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

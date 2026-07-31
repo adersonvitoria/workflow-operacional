@@ -28,6 +28,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ erro: `A senha deve ter ao menos ${MIN_SENHA} caracteres.` }, { status: 400 });
     }
     data.senhaHash = await bcrypt.hash(senha, 12);
+    // Senha redefinida pelo gestor: o dono troca no próximo acesso.
+    data.precisaTrocarSenha = true;
   }
   // Escalonamento de privilégio: ninguém muda o próprio perfil, e só o
   // Coordenador promove alguém a Coordenador.

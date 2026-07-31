@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { AssistenteProvider } from "@/lib/assistente-store";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { TrocaSenhaObrigatoria } from "@/components/layout/TrocaSenhaObrigatoria";
 import { AssistenteFlutuante } from "@/components/assistente/AssistenteFlutuante";
 
 export default function PainelLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,8 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       </div>
       {/* Chatbot flutuante do Coordenador — presente em todas as telas. */}
       <AssistenteFlutuante />
+      {/* Bloqueio de primeiro acesso: senha definida por terceiro. */}
+      <TrocaSenhaObrigatoria />
     </AssistenteProvider>
   );
 }

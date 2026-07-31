@@ -51,8 +51,9 @@ export async function POST(req: Request) {
   // Sem senha informada, gera uma aleatória (nada de senha padrão conhecida).
   const senhaInicial = senha ? String(senha) : senhaAleatoria();
   const senhaHash = await bcrypt.hash(senhaInicial, 12);
+  // Toda senha definida por terceiro exige troca no primeiro acesso.
   const u = await prisma.usuario.create({
-    data: { nome, email: String(email).toLowerCase(), perfil, ativo, senhaHash },
+    data: { nome, email: String(email).toLowerCase(), perfil, ativo, senhaHash, precisaTrocarSenha: true },
   });
   return NextResponse.json(
     { usuario: publico(u), ...(senha ? {} : { senhaInicial }) },

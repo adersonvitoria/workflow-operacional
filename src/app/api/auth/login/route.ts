@@ -34,7 +34,9 @@ export async function POST(req: Request) {
 
   liberar(chave); // login válido zera o contador
   const token = await assinarSessao({ userId: u.id, perfil: u.perfil, nome: u.nome });
-  const res = NextResponse.json({ usuario: { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo } });
+  const res = NextResponse.json({
+    usuario: { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo, precisaTrocarSenha: u.precisaTrocarSenha },
+  });
   res.cookies.set(COOKIE_NOME, token, COOKIE_OPTS);
   return res;
 }

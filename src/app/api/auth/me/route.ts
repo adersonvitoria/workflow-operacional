@@ -5,8 +5,8 @@ import { obterSessao, assinarSessao, COOKIE_NOME, COOKIE_OPTS } from "@/lib/serv
 
 const MIN_SENHA = 8;
 
-function publico(u: { id: string; nome: string; email: string; perfil: string; ativo: boolean }) {
-  return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo };
+function publico(u: { id: string; nome: string; email: string; perfil: string; ativo: boolean; precisaTrocarSenha?: boolean }) {
+  return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo, precisaTrocarSenha: !!u.precisaTrocarSenha };
 }
 
 export async function GET() {
@@ -41,6 +41,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ erro: `A nova senha deve ter ao menos ${MIN_SENHA} caracteres.` }, { status: 400 });
     }
     data.senhaHash = await bcrypt.hash(String(body.novaSenha), 12);
+    data.precisaTrocarSenha = false; // trocou: cumpre a exigência
   }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ erro: "Nada para atualizar." }, { status: 400 });
