@@ -199,6 +199,7 @@ model Card {
   // ao Aguardando). O conteúdo fica na tabela OrcamentoPdf (não pesa o board).
   orcamentoPdfNome String?
   orcamentoPdf     OrcamentoPdf?
+  anexos           AnexoPdf[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -214,4 +215,19 @@ model OrcamentoPdf {
   dados     String // PDF em base64
   createdAt DateTime @default(now())
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+// Anexos PDF avulsos do card (vários por card) — ex.: Comercial (Implantação)
+// e Pedido ao Fornecedor (Compras). Conteúdo fora do board (não pesa a lista).
+model AnexoPdf {
+  id        String   @id @default(cuid())
+  cardId    String
+  nome      String
+  etapa     String? // etapa em que foi anexado
+  dados     String // PDF em base64
+  autor     String?
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
 }

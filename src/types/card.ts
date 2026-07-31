@@ -270,7 +270,9 @@ export interface DadosMedicao {
 export interface SigmaSync {
   contaCriada: boolean;
   contaSigma?: string; // nº da conta gerada
-  dadosConexao?: string; // IP, portas, serial — texto livre por enquanto
+  dadosConexao?: string; // legado — substituído por `observacoes`
+  /** Observações do Monitoramento (substitui o campo de dados de conexão). */
+  observacoes?: string;
   ultimaSincronizacao?: string;
   statusSync?: "PENDENTE" | "SINCRONIZADO" | "ERRO";
 }

@@ -318,6 +318,10 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                     </Secao>
                   )}
 
+                  {/* Anexos PDF: upload no Comercial (Implantação) e no Pedido ao
+                      Fornecedor (Compras); a lista aparece em qualquer etapa. */}
+                  <AnexosPdf card={card} podeAgir={podeAgir} />
+
                   {card.observacoes && (
                     <Secao titulo="Observações">
                       <p className="text-sm text-slate-600 dark:text-slate-300">{card.observacoes}</p>
@@ -577,10 +581,22 @@ function GateAtual({ card, patch }: { card: Card; patch: (p: Partial<Card>) => v
     return (
       <Gate titulo="Criação de conta no software central">
         <input value={sigma.contaSigma ?? ""} onChange={(e) => setSigma({ ...sigma, contaSigma: e.target.value })} placeholder="Nº da conta (Sigma)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
-        <input value={sigma.dadosConexao ?? ""} onChange={(e) => setSigma({ ...sigma, dadosConexao: e.target.value })} placeholder="Dados de conexão (IP, portas, serial)" className="mb-2 w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" />
+        {/* Observações (substitui o antigo campo de dados de conexão). */}
+        <textarea
+          value={sigma.observacoes ?? sigma.dadosConexao ?? ""}
+          onChange={(e) => setSigma({ ...sigma, observacoes: e.target.value })}
+          placeholder="Observações"
+          rows={3}
+          className="mb-2 w-full resize-none rounded-lg border border-slate-200 p-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        />
         <button onClick={() => patch({ sigma: { ...sigma, contaCriada: true, statusSync: "SINCRONIZADO" } })} disabled={card.sigma?.contaCriada} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-200">
           {card.sigma?.contaCriada ? "✓ Conta criada" : "Confirmar criação da conta"}
         </button>
+        {card.sigma?.contaCriada && (
+          <button onClick={() => patch({ sigma: { ...sigma } })} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+            Salvar observações
+          </button>
+        )}
       </Gate>
     );
   }
@@ -1177,6 +1193,112 @@ function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) 
         {card.numeroOrcamento && card.valores.total ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
+  );
+}
+
+interface AnexoResumo {
+  id: string;
+  nome: string;
+  etapa?: string | null;
+  autor?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Anexos PDF avulsos do card. O upload fica disponível no Comercial
+ * (Implantação) e no Pedido ao Fornecedor (Compras) para quem executa a
+ * etapa; a lista com os links aparece em qualquer etapa.
+ */
+function AnexosPdf({ card, podeAgir }: { card: Card; podeAgir: boolean }) {
+  const [anexos, setAnexos] = useState<AnexoResumo[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const podeAnexar = podeAgir && (
+    (card.fluxo === "IMPLANTACAO" && card.etapa === "COMERCIAL") ||
+    (card.fluxo === "COMPRAS" && card.etapa === "PEDIDO_FORNECEDOR")
+  );
+
+  useEffect(() => {
+    setAviso(null);
+    let ativo = true;
+    fetch(`/api/cards/${card.id}/anexos`, { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : { anexos: [] }))
+      .then((j) => { if (ativo) setAnexos(j.anexos ?? []); })
+      .catch(() => { if (ativo) setAnexos([]); });
+    return () => { ativo = false; };
+  }, [card.id]);
+
+  async function anexar(file: File) {
+    setAviso(null);
+    if (file.type !== "application/pdf") return setAviso("Selecione um arquivo PDF.");
+    if (file.size > 3 * 1024 * 1024) return setAviso("PDF muito grande (máx. 3 MB).");
+    setEnviando(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let bin = "";
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const res = await fetch(`/api/cards/${card.id}/anexos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ pdfBase64: btoa(bin), nome: file.name }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.erro ?? "Falha ao anexar o PDF.");
+      setAnexos((prev) => [...prev, json.anexo as AnexoResumo]);
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "Falha ao anexar o PDF.");
+    } finally {
+      setEnviando(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function remover(id: string) {
+    if (!window.confirm("Remover este anexo?")) return;
+    const res = await fetch(`/api/cards/${card.id}/anexos/${id}`, { method: "DELETE", credentials: "same-origin" });
+    if (res.ok) setAnexos((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  if (!podeAnexar && anexos.length === 0) return null;
+
+  return (
+    <Secao titulo={`Anexos (PDF)${anexos.length ? ` · ${anexos.length}` : ""}`}>
+      {anexos.length > 0 && (
+        <ul className="mb-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          {anexos.map((a) => (
+            <li key={a.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+              <a href={`/api/cards/${card.id}/anexos/${a.id}`} target="_blank" rel="noreferrer" className="min-w-0 truncate font-medium text-brand hover:underline" title={a.nome}>
+                📄 {a.nome}
+              </a>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="text-[10px] text-slate-400">{a.etapa ? rotuloEtapa(a.etapa) : ""}</span>
+                {podeAnexar && (
+                  <button onClick={() => void remover(a.id)} className="rounded p-0.5 text-xs text-slate-400 hover:text-rose-600" title="Remover anexo">✕</button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {podeAnexar && (
+        <>
+          <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void anexar(f); }} />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={enviando}
+            className="rounded-lg border border-brand bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand/20 disabled:opacity-60"
+          >
+            {enviando ? "Enviando…" : "📄 Anexar PDF"}
+          </button>
+        </>
+      )}
+      {aviso && <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">{aviso}</p>}
+    </Secao>
   );
 }
 

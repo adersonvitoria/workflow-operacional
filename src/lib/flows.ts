@@ -452,12 +452,13 @@ export function duracaoAteEncerrar(c: Pick<Card, "datas">): string | null {
   return horas > 0 ? `${horas}h ${min}min` : `${min}min`;
 }
 
+/** Formata em BRL SEM arredondar: mostra os centavos como foram inseridos. */
 export function formatarBRL(valor?: number): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
