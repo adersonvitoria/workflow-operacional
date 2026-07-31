@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeUsarAssistente } from "@/lib/perfis";
+import { consumir } from "@/lib/rate-limit";
 
 export const maxDuration = 120; // folga p/ a IA responder sem derrubar a função
 
@@ -109,6 +110,14 @@ export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ erro: "Assistente não configurado neste ambiente (OPENAI_API_KEY ausente)." }, { status: 503 });
   }
+  // Custo de IA: no máximo 20 perguntas por usuário a cada 5 minutos.
+  const limite = consumir(`assistente:${s.userId}`, 20, 5 * 60 * 1000);
+  if (!limite.ok) {
+    return NextResponse.json(
+      { erro: `Muitas perguntas seguidas. Tente novamente em ${limite.esperarSegundos}s.` },
+      { status: 429, headers: { "Retry-After": String(limite.esperarSegundos) } },
+    );
+  }
 
   const body = (await req.json().catch(() => ({}))) as { mensagens?: MensagemChat[] };
   const mensagens = (body.mensagens ?? []).slice(-20); // limita o histórico enviado
@@ -142,8 +151,9 @@ export async function POST(req: Request) {
     json = await res.json().catch(() => ({}));
   }
   if (!res.ok) {
-    const msg = json?.error?.message ?? `HTTP ${res.status}`;
-    return NextResponse.json({ erro: `Falha na IA: ${msg}` }, { status: 502 });
+    // Detalhe do provedor fica no log do servidor; o cliente recebe mensagem genérica.
+    console.error("[assistente] falha na IA:", json?.error?.message ?? `HTTP ${res.status}`);
+    return NextResponse.json({ erro: "O assistente está indisponível no momento. Tente novamente." }, { status: 502 });
   }
   const resposta: string = json?.choices?.[0]?.message?.content ?? "";
   if (!resposta.trim()) return NextResponse.json({ erro: "A IA não retornou resposta." }, { status: 502 });

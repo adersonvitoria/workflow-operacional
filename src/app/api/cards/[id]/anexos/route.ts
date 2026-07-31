@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
+import { ehPdfValido, LIMITE_BASE64 } from "@/lib/pdf-seguro";
 
 /**
  * Anexos PDF avulsos do card (vários por card) — usados no Comercial
@@ -26,8 +27,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!pdfBase64 || typeof pdfBase64 !== "string") {
     return NextResponse.json({ erro: "Envie o PDF em base64 no campo pdfBase64." }, { status: 400 });
   }
-  if (pdfBase64.length > 4_200_000) {
+  if (pdfBase64.length > LIMITE_BASE64) {
     return NextResponse.json({ erro: "PDF muito grande (máx. ~3 MB)." }, { status: 413 });
+  }
+  // O conteúdo precisa ser mesmo um PDF (assinatura), não só o tipo declarado.
+  if (!ehPdfValido(pdfBase64)) {
+    return NextResponse.json({ erro: "O arquivo enviado não é um PDF válido." }, { status: 415 });
   }
 
   const anexo = await prisma.anexoPdf.create({

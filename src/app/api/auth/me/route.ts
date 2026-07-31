@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { obterSessao, assinarSessao, COOKIE_NOME, COOKIE_OPTS } from "@/lib/server-auth";
 
+const MIN_SENHA = 8;
+
 function publico(u: { id: string; nome: string; email: string; perfil: string; ativo: boolean }) {
   return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo };
 }
@@ -35,8 +37,10 @@ export async function PATCH(req: Request) {
   if (body.novaSenha != null && String(body.novaSenha).length > 0) {
     const confere = await bcrypt.compare(String(body.senhaAtual ?? ""), u.senhaHash);
     if (!confere) return NextResponse.json({ erro: "Senha atual incorreta." }, { status: 400 });
-    if (String(body.novaSenha).length < 4) return NextResponse.json({ erro: "A nova senha deve ter ao menos 4 caracteres." }, { status: 400 });
-    data.senhaHash = await bcrypt.hash(String(body.novaSenha), 10);
+    if (String(body.novaSenha).length < MIN_SENHA) {
+      return NextResponse.json({ erro: `A nova senha deve ter ao menos ${MIN_SENHA} caracteres.` }, { status: 400 });
+    }
+    data.senhaHash = await bcrypt.hash(String(body.novaSenha), 12);
   }
 
   if (Object.keys(data).length === 0) return NextResponse.json({ erro: "Nada para atualizar." }, { status: 400 });

@@ -5,7 +5,14 @@ import { obterSessao } from "@/lib/server-auth";
 import { podeGerenciarUsuarios } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 
-const SENHA_PADRAO = "123456";
+const MIN_SENHA = 8;
+
+/** Senha inicial aleatória — devolvida uma única vez a quem cadastrou. */
+function senhaAleatoria(): string {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
+}
 
 function publico(u: { id: string; nome: string; email: string; perfil: string; ativo: boolean }) {
   return { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo };
@@ -33,10 +40,22 @@ export async function POST(req: Request) {
   }
   const existe = await prisma.usuario.findUnique({ where: { email: String(email).toLowerCase() } });
   if (existe) return NextResponse.json({ erro: "E-mail já cadastrado." }, { status: 409 });
+  // Só o Coordenador cria outro Coordenador (evita autopromoção via cadastro).
+  if (perfil === "COORDENADOR" && s.perfil !== "COORDENADOR") {
+    return NextResponse.json({ erro: "Somente o Coordenador pode conceder o perfil de Coordenador." }, { status: 403 });
+  }
+  if (senha && String(senha).length < MIN_SENHA) {
+    return NextResponse.json({ erro: `A senha deve ter ao menos ${MIN_SENHA} caracteres.` }, { status: 400 });
+  }
 
-  const senhaHash = await bcrypt.hash(String(senha || SENHA_PADRAO), 10);
+  // Sem senha informada, gera uma aleatória (nada de senha padrão conhecida).
+  const senhaInicial = senha ? String(senha) : senhaAleatoria();
+  const senhaHash = await bcrypt.hash(senhaInicial, 12);
   const u = await prisma.usuario.create({
     data: { nome, email: String(email).toLowerCase(), perfil, ativo, senhaHash },
   });
-  return NextResponse.json({ usuario: publico(u) }, { status: 201 });
+  return NextResponse.json(
+    { usuario: publico(u), ...(senha ? {} : { senhaInicial }) },
+    { status: 201 },
+  );
 }

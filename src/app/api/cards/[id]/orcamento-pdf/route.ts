@@ -4,6 +4,7 @@ import { obterSessao } from "@/lib/server-auth";
 import { podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { extracaoConfigurada, extrairOrcamentoPdf } from "@/lib/extrair-orcamento";
+import { cabecalhosPdf, ehPdfValido, LIMITE_BASE64 } from "@/lib/pdf-seguro";
 
 export const maxDuration = 60;
 
@@ -35,8 +36,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!pdfBase64 || typeof pdfBase64 !== "string") {
     return NextResponse.json({ erro: "Envie o PDF em base64 no campo pdfBase64." }, { status: 400 });
   }
-  if (pdfBase64.length > 4_200_000) {
+  if (pdfBase64.length > LIMITE_BASE64) {
     return NextResponse.json({ erro: "PDF muito grande (máx. ~3 MB)." }, { status: 413 });
+  }
+  if (!ehPdfValido(pdfBase64)) {
+    return NextResponse.json({ erro: "O arquivo enviado não é um PDF válido." }, { status: 415 });
   }
 
   // 1. Salva o anexo (upsert: reenviar substitui o anterior) + nome no card.
@@ -86,11 +90,5 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!anexo) return NextResponse.json({ erro: "Nenhum orçamento anexado." }, { status: 404 });
 
   const bytes = Buffer.from(anexo.dados, "base64");
-  return new NextResponse(bytes, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${anexo.nome.replace(/[^\w.\-() ]/g, "_")}"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+  return new NextResponse(bytes, { headers: cabecalhosPdf(anexo.nome) });
 }

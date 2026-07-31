@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeExecutarEtapa } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
+import { cabecalhosPdf } from "@/lib/pdf-seguro";
 
 /** Baixa/abre um anexo PDF do card. */
 export async function GET(_req: Request, { params }: { params: { id: string; anexoId: string } }) {
@@ -14,13 +15,7 @@ export async function GET(_req: Request, { params }: { params: { id: string; ane
     return NextResponse.json({ erro: "Anexo não encontrado." }, { status: 404 });
   }
   const bytes = Buffer.from(anexo.dados, "base64");
-  return new NextResponse(bytes, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${anexo.nome.replace(/[^\w.\-() ]/g, "_")}"`,
-      "Cache-Control": "private, no-store",
-    },
-  });
+  return new NextResponse(bytes, { headers: cabecalhosPdf(anexo.nome) });
 }
 
 /** Remove um anexo (quem executa a etapa atual do card). */

@@ -3,6 +3,7 @@ import { obterSessao } from "@/lib/server-auth";
 import { podeCriarCard } from "@/lib/perfis";
 import { carregarConfigPerfis } from "@/lib/perfis-server";
 import { extracaoConfigurada, extrairOrcamentoPdf } from "@/lib/extrair-orcamento";
+import { ehPdfValido, LIMITE_BASE64 } from "@/lib/pdf-seguro";
 
 export const maxDuration = 60; // leitura de PDF pode levar alguns segundos
 
@@ -32,8 +33,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Envie o PDF em base64 no campo pdfBase64." }, { status: 400 });
   }
   // Limite prático do serverless (4,5 MB de request) — base64 infla ~33%.
-  if (pdfBase64.length > 4_200_000) {
+  if (pdfBase64.length > LIMITE_BASE64) {
     return NextResponse.json({ erro: "PDF muito grande (máx. ~3 MB)." }, { status: 413 });
+  }
+  if (!ehPdfValido(pdfBase64)) {
+    return NextResponse.json({ erro: "O arquivo enviado não é um PDF válido." }, { status: 415 });
   }
 
   try {
