@@ -44,7 +44,7 @@ function paraPatch(v: NovoCardInput): Partial<Card> {
 }
 
 export function BoardView({ fluxo }: { fluxo: Fluxo }) {
-  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover } = useCards();
+  const { porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, retrocederOrigem, atualizar, avancar, remover } = useCards();
   const { atual } = useAuth();
   const cards = porFluxo(fluxo);
   const [filtros, setFiltros] = useState<FiltrosBoard>(FILTROS_VAZIO);
@@ -189,6 +189,15 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           const r = await concluirEntrega(abertoId);
           const destino = r.card?.fluxo === "IMPLANTACAO" ? "Implantação (Monitoramento)" : "Manutenção (Agendamento)";
           setToast(r.ok ? `Card #${r.card?.codigo} devolvido à ${destino}.` : (r.motivo ?? "Não foi possível concluir a entrega."));
+        }}
+        onRetrocederOrigem={async () => {
+          if (!abertoId) return;
+          const c = obter(abertoId);
+          const alvo = c?.origemCompras === "IMPLANTACAO" ? "Implantação · Coordenação" : "Manutenção · Aprovado";
+          if (!window.confirm(`Retroceder o card #${c?.codigo} para ${alvo}? Ele sai da esteira de Compras.`)) return;
+          const r = await retrocederOrigem(abertoId);
+          setToast(r.ok ? `Card #${r.card?.codigo} retrocedido para ${alvo}.` : (r.motivo ?? "Não foi possível retroceder."));
+          if (r.ok) setAbertoId(null);
         }}
         onEditar={() => { if (abertoId) { setEditId(abertoId); setFormAberto(true); } }}
         onExcluir={() => {

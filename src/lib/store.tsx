@@ -66,6 +66,8 @@ interface CardsContextValue {
   enviarParaCompras: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
   /** Entrega (Compras): devolve o card à esteira de origem (Manutenção ou Implantação). */
   concluirEntrega: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
+  /** Compras (Coordenador): retrocede o card para a coluna de origem. */
+  retrocederOrigem: (id: string) => Promise<{ ok: boolean; card?: Card; motivo?: string }>;
   atualizar: (id: string, patch: Partial<Card>) => Promise<void>;
   avancar: (id: string) => Promise<{ ok: boolean; motivo?: string }>;
   remover: (id: string) => Promise<void>;
@@ -165,6 +167,14 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
     return { ok: true, card };
   }, []);
 
+  const retrocederOrigem = useCallback(async (id: string) => {
+    const { ok, json } = await api(`/api/cards/${id}/retroceder-origem`, { method: "POST" });
+    if (!ok) return { ok: false, motivo: json.erro as string };
+    const card = json.card as Card;
+    setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));
+    return { ok: true, card };
+  }, []);
+
   const atualizar = useCallback(async (id: string, patch: Partial<Card>) => {
     const { ok, json } = await api(`/api/cards/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     if (ok) setCards((prev) => prev.map((c) => (c.id === id ? (json.card as Card) : c)));
@@ -185,8 +195,8 @@ export function CardsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<CardsContextValue>(
-    () => ({ cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover, recarregar }),
-    [cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, atualizar, avancar, remover, recarregar],
+    () => ({ cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, retrocederOrigem, atualizar, avancar, remover, recarregar }),
+    [cards, carregado, porFluxo, obter, criar, criarComplementar, enviarParaCompras, concluirEntrega, retrocederOrigem, atualizar, avancar, remover, recarregar],
   );
 
   return <CardsContext.Provider value={value}>{children}</CardsContext.Provider>;

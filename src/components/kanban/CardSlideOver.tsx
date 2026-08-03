@@ -48,6 +48,8 @@ interface CardSlideOverProps {
   onEnviarCompras: () => void;
   /** Compras · Entrega (final): devolve o card à esteira de origem. */
   onConcluirEntrega: () => void;
+  /** Compras (Coordenador): retrocede o card para a coluna de origem. */
+  onRetrocederOrigem: () => void;
 }
 
 type Aba = "detalhes" | "historico";
@@ -56,7 +58,7 @@ type Aba = "detalhes" | "historico";
  * Painel lateral de detalhes (controlado pelo store). Os gates precisam ser
  * satisfeitos para o botão "Avançar" liberar — lógica à prova de erros.
  */
-export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras, onConcluirEntrega }: CardSlideOverProps) {
+export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, onExcluir, onOrcamentoComplementar, onEnviarCompras, onConcluirEntrega, onRetrocederOrigem }: CardSlideOverProps) {
   const [aba, setAba] = useState<Aba>("detalhes");
   const { atual } = useAuth();
   const perfil = atual?.perfil;
@@ -440,6 +442,18 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       ↩ Retroceder para {rotuloEtapa(anteriorCompra)}
                     </button>
                   )}
+                  {/* Sai da esteira: volta para a coluna de origem do card. */}
+                  {ehCoordenador && (
+                    <button
+                      onClick={onRetrocederOrigem}
+                      className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
+                      title={card.origemCompras === "IMPLANTACAO"
+                        ? "O card sai de Compras e volta à Implantação (Coordenação · Aprovação)"
+                        : "O card sai de Compras e volta à Manutenção (Aprovado); de lá dá para retroceder ao Orçamento"}
+                    >
+                      ↩↩ Retroceder para {card.origemCompras === "IMPLANTACAO" ? "Implantação · Coordenação" : "Manutenção · Aprovado"}
+                    </button>
+                  )}
                 </footer>
               )
             ) : (
@@ -514,6 +528,17 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                       title="Retroceder o card para a raia anterior"
                     >
                       ↩ Retroceder para {rotuloEtapa(anteriorMan)}
+                    </button>
+                  )}
+                  {/* Aprovado: atalho direto para reabrir o orçamento (o card
+                      pode ter voltado de Compras e precisar de revisão). */}
+                  {ehCoordenador && card.etapa === "ORC_APROVADO" && (
+                    <button
+                      onClick={() => onPatch({ etapa: "ORCAMENTO" })}
+                      className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      title="Reabrir o orçamento para revisão"
+                    >
+                      ↩ Retroceder para Orçamento
                     </button>
                   )}
                 </footer>
