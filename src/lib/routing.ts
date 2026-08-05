@@ -348,10 +348,11 @@ export function etapaAnteriorCompras(etapa: EtapaCompras): EtapaCompras | null {
 /**
  * Gate da Classificação: só os itens a COMPRAR (não marcados como em estoque)
  * precisam de tipo de custo + centro de custo — item em estoque dispensa.
+ * Card sem itens avança livremente (não há o que classificar).
  */
 export function classificacaoComprasCompleta(card: Pick<Card, "itensCompra">): boolean {
   const itens = card.itensCompra ?? [];
-  return itens.length > 0 && itens.every(
+  return itens.every(
     (i) => i.estoque === "EM_ESTOQUE" || (!!i.tipoCusto?.trim() && !!i.centroCusto?.trim()),
   );
 }
