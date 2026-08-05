@@ -156,6 +156,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                           )}
                           <Campo rotulo="Tipo de cliente" valor={card.cliente.tipo ? TIPO_CLIENTE_META[card.cliente.tipo].rotulo : "—"} />
                           <Campo rotulo="Criticidade" valor={crit ? CRITICIDADE_META[crit].rotulo : "—"} />
+                          {/* Conta criada no Monitoramento — segue visível nas etapas seguintes. */}
+                          {card.sigma?.contaSigma && <Campo rotulo="Nº da conta (Monitoramento)" valor={card.sigma.contaSigma} destaque />}
                           <Campo rotulo="Região" valor={card.regiao ?? "—"} />
                           {(card.dataInicioExecucao || card.dataFimExecucao) && (
                             <Campo rotulo="Período de execução" valor={`${fmtData(card.dataInicioExecucao)} – ${fmtData(card.dataFimExecucao)}`} destaque />
@@ -724,6 +726,12 @@ function DadosExecucaoGate({ card, patch }: { card: Card; patch: (p: Partial<Car
 
   return (
     <Gate titulo="Execução em campo · agenda">
+      {/* Conta criada pelo Monitoramento — dado que a Técnica usa em campo. */}
+      {card.sigma?.contaSigma && (
+        <p className="mb-2 rounded-lg bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-800 ring-1 ring-inset ring-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-500/30">
+          Nº da conta (Monitoramento): <strong className="font-mono">{card.sigma.contaSigma}</strong>
+        </p>
+      )}
       <p className="text-xs text-slate-600 dark:text-slate-300">O card aparece no calendário nos dias úteis do período informado (sem fins de semana).</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Campito label="Data de início *"><input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} onBlur={() => salvar()} className={inp} /></Campito>

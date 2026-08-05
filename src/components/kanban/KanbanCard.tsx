@@ -122,6 +122,15 @@ export function KanbanCard({ card, onAbrir, arrastando }: KanbanCardProps) {
             CR {card.cr}
           </span>
         )}
+        {/* Conta criada pelo Monitoramento — a Técnica precisa dela em campo. */}
+        {card.fluxo === "IMPLANTACAO" && card.sigma?.contaSigma && (
+          <span
+            className="rounded bg-cyan-50 px-1.5 py-0.5 font-mono font-semibold text-cyan-700 ring-1 ring-inset ring-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:ring-cyan-500/30"
+            title="Nº da conta criada no Monitoramento"
+          >
+            Conta {card.sigma.contaSigma}
+          </span>
+        )}
         {card.prioridade === "URGENTE" && (
           <span className="rounded bg-rose-100 px-1.5 py-0.5 font-medium text-rose-600">
             Urgente
