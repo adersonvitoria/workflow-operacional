@@ -216,7 +216,8 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         {man.tipo !== "ORCAMENTO" && <Campo rotulo="Data da visita" valor={fmtData(man.dataVisita)} />}
                         {man.tipo !== "ORCAMENTO" && <Campo rotulo="Visita cobrada" valor={man.visitaCobrada ? "Sim" : "Não"} />}
                         {man.visitaCobrada && man.tipo !== "ORCAMENTO" && <Campo rotulo="Valor da visita" valor={formatarBRL(man.valorVisita)} />}
-                        {card.medicao?.visitaIsenta && <Campo rotulo="Visita Isenta" valor="Sim" destaque />}
+                        {card.medicao?.visitaIsenta && <Campo rotulo="Visita Isenta" valor="Sim · não gera receita" destaque />}
+                        {card.medicao?.visitaIsenta && <Campo rotulo="Isenta pelo orçamento" valor={card.numeroOrcamento ?? "—"} destaque />}
                         <Campo rotulo="Turno" valor={man.turno ? (TURNO_ROTULO[man.turno] ?? man.turno) : "—"} />
                         <Campo rotulo="Número da conta" valor={card.numeroConta ?? "—"} />
                         <Campo rotulo="Região" valor={man.regiao ?? "—"} />
@@ -225,7 +226,7 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Técnico" valor={man.tecnico ?? "—"} />
                         <Campo rotulo="Auxiliar técnico" valor={man.auxiliarTecnico ?? "—"} />
                         <Campo rotulo="Tipo de atendimento" valor={man.tipoAtendimento ?? "—"} />
-                        {man.tipo !== "VISITA" && <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />}
+                        {man.tipo !== "VISITA" && !card.medicao?.visitaIsenta && <Campo rotulo="Número do orçamento" valor={card.numeroOrcamento ?? "—"} />}
                         {card.orcamentoPdfNome && (
                           <div>
                             <dt className="text-xs text-slate-400">Orçamento (PDF)</dt>
@@ -1075,7 +1076,14 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
     patch({
       cr: cr.trim() || undefined,
       numeroOrcamento: numOrc.trim() || undefined,
-      medicao: { ...card.medicao, chamado: c || undefined, competencia: comper, visitaIsenta: isentaAtual, valorMedicao: Number.isFinite(v) ? v : undefined },
+      medicao: {
+        ...card.medicao,
+        chamado: c || undefined,
+        competencia: comper,
+        visitaIsenta: isentaAtual,
+        // Visita isenta não gera receita: nada de valor de medição.
+        valorMedicao: isentaAtual ? undefined : (Number.isFinite(v) ? v : undefined),
+      },
     });
   }
 
@@ -1099,10 +1107,15 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
         </>
       )}
 
-      <label className="mt-2 block text-[10px] text-slate-400">Valor da medição (R$)</label>
-      <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
-      {valorSugerido != null && !valor.trim() && (
-        <p className="mt-1 text-[11px] text-slate-400">Sugerido: {formatarBRL(valorSugerido)} ({card.valores.total != null ? "orçamento" : "visita cobrada"}).</p>
+      {/* Visita isenta não tem valor a medir — o campo some. */}
+      {!isenta && (
+        <>
+          <label className="mt-2 block text-[10px] text-slate-400">Valor da medição (R$)</label>
+          <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
+          {valorSugerido != null && !valor.trim() && (
+            <p className="mt-1 text-[11px] text-slate-400">Sugerido: {formatarBRL(valorSugerido)} ({card.valores.total != null ? "orçamento" : "visita cobrada"}).</p>
+          )}
+        </>
       )}
 
       {/* Visita Isenta: quando marcada, o Nº do orçamento é obrigatório. */}

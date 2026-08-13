@@ -222,6 +222,13 @@ export const CONFERENCIA_META = {
   ponto: "bg-cyan-500",
 } as const;
 
+/** Tag de VISITA ISENTA (Manutenção · Encerrados) — âmbar; não gera receita. */
+export const VISITA_ISENTA_META = {
+  rotulo: "Visita isenta",
+  classe: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30",
+  ponto: "bg-amber-500",
+} as const;
+
 /** Tag de origem IMPLANTAÇÃO (esteira de Compras) — azul. */
 export const ORIGEM_IMPLANTACAO_META = {
   rotulo: "Implantação",
@@ -350,17 +357,27 @@ export function mesDoCard(c: Pick<Card, "datas">): string {
 }
 
 /** Valor da visita (Manutenção): só conta quando a visita é cobrada. */
-export function valorVisitaDoCard(c: Pick<Card, "manutencao">): number {
+export function valorVisitaDoCard(c: Pick<Card, "manutencao" | "medicao">): number {
+  // Visita isenta não gera receita — foi dispensada por um orçamento.
+  if (c.medicao?.visitaIsenta) return 0;
   return c.manutencao?.visitaCobrada ? c.manutencao.valorVisita ?? 0 : 0;
+}
+
+/** True se a OS foi encerrada como Visita Isenta (não entra na receita). */
+export function ehVisitaIsenta(c: Pick<Card, "medicao">): boolean {
+  return !!c.medicao?.visitaIsenta;
 }
 
 /**
  * Valor de referência do card:
- * 1. Medição (faturado), quando registrada — é o valor definitivo;
- * 2. senão, o total do orçamento/projeto + a visita cobrada (Manutenção);
- * 3. sem total, a recorrência (locação + mensalidade) + a visita cobrada.
+ * 1. Visita Isenta → 0. A isenção prevalece sobre qualquer valor residual:
+ *    a cobrança está no orçamento que isentou a visita, não nesta OS;
+ * 2. Medição (faturado), quando registrada — é o valor definitivo;
+ * 3. senão, o total do orçamento/projeto + a visita cobrada (Manutenção);
+ * 4. sem total, a recorrência (locação + mensalidade) + a visita cobrada.
  */
 export function valorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">): number {
+  if (ehVisitaIsenta(c)) return 0;
   if (c.medicao?.valorMedicao != null) return c.medicao.valorMedicao;
   const recorrente = (c.valores?.locacao ?? 0) + (c.valores?.mensal ?? 0);
   const base = c.valores?.total ?? recorrente;
@@ -416,6 +433,7 @@ export function crsDoCard(c: CardCr): string {
 
 /** De onde veio o valor de referência (exibido nos relatórios). */
 export function origemValorDoCard(c: Pick<Card, "medicao" | "valores" | "manutencao">): string {
+  if (ehVisitaIsenta(c)) return "Visita isenta (sem receita)";
   if (c.medicao?.valorMedicao != null) return "Medição";
   const partes: string[] = [];
   if (c.valores?.total != null) partes.push("Orçamento/Total");

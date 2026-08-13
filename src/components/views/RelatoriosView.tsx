@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCards } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { podeGerarRelatorio } from "@/lib/perfis";
-import { competenciaDoCard, crsDoCard, formatarBRL, origemValorDoCard, STATUS_META, valorDoCard, valoresPorCr, valorVisitaDoCard } from "@/lib/flows";
+import { competenciaDoCard, crsDoCard, ehVisitaIsenta, formatarBRL, origemValorDoCard, STATUS_META, valorDoCard, valoresPorCr, valorVisitaDoCard } from "@/lib/flows";
 import { rotuloEtapa } from "@/lib/routing";
 import type { Card, Fluxo } from "@/types";
 
@@ -290,6 +290,8 @@ function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; 
   const naoCobradas = manut.filter(
     (c) => c.manutencao?.tipo !== "ORCAMENTO" && (!c.manutencao?.visitaCobrada || c.medicao?.visitaIsenta),
   );
+  // Isentas: recorte das que foram dispensadas por um orçamento (receita zero).
+  const isentas = manut.filter(ehVisitaIsenta);
   return (
     <>
       <Cabecalho subtitulo={`Resultados das esteiras · Competência ${compLabel(competencia)}`} />
@@ -300,7 +302,9 @@ function RelatorioEsteiras({ competencia, impl, manut }: { competencia: string; 
         <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <p className="text-xs text-slate-500 dark:text-slate-400">Visitas não cobradas</p>
           <p className="mt-0.5 text-lg font-bold text-slate-900 dark:text-white">{naoCobradas.length}</p>
-          <p className="text-[11px] text-slate-400">visita(s) no período</p>
+          <p className="text-[11px] text-slate-400">
+            visita(s) no período{isentas.length ? ` · ${isentas.length} isenta(s)` : ""}
+          </p>
         </div>
         <ResumoBox titulo="Total geral" qtd={impl.length + manut.length} valor={totImpl + totManut} destaque />
       </div>
