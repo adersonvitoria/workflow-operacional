@@ -247,14 +247,28 @@ export interface EventoHistorico {
   para?: EtapaId;
 }
 
+/**
+ * Uma linha do registro de medição: a medição pode ser rateada em vários
+ * chamados / centros de resultado, cada um com o seu valor.
+ */
+export interface LancamentoMedicao {
+  id: string;
+  valor?: number;
+  chamado?: string;
+  cr?: string;
+}
+
 /** Dados de Medição/Faturamento (preenchidos pelo setor de Medição). */
 export interface DadosMedicao {
   numeroImplantar?: string;
   /** Manutenção: visita isenta de cobrança — exige o Nº do orçamento para encerrar. */
   visitaIsenta?: boolean;
   competencia?: string; // ex.: "06/2026" ou "JUNHO/2026"
+  /** Total medido — soma dos lançamentos quando houver rateio. */
   valorMedicao?: number;
   chamado?: string;
+  /** Rateio da medição (Valor / Chamado / CR por linha). */
+  lancamentos?: LancamentoMedicao[];
   dataAbertura?: string; // ISO 8601
   formaPagamento?: FormaPagamento;
   parcelas?: number;

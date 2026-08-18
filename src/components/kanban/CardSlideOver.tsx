@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { useTecnicos } from "@/lib/tecnicos-store";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
-import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, FormaPagamento, ItemCompra } from "@/types";
+import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, FormaPagamento, ItemCompra, LancamentoMedicao } from "@/types";
 
 const TURNO_ROTULO: Record<string, string> = { MANHA: "Manhã", TARDE: "Tarde", DIA: "Dia" };
 
@@ -240,6 +240,9 @@ export function CardSlideOver({ card, onFechar, onPatch, onAvancar, onEditar, on
                         <Campo rotulo="Setor" valor={man.setor ?? "—"} />
                         <Campo rotulo="Nº do chamado" valor={card.medicao?.chamado ?? card.chamado ?? "—"} />
                         <Campo rotulo="CR" valor={card.cr ?? "—"} />
+                        {(card.medicao?.lancamentos ?? []).length > 1 && (
+                          <Campo rotulo="Medição rateada" valor={`${card.medicao!.lancamentos!.length} linhas · ${formatarBRL(card.medicao?.valorMedicao)}`} destaque />
+                        )}
                         <Campo rotulo="Competência" valor={card.medicao?.competencia ?? "—"} />
                         {card.datas?.conclusao && <Campo rotulo="Encerrado em" valor={fmtData(card.datas.conclusao)} destaque />}
                         {duracaoAteEncerrar(card) && <Campo rotulo="Tempo na esteira" valor={duracaoAteEncerrar(card)!} destaque />}
@@ -950,6 +953,99 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
 
 const PGTO_LABEL: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado" };
 
+/** Linhas mínimas exibidas no rateio da medição. */
+const LINHAS_MEDICAO = 3;
+
+/** Normaliza os lançamentos do card completando até o mínimo de linhas. */
+function lancamentosIniciais(card: Card): LancamentoMedicao[] {
+  const salvos = card.medicao?.lancamentos ?? [];
+  const base: LancamentoMedicao[] = salvos.length
+    ? salvos.map((l, i) => ({ ...l, id: l.id || `lm-${i}` }))
+    // Cards antigos: a primeira linha herda os campos únicos já preenchidos.
+    : [{ id: "lm-0", valor: card.medicao?.valorMedicao, chamado: card.medicao?.chamado ?? card.chamado ?? undefined, cr: card.cr ?? undefined }];
+  while (base.length < LINHAS_MEDICAO) base.push({ id: `lm-${base.length}` });
+  return base;
+}
+
+/** Soma dos valores lançados (undefined quando nada foi informado). */
+function totalLancamentos(ls: LancamentoMedicao[]): number | undefined {
+  const comValor = ls.filter((l) => Number.isFinite(l.valor as number));
+  if (!comValor.length) return undefined;
+  return comValor.reduce((s, l) => s + (l.valor ?? 0), 0);
+}
+
+/**
+ * Rateio da medição: Valor / Chamado / CR por linha. O total alimenta o valor
+ * da medição do card e a primeira linha preenchida mantém os campos únicos
+ * (chamado e CR), que os relatórios antigos consomem.
+ */
+function LancamentosMedicao({
+  lancamentos,
+  setLancamentos,
+  onBlurSalvar,
+}: {
+  lancamentos: LancamentoMedicao[];
+  setLancamentos: (ls: LancamentoMedicao[]) => void;
+  onBlurSalvar: () => void;
+}) {
+  const inp = "w-full min-w-0 rounded border border-slate-200 px-2 py-1 text-xs text-slate-800 focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+  const total = totalLancamentos(lancamentos);
+
+  const set = (id: string, patch: Partial<LancamentoMedicao>) =>
+    setLancamentos(lancamentos.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+
+  return (
+    <div className="mt-2">
+      <div className="mb-1 grid grid-cols-[1fr_1fr_1fr_auto] gap-1.5 text-[10px] text-slate-400">
+        <span>Valor (R$)</span>
+        <span>Chamado</span>
+        <span>CR</span>
+        <span className="w-5" />
+      </div>
+      <ul className="space-y-1.5">
+        {lancamentos.map((l) => (
+          <li key={l.id} className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-1.5">
+            <input
+              inputMode="decimal"
+              value={l.valor != null ? String(l.valor) : ""}
+              onChange={(e) => {
+                const v = e.target.value.replace(",", ".");
+                set(l.id, { valor: v.trim() && Number.isFinite(Number(v)) ? Number(v) : undefined });
+              }}
+              onBlur={onBlurSalvar}
+              placeholder="0,00"
+              className={inp}
+            />
+            <input value={l.chamado ?? ""} onChange={(e) => set(l.id, { chamado: e.target.value || undefined })} onBlur={onBlurSalvar} placeholder="Chamado" className={inp} />
+            <input value={l.cr ?? ""} onChange={(e) => set(l.id, { cr: e.target.value || undefined })} onBlur={onBlurSalvar} placeholder="CR" className={inp} />
+            <button
+              type="button"
+              onClick={() => { setLancamentos(lancamentos.filter((x) => x.id !== l.id)); onBlurSalvar(); }}
+              disabled={lancamentos.length <= 1}
+              className="w-5 rounded text-xs text-slate-400 hover:text-rose-600 disabled:opacity-30"
+              title="Remover linha"
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-1.5 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setLancamentos([...lancamentos, { id: `lm-${Date.now()}` }])}
+          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          + Adicionar linha
+        </button>
+        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+          Total: {formatarBRL(total)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** Formulário de Medição: registra os dados e finaliza o card. */
 function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   const { atual } = useAuth();
@@ -979,14 +1075,22 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
+  // Rateio da medição (Valor / Chamado / CR por linha).
+  const [lancamentos, setLancamentos] = useState<LancamentoMedicao[]>(() => lancamentosIniciais(card));
+  useEffect(() => setLancamentos(lancamentosIniciais(card)), [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function finalizar() {
     if (!f.competencia.trim()) return;
+    const uteis = lancamentos.filter((l) => l.valor != null || l.chamado?.trim() || l.cr?.trim());
     patch({
+      // A 1ª linha alimenta o CR do card (usado nos relatórios por CR).
+      cr: uteis[0]?.cr?.trim() || card.cr || undefined,
       medicao: {
         numeroImplantar: f.numeroImplantar,
         competencia: f.competencia.trim(),
-        valorMedicao: f.valorMedicao ? Number(f.valorMedicao.replace(",", ".")) : undefined,
-        chamado: f.chamado || undefined,
+        valorMedicao: totalLancamentos(uteis),
+        chamado: uteis[0]?.chamado?.trim() || undefined,
+        lancamentos: uteis,
         dataAbertura: f.dataAbertura || undefined,
         formaPagamento: f.formaPagamento as FormaPagamento,
         parcelas: f.parcelas ? Number(f.parcelas) : undefined,
@@ -1015,8 +1119,6 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
       <div className="grid grid-cols-2 gap-2">
         <Campito label="Nº Implantar"><input value={f.numeroImplantar} onChange={(e) => setF({ ...f, numeroImplantar: e.target.value })} className={inp} /></Campito>
         <Campito label="Competência *"><input value={f.competencia} onChange={(e) => setF({ ...f, competencia: e.target.value })} placeholder="06/2026" className={inp} /></Campito>
-        <Campito label="Valor medição"><input inputMode="decimal" value={f.valorMedicao} onChange={(e) => setF({ ...f, valorMedicao: e.target.value })} className={inp} /></Campito>
-        <Campito label="Chamado"><input value={f.chamado} onChange={(e) => setF({ ...f, chamado: e.target.value })} className={inp} /></Campito>
         <Campito label="Data abertura"><input type="date" value={f.dataAbertura} onChange={(e) => setF({ ...f, dataAbertura: e.target.value })} className={inp} /></Campito>
         <Campito label="Forma pgto.">
           <select value={f.formaPagamento} onChange={(e) => setF({ ...f, formaPagamento: e.target.value })} className={inp}>
@@ -1025,6 +1127,11 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
         </Campito>
         <Campito label="Parcelas"><input inputMode="numeric" value={f.parcelas} onChange={(e) => setF({ ...f, parcelas: e.target.value })} className={inp} /></Campito>
       </div>
+
+      {/* Rateio: a medição pode ser dividida em várias linhas. */}
+      <label className="mt-3 block text-[10px] text-slate-400">Medição · Valor / Chamado / CR</label>
+      <LancamentosMedicao lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => {}} />
+
       <button onClick={finalizar} disabled={!f.competencia.trim()} className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         Registrar e finalizar
       </button>
@@ -1052,69 +1159,62 @@ function inputParaComp(v: string): string {
 function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) => void }) {
   // Valor sugerido: total do orçamento ou, na falta, a visita cobrada.
   const valorSugerido = card.valores.total ?? (card.manutencao?.visitaCobrada ? card.manutencao.valorVisita : undefined);
-  const [chamado, setChamado] = useState(card.medicao?.chamado ?? card.chamado ?? "");
-  const [cr, setCr] = useState(card.cr ?? "");
   const [comp, setComp] = useState(compParaInput(card.medicao?.competencia));
   const [isenta, setIsenta] = useState(!!card.medicao?.visitaIsenta);
   const [numOrc, setNumOrc] = useState(card.numeroOrcamento ?? "");
-  const [valor, setValor] = useState(card.medicao?.valorMedicao != null ? String(card.medicao.valorMedicao) : (valorSugerido != null ? String(valorSugerido) : ""));
+  const [lancamentos, setLancamentos] = useState<LancamentoMedicao[]>(() => lancamentosIniciais(card));
   useEffect(() => {
-    setChamado(card.medicao?.chamado ?? card.chamado ?? "");
-    setCr(card.cr ?? "");
     setComp(compParaInput(card.medicao?.competencia));
     setIsenta(!!card.medicao?.visitaIsenta);
     setNumOrc(card.numeroOrcamento ?? "");
-    setValor(card.medicao?.valorMedicao != null ? String(card.medicao.valorMedicao) : (valorSugerido != null ? String(valorSugerido) : ""));
+    setLancamentos(lancamentosIniciais(card));
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
-  function salvar(isentaAtual = isenta) {
-    const c = chamado.trim();
+  // Linhas efetivamente preenchidas (valor, chamado ou CR).
+  const preenchidos = lancamentos.filter((l) => l.valor != null || l.chamado?.trim() || l.cr?.trim());
+  const primeiro = preenchidos[0];
+
+  function salvar(isentaAtual = isenta, lsAtual = lancamentos) {
     const comper = comp ? inputParaComp(comp) : undefined;
-    const v = valor.trim() ? Number(valor.replace(",", ".")) : undefined;
+    const uteis = lsAtual.filter((l) => l.valor != null || l.chamado?.trim() || l.cr?.trim());
     patch({
-      cr: cr.trim() || undefined,
+      // A 1ª linha alimenta os campos únicos que os relatórios já consomem.
+      cr: uteis[0]?.cr?.trim() || undefined,
       numeroOrcamento: numOrc.trim() || undefined,
       medicao: {
         ...card.medicao,
-        chamado: c || undefined,
+        chamado: uteis[0]?.chamado?.trim() || undefined,
         competencia: comper,
         visitaIsenta: isentaAtual,
+        lancamentos: isentaAtual ? [] : uteis,
         // Visita isenta não gera receita: nada de valor de medição.
-        valorMedicao: isentaAtual ? undefined : (Number.isFinite(v) ? v : undefined),
+        valorMedicao: isentaAtual ? undefined : totalLancamentos(uteis),
       },
     });
   }
 
-  // Visita Isenta: só o Nº do orçamento é exigido; caso contrário, chamado + CR + competência.
-  const completo = isenta ? !!numOrc.trim() : !!chamado.trim() && !!cr.trim() && !!comp;
+  // Visita Isenta: só o Nº do orçamento é exigido; caso contrário, uma linha
+  // com chamado e CR + a competência.
+  const completo = isenta ? !!numOrc.trim() : !!primeiro?.chamado?.trim() && !!primeiro?.cr?.trim() && !!comp;
   const salvo = isenta ? !!card.numeroOrcamento : !!(card.medicao?.chamado && card.cr && card.medicao?.competencia);
 
   return (
     <Gate titulo="Medição · Dados para encerrar">
       <p className="text-xs text-slate-600 dark:text-slate-300">
-        {isenta ? "Visita Isenta: informe o Nº do orçamento para encerrar a OS." : "Informe o nº do chamado, o CR e a competência para encerrar a OS."}
+        {isenta ? "Visita Isenta: informe o Nº do orçamento para encerrar a OS." : "Informe ao menos uma linha (valor, chamado e CR) e a competência para encerrar a OS."}
       </p>
+      {/* Rateio: a medição pode ser dividida em várias linhas. */}
       {!isenta && (
         <>
-          <label className="mt-2 block text-[10px] text-slate-400">Nº do chamado</label>
-          <input value={chamado} onChange={(e) => setChamado(e.target.value)} onBlur={() => salvar()} placeholder="Nº do chamado" className={inp} />
-          <label className="mt-2 block text-[10px] text-slate-400">CR (Centro de Resultado)</label>
-          <input value={cr} onChange={(e) => setCr(e.target.value)} onBlur={() => salvar()} placeholder="CR" className={inp} />
-          <label className="mt-2 block text-[10px] text-slate-400">Competência (mês/ano)</label>
-          <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
-        </>
-      )}
-
-      {/* Visita isenta não tem valor a medir — o campo some. */}
-      {!isenta && (
-        <>
-          <label className="mt-2 block text-[10px] text-slate-400">Valor da medição (R$)</label>
-          <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
-          {valorSugerido != null && !valor.trim() && (
+          <label className="mt-2 block text-[10px] text-slate-400">Medição · Valor / Chamado / CR</label>
+          <LancamentosMedicao lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => salvar()} />
+          {valorSugerido != null && totalLancamentos(preenchidos) == null && (
             <p className="mt-1 text-[11px] text-slate-400">Sugerido: {formatarBRL(valorSugerido)} ({card.valores.total != null ? "orçamento" : "visita cobrada"}).</p>
           )}
+          <label className="mt-3 block text-[10px] text-slate-400">Competência (mês/ano)</label>
+          <input type="month" value={comp} onChange={(e) => setComp(e.target.value)} onBlur={() => salvar()} className={inp} />
         </>
       )}
 

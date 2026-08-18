@@ -440,6 +440,16 @@ function RelatorioCard({ card }: { card: Card }) {
       {linha("Forma de pagamento", PGTO[m.formaPagamento ?? ""] ?? "—")}
       {linha("Parcelas", m.parcelas ?? "—")}
       {linha("Valor da medição", formatarBRL(m.valorMedicao))}
+      {/* Rateio da medição: uma linha por Valor / Chamado / CR. */}
+      {(m.lancamentos ?? []).length > 1 &&
+        (m.lancamentos ?? []).map((l, i) => (
+          <div key={l.id ?? i} className="flex justify-between border-b border-slate-100 py-1.5 text-sm dark:border-slate-800">
+            <span className="text-slate-500 dark:text-slate-400">
+              Linha {i + 1}{l.chamado ? ` · chamado ${l.chamado}` : ""}{l.cr ? ` · CR ${l.cr}` : ""}
+            </span>
+            <span className="font-medium text-slate-800 dark:text-slate-100">{formatarBRL(l.valor)}</span>
+          </div>
+        ))}
       {linha("Valor considerado nos relatórios", `${formatarBRL(valorDoCard(card))} (${origemValorDoCard(card)})`)}
       {valoresPorCr(card).length > 1 &&
         valoresPorCr(card).map((v, i) => (

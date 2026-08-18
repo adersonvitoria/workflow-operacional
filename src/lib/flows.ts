@@ -407,6 +407,15 @@ const SEM_CR = "Sem CR";
  */
 export function valoresPorCr(c: CardCr): ValorPorCr[] {
   const norm = (cr?: string) => cr?.trim() || SEM_CR;
+  // Medição rateada: cada linha leva o seu valor ao seu próprio CR.
+  const lancs = c.medicao?.lancamentos ?? [];
+  if (!ehVisitaIsenta(c) && lancs.length > 1) {
+    return lancs.map((l, i) => ({
+      cr: norm(l.cr),
+      origem: `Medição · linha ${i + 1}${l.chamado?.trim() ? ` (chamado ${l.chamado.trim()})` : ""}`,
+      valor: l.valor ?? 0,
+    }));
+  }
   if (c.fluxo === "IMPLANTACAO" && c.modalidade === "VENDA" && (c.crServico || c.crMaterial || c.crMensalidade)) {
     const partes = [
       { cr: norm(c.crServico), origem: "Serviço (M.O.)", valor: c.valores?.maoDeObra ?? 0 },
