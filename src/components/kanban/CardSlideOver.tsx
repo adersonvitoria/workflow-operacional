@@ -991,6 +991,19 @@ function LancamentosMedicao({
   const inp = "w-full min-w-0 rounded border border-slate-200 px-2 py-1 text-xs text-slate-800 focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
   const total = totalLancamentos(lancamentos);
 
+  // Texto em edição do valor, por linha — permite digitar vírgula/ponto sem o
+  // número "consertar" o campo a cada tecla (perdia o separador decimal).
+  const [rascunho, setRascunho] = useState<Record<string, string>>({});
+
+  /** Converte o texto (pt-BR: vírgula decimal, ponto de milhar) em número. */
+  const parseValor = (txt: string): number | undefined => {
+    const limpo = txt.trim();
+    if (!limpo) return undefined;
+    const norm = limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo;
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
   const set = (id: string, patch: Partial<LancamentoMedicao>) =>
     setLancamentos(lancamentos.map((l) => (l.id === id ? { ...l, ...patch } : l)));
 
@@ -1007,12 +1020,18 @@ function LancamentosMedicao({
           <li key={l.id} className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-1.5">
             <input
               inputMode="decimal"
-              value={l.valor != null ? String(l.valor) : ""}
+              value={rascunho[l.id] ?? (l.valor != null ? String(l.valor).replace(".", ",") : "")}
               onChange={(e) => {
-                const v = e.target.value.replace(",", ".");
-                set(l.id, { valor: v.trim() && Number.isFinite(Number(v)) ? Number(v) : undefined });
+                const txt = e.target.value;
+                // Só dígitos, vírgula e ponto.
+                if (txt !== "" && !/^[\d.,]*$/.test(txt)) return;
+                setRascunho((r) => ({ ...r, [l.id]: txt }));
+                set(l.id, { valor: parseValor(txt) });
               }}
-              onBlur={onBlurSalvar}
+              onBlur={() => {
+                setRascunho((r) => { const n = { ...r }; delete n[l.id]; return n; });
+                onBlurSalvar();
+              }}
               placeholder="0,00"
               className={inp}
             />
@@ -1130,7 +1149,7 @@ function MedicaoForm({ card, patch }: { card: Card; patch: (p: Partial<Card>) =>
 
       {/* Rateio: a medição pode ser dividida em várias linhas. */}
       <label className="mt-3 block text-[10px] text-slate-400">Medição · Valor / Chamado / CR</label>
-      <LancamentosMedicao lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => {}} />
+      <LancamentosMedicao key={card.id} lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => {}} />
 
       <button onClick={finalizar} disabled={!f.competencia.trim()} className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         Registrar e finalizar
@@ -1209,7 +1228,7 @@ function MedicaoChamadoGate({ card, patch }: { card: Card; patch: (p: Partial<Ca
       {!isenta && (
         <>
           <label className="mt-2 block text-[10px] text-slate-400">Medição · Valor / Chamado / CR</label>
-          <LancamentosMedicao lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => salvar()} />
+          <LancamentosMedicao key={card.id} lancamentos={lancamentos} setLancamentos={setLancamentos} onBlurSalvar={() => salvar()} />
           {valorSugerido != null && totalLancamentos(preenchidos) == null && (
             <p className="mt-1 text-[11px] text-slate-400">Sugerido: {formatarBRL(valorSugerido)} ({card.valores.total != null ? "orçamento" : "visita cobrada"}).</p>
           )}
