@@ -106,7 +106,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       avisoIA = `PDF anexado, mas a leitura por IA falhou: ${e instanceof Error ? e.message : "erro"}`;
     }
   } else {
-    avisoIA = "PDF anexado. Leitura por IA indisponível (OPENAI_API_KEY não configurada).";
+    avisoIA = "PDF anexado. Leitura por IA desativada — cadastre os materiais manualmente.";
   }
 
   return NextResponse.json({ nome, extraido, avisoIA });

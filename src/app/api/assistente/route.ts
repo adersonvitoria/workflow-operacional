@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { obterSessao } from "@/lib/server-auth";
 import { podeUsarAssistente } from "@/lib/perfis";
 import { consumir } from "@/lib/rate-limit";
+import { extracaoConfigurada } from "@/lib/extrair-orcamento";
 
 export const maxDuration = 120; // folga p/ a IA responder sem derrubar a função
 
@@ -107,8 +108,9 @@ export async function POST(req: Request) {
   if (!podeUsarAssistente(s.perfil)) {
     return NextResponse.json({ erro: "O Assistente GPSTec é exclusivo do perfil Coordenador." }, { status: 403 });
   }
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ erro: "Assistente não configurado neste ambiente (OPENAI_API_KEY ausente)." }, { status: 503 });
+  // Mesma chave de configuração da leitura de PDF: padrão é IA desligada.
+  if (!extracaoConfigurada()) {
+    return NextResponse.json({ erro: "Assistente indisponível: a integração de IA está desativada (IA_ATIVA)." }, { status: 503 });
   }
   // Custo de IA: no máximo 20 perguntas por usuário a cada 5 minutos.
   const limite = consumir(`assistente:${s.userId}`, 20, 5 * 60 * 1000);

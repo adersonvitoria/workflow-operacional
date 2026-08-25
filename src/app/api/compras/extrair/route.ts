@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   if (!extracaoConfigurada()) {
     return NextResponse.json(
-      { erro: "Extração por IA não configurada: defina OPENAI_API_KEY nas variáveis de ambiente." },
+      { erro: "Leitura por IA desativada neste ambiente — use o cadastro manual." },
       { status: 503 },
     );
   }

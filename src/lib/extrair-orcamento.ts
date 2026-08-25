@@ -48,9 +48,26 @@ function parseJson(texto: string): OrcamentoExtraido {
   return JSON.parse(limpo.slice(ini, fim + 1)) as OrcamentoExtraido;
 }
 
-/** True quando a extração por IA está configurada (OPENAI_API_KEY presente). */
+/**
+ * True quando a leitura por IA deve ser usada.
+ *
+ * O PADRÃO é o cadastro manual: a IA só entra quando `IA_ATIVA` estiver
+ * explicitamente ligada (1/true/on/sim) E houver `OPENAI_API_KEY`. Assim a
+ * chave pode continuar guardada na Vercel sem custo enquanto o modo manual
+ * vigora — para religar, basta definir IA_ATIVA=1 e redeployar.
+ */
 export function extracaoConfigurada(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+  const flag = (process.env.IA_ATIVA ?? "").trim().toLowerCase();
+  const ligada = ["1", "true", "on", "sim"].includes(flag);
+  return ligada && !!process.env.OPENAI_API_KEY;
+}
+
+/** Por que a IA está desligada — usado nas mensagens da interface. */
+export function motivoIADesligada(): "flag" | "sem-chave" | null {
+  if (extracaoConfigurada()) return null;
+  const flag = (process.env.IA_ATIVA ?? "").trim().toLowerCase();
+  if (!["1", "true", "on", "sim"].includes(flag)) return "flag";
+  return "sem-chave";
 }
 
 /**
