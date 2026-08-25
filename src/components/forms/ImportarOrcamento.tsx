@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useExtracaoIA } from "@/lib/config-ia";
 import type { ItemCompra } from "@/types";
 
 export interface OrcamentoImportado {
@@ -30,6 +31,9 @@ export function ImportarOrcamento({ aberto, onFechar, onCriar }: ImportarOrcamen
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<OrcamentoImportado | null>(null);
+  // Cadastro manual: caminho padrão enquanto a leitura por IA está desligada.
+  const [manual, setManual] = useState(false);
+  const iaAtiva = useExtracaoIA();
 
   if (!aberto) return null;
 
@@ -38,7 +42,20 @@ export function ImportarOrcamento({ aberto, onFechar, onCriar }: ImportarOrcamen
     setErro(null);
     setLendo(false);
     setCriando(false);
+    setManual(false);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  /** Abre o formulário vazio, com uma linha de item pronta para preencher. */
+  function iniciarManual() {
+    setErro(null);
+    setManual(true);
+    setDados({
+      cliente: "",
+      numeroOrcamento: undefined,
+      dataAprovacao: new Date().toISOString().slice(0, 10),
+      itens: [{ id: `ic-novo-${Date.now()}`, quantidade: 1, material: "", statusPagamento: "PENDENTE" }],
+    });
   }
 
   async function lerPdf(file: File) {
@@ -113,17 +130,26 @@ export function ImportarOrcamento({ aberto, onFechar, onCriar }: ImportarOrcamen
       <div className="absolute inset-0 bg-slate-900/40" onClick={() => { reset(); onFechar(); }} />
       <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-card bg-white shadow-xl dark:bg-slate-900">
         <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-slate-800">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Importar orçamento (PDF)</h2>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+            {iaAtiva === false ? "Cadastrar orçamento" : "Importar orçamento (PDF)"}
+          </h2>
           <button onClick={() => { reset(); onFechar(); }} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Fechar">✕</button>
         </header>
 
         <div className="max-h-[70vh] space-y-4 overflow-y-auto px-5 py-4 scrollbar-hide">
           {!dados && (
             <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center dark:border-slate-700">
-              <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-                Selecione o PDF do orçamento aprovado. A IA extrai o cliente, a data e os itens —
-                <strong> você revisa tudo antes de criar o card.</strong>
-              </p>
+              {iaAtiva === false ? (
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  A leitura automática de PDF está desativada neste ambiente.
+                  <strong> Cadastre o orçamento manualmente</strong> — cliente, número, data e itens.
+                </p>
+              ) : (
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  Selecione o PDF do orçamento aprovado. A IA extrai o cliente, a data e os itens —
+                  <strong> você revisa tudo antes de criar o card.</strong>
+                </p>
+              )}
               <input
                 ref={fileRef}
                 type="file"
@@ -131,20 +157,34 @@ export function ImportarOrcamento({ aberto, onFechar, onCriar }: ImportarOrcamen
                 className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void lerPdf(f); }}
               />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={lendo}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-              >
-                {lendo ? "Lendo o PDF…" : "Escolher PDF"}
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {iaAtiva !== false && (
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={lendo}
+                    className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                  >
+                    {lendo ? "Lendo o PDF…" : "Escolher PDF"}
+                  </button>
+                )}
+                <button
+                  onClick={iniciarManual}
+                  className={iaAtiva === false
+                    ? "rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+                    : "rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"}
+                >
+                  ✎ Cadastrar manualmente
+                </button>
+              </div>
             </div>
           )}
 
           {dados && (
             <>
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30">
-                Revise os dados extraídos — corrija o que a IA tiver lido errado antes de criar.
+                {manual
+                  ? "Cadastro manual: preencha o cliente, o número do orçamento e os itens."
+                  : "Revise os dados extraídos — corrija o que a IA tiver lido errado antes de criar."}
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -190,7 +230,9 @@ export function ImportarOrcamento({ aberto, onFechar, onCriar }: ImportarOrcamen
         </div>
 
         <footer className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800">
-          {dados && <button onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Ler outro PDF</button>}
+          {dados && iaAtiva !== false && (
+            <button onClick={reset} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Ler outro PDF</button>
+          )}
           <button onClick={() => { reset(); onFechar(); }} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Cancelar</button>
           {dados && (
             <button onClick={() => void confirmar()} disabled={criando} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">

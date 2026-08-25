@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAssistente } from "@/lib/assistente-store";
+import { useExtracaoIA } from "@/lib/config-ia";
 
 const SUGESTOES = [
   "Quanto gastei em compras neste mês?",
@@ -20,6 +21,8 @@ export function ChatAssistente({ compacto = false }: { compacto?: boolean }) {
   const { mensagens, carregando, erro, enviar } = useAssistente();
   const [texto, setTexto] = useState("");
   const fimRef = useRef<HTMLDivElement>(null);
+  // O assistente usa a mesma chave de IA da leitura de PDF.
+  const iaAtiva = useExtracaoIA();
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,7 +39,16 @@ export function ChatAssistente({ compacto = false }: { compacto?: boolean }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className={["flex-1 overflow-y-auto scrollbar-hide", compacto ? "px-3 py-3" : "px-6 py-4"].join(" ")}>
         <div className={["space-y-3", compacto ? "" : "mx-auto max-w-3xl"].join(" ")}>
-          {mensagens.length === 0 && (
+          {mensagens.length === 0 && iaAtiva === false && (
+            <div className={compacto ? "mt-4 text-center" : "mt-10 text-center"}>
+              <p className="text-3xl">✦</p>
+              <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Assistente temporariamente indisponível</p>
+              <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
+                A integração de IA está desativada neste ambiente. Assim que a chave for reativada, o assistente volta a responder — nada precisa ser reconfigurado.
+              </p>
+            </div>
+          )}
+          {mensagens.length === 0 && iaAtiva !== false && (
             <div className={compacto ? "mt-4 text-center" : "mt-10 text-center"}>
               <p className="text-3xl">✦</p>
               <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Como posso ajudar, Coordenação?</p>

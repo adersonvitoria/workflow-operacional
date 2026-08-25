@@ -12,6 +12,7 @@ import { mesDoCard } from "@/lib/flows";
 import { cardCorrespondeFiltros, FILTROS_VAZIO, temFiltroAtivo, type FiltrosBoard } from "@/lib/board-filtros";
 import { useAuth } from "@/lib/auth";
 import { podeCriarCard } from "@/lib/perfis";
+import { useExtracaoIA } from "@/lib/config-ia";
 import type { Card, EtapaCompras, EtapaId, EtapaImplantacao, EtapaManutencao, Fluxo } from "@/types";
 
 function paraPatch(v: NovoCardInput): Partial<Card> {
@@ -52,6 +53,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
   const cardsVisiveis = cards.filter((c) => cardCorrespondeFiltros(c, filtros, fluxo));
   const filtrando = temFiltroAtivo(filtros);
   const podeCriar = podeCriarCard(atual?.perfil, fluxo);
+  const iaAtiva = useExtracaoIA();
 
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [formAberto, setFormAberto] = useState(false);
@@ -150,7 +152,7 @@ export function BoardView({ fluxo }: { fluxo: Fluxo }) {
           <BoardFiltros fluxo={fluxo} competencias={competencias} filtros={filtros} setFiltros={setFiltros} />
           {podeCriar && fluxo === "COMPRAS" && (
             <button onClick={() => setImportAberto(true)} className="shrink-0 rounded-lg border border-brand bg-brand/10 px-3 py-1.5 text-sm font-semibold text-brand hover:bg-brand/20">
-              📄 Importar orçamento (PDF)
+              {iaAtiva === false ? "✎ Cadastrar orçamento" : "📄 Importar orçamento (PDF)"}
             </button>
           )}
           {podeCriar && (

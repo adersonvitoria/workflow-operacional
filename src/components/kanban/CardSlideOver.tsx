@@ -18,6 +18,7 @@ import {
 import { CHECKLIST_CHEQUE_MONITORAMENTO, CHECKLIST_TECNICA, classificacaoComprasCompleta, destinosCompras, destinosManutencaoCard, entregaComprasCompleta, etapaAnteriorCompras, etapaAnteriorImplantacao, etapaAnteriorManutencao, podeAvancar, rotuloEtapa, separacaoComprasCompleta } from "@/lib/routing";
 import { useAuth } from "@/lib/auth";
 import { useTecnicos } from "@/lib/tecnicos-store";
+import { useExtracaoIA } from "@/lib/config-ia";
 import { ComboPessoa } from "@/components/forms/ComboPessoa";
 import { donoDaEtapa, PERFIL_META, podeEditarCard, podeExcluirCard, podeExecutarEtapa } from "@/lib/perfis";
 import type { Card, EtapaCompras, EtapaImplantacao, EtapaManutencao, FormaPagamento, ItemCompra, LancamentoMedicao } from "@/types";
@@ -951,6 +952,86 @@ function ItensCompraGate({ card, patch, podeAgir }: { card: Card; patch: (p: Par
   );
 }
 
+/**
+ * Cadastro manual dos materiais do orçamento (Qtd · Material · Setor).
+ * É o caminho padrão enquanto a leitura por IA está desligada; com a IA
+ * ligada, o anexo do PDF preenche a lista e este editor serve para revisar.
+ */
+function EditorMateriais({
+  itens,
+  setItens,
+  onSalvar,
+  salvando,
+}: {
+  itens: ItemCompra[];
+  setItens: (i: ItemCompra[]) => void;
+  onSalvar: () => void;
+  salvando?: boolean;
+}) {
+  const inp = "w-full min-w-0 rounded border border-slate-200 px-2 py-1 text-xs text-slate-800 focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
+  const set = (id: string, patch: Partial<ItemCompra>) =>
+    setItens(itens.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const adicionar = () =>
+    setItens([...itens, { id: `ic-${Date.now()}-${itens.length}`, quantidade: 1, material: "", statusPagamento: "PENDENTE" }]);
+
+  return (
+    <div className="mt-2">
+      <div className="mb-1 grid grid-cols-[3rem_1fr_1fr_auto] gap-1.5 text-[10px] text-slate-400">
+        <span>Qtd</span>
+        <span>Material</span>
+        <span>Setor</span>
+        <span className="w-5" />
+      </div>
+      {itens.length === 0 && (
+        <p className="py-1 text-[11px] text-slate-400">Nenhum material cadastrado. Use “+ Adicionar material”.</p>
+      )}
+      <ul className="space-y-1.5">
+        {itens.map((i) => (
+          <li key={i.id} className="grid grid-cols-[3rem_1fr_1fr_auto] items-center gap-1.5">
+            <input
+              inputMode="numeric"
+              value={String(i.quantidade ?? "")}
+              onChange={(e) => {
+                const n = Number(e.target.value.replace(/\D/g, ""));
+                set(i.id, { quantidade: Number.isFinite(n) && n > 0 ? n : 1 });
+              }}
+              className={inp}
+            />
+            <input value={i.material} onChange={(e) => set(i.id, { material: e.target.value })} placeholder="Descrição do material" className={inp} />
+            <input value={i.setor ?? ""} onChange={(e) => set(i.id, { setor: e.target.value || undefined })} placeholder="Setor (opcional)" className={inp} />
+            <button
+              type="button"
+              onClick={() => setItens(itens.filter((x) => x.id !== i.id))}
+              className="w-5 rounded text-xs text-slate-400 hover:text-rose-600"
+              title="Remover material"
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={adicionar}
+          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          + Adicionar material
+        </button>
+        <button
+          type="button"
+          onClick={onSalvar}
+          disabled={salvando}
+          className="rounded-lg bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white disabled:bg-emerald-300"
+        >
+          {salvando ? "Salvando…" : "Salvar materiais"}
+        </button>
+        <span className="ml-auto text-[11px] text-slate-400">{itens.length} item(ns)</span>
+      </div>
+    </div>
+  );
+}
+
 const PGTO_LABEL: Record<string, string> = { A_VISTA: "À vista", PARCELADO: "Parcelado" };
 
 /** Linhas mínimas exibidas no rateio da medição. */
@@ -1273,11 +1354,19 @@ function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) 
   const [enviandoPdf, setEnviandoPdf] = useState(false);
   const [avisoPdf, setAvisoPdf] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Materiais do orçamento: cadastro manual (padrão) ou preenchidos pela IA.
+  const [materiais, setMateriais] = useState<ItemCompra[]>(card.itensCompra ?? []);
+  const iaAtiva = useExtracaoIA();
   useEffect(() => {
     setNumero(card.numeroOrcamento ?? "");
     setValor(card.valores.total != null ? String(card.valores.total) : "");
+    setMateriais(card.itensCompra ?? []);
     setAvisoPdf(null);
   }, [card.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A IA pode ter substituído a lista ao anexar um PDF — reflete no editor.
+  useEffect(() => {
+    setMateriais(card.itensCompra ?? []);
+  }, [card.itensCompra]);
 
   const inp = "w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-800 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
 
@@ -1327,9 +1416,11 @@ function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) 
 
   return (
     <Gate titulo="Orçamento · dados para enviar">
-      <p className="text-xs text-slate-600 dark:text-slate-300">Anexe o PDF do orçamento (obrigatório) e informe o número e o valor antes de enviar para Aguardando.</p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        Anexe o PDF do orçamento (obrigatório), informe o número e o valor e cadastre os materiais antes de enviar para Aguardando.
+      </p>
 
-      {/* Anexo obrigatório do orçamento em PDF (a IA pré-preenche nº e valor). */}
+      {/* Anexo obrigatório do orçamento em PDF (com IA ligada, pré-preenche). */}
       <label className="mt-2 block text-[10px] text-slate-400">Orçamento (PDF) *</label>
       <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void anexarPdf(f); }} />
       <div className="flex items-center gap-2">
@@ -1350,12 +1441,26 @@ function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) 
         )}
       </div>
       {avisoPdf && <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">{avisoPdf}</p>}
+      {iaAtiva === false && !avisoPdf && (
+        <p className="mt-1 text-[11px] text-slate-400">O PDF fica anexado ao card; os materiais são cadastrados manualmente abaixo.</p>
+      )}
 
       <label className="mt-2 block text-[10px] text-slate-400">Número do orçamento</label>
       <input value={numero} onChange={(e) => setNumero(e.target.value)} onBlur={() => salvar()} placeholder="Nº do orçamento" className={inp} />
       <label className="mt-2 block text-[10px] text-slate-400">Valor do orçamento (R$)</label>
       <input inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} onBlur={() => salvar()} placeholder="0,00" className={inp} />
-      <button onClick={() => salvar()} disabled={!completo} className="mt-2 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
+
+      {/* Materiais do orçamento: cadastro manual (a lista segue para Compras). */}
+      <label className="mt-3 block text-[10px] text-slate-400">
+        Materiais do orçamento {iaAtiva === false && "· cadastro manual"}
+      </label>
+      <EditorMateriais
+        itens={materiais}
+        setItens={setMateriais}
+        onSalvar={() => salvar({ itensCompra: materiais.filter((m) => m.material.trim()) })}
+      />
+
+      <button onClick={() => salvar()} disabled={!completo} className="mt-3 w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-emerald-300">
         {card.numeroOrcamento && card.valores.total ? "✓ Dados salvos · atualizar" : "Salvar dados"}
       </button>
     </Gate>
