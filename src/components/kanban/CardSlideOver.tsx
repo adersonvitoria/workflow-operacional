@@ -1306,6 +1306,7 @@ function OrcamentoGate({ card, patch }: { card: Card; patch: (p: Partial<Card>) 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.erro ?? "Falha ao anexar o PDF.");
       if (json.avisoIA) setAvisoPdf(json.avisoIA);
+      else if (json.extraido?.itens) setAvisoPdf(`✓ Materiais atualizados pelo PDF: ${json.extraido.itens} item(ns) — a lista anterior foi substituída.`);
       // Pré-preenche com a leitura da IA (o usuário revisa) e persiste — o
       // PATCH também devolve o card atualizado com o nome do anexo.
       const novoNumero = json.extraido?.numeroOrcamento || numero;

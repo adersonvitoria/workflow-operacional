@@ -63,15 +63,45 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   // 2. Extração (melhor esforço): sem IA configurada, o anexo vale mesmo assim.
-  let extraido: { numeroOrcamento?: string; valorTotal?: number } = {};
+  // O ÚLTIMO PDF anexado é a fonte da verdade dos materiais: os itens
+  // extraídos SUBSTITUEM a lista atual do card (não acumulam).
+  let extraido: { numeroOrcamento?: string; valorTotal?: number; itens?: number } = {};
   let avisoIA: string | undefined;
   if (extracaoConfigurada()) {
     try {
+      const agora = new Date().toISOString();
       const dados = await extrairOrcamentoPdf(pdfBase64);
       extraido = {
         numeroOrcamento: dados.numeroOrcamento?.toString().trim() || undefined,
         valorTotal: Number.isFinite(Number(dados.valorTotal)) && Number(dados.valorTotal) > 0 ? Number(dados.valorTotal) : undefined,
       };
+      const itens = (dados.itens ?? [])
+        .filter((i) => i && typeof i.material === "string" && i.material.trim())
+        .map((i, idx) => ({
+          id: `ic-${idx}-${agora.slice(-6)}`,
+          quantidade: Number.isFinite(Number(i.quantidade)) && Number(i.quantidade) > 0 ? Number(i.quantidade) : 1,
+          material: i.material.trim(),
+          setor: i.setor?.toString().trim() || undefined,
+          statusPagamento: "PENDENTE",
+        }));
+      if (itens.length > 0) {
+        // Substitui os itens do card pelos do último PDF (histórico registra).
+        const rowAtual = await prisma.card.findUnique({ where: { id: card.id }, select: { historico: true } });
+        const hist2 = Array.isArray(rowAtual?.historico) ? (rowAtual.historico as unknown[]) : [];
+        await prisma.card.update({
+          where: { id: card.id },
+          data: {
+            itensCompra: itens,
+            historico: [
+              ...hist2,
+              { id: `h${hist2.length}`, data: agora, setor: "ADMINISTRATIVO", autor: s.nome, acao: `Materiais atualizados pelo PDF ${nome}: ${itens.length} item(ns) (lista substituída)` },
+            ] as unknown as object[],
+          },
+        });
+        extraido.itens = itens.length;
+      } else {
+        avisoIA = "PDF lido, mas nenhum item de material foi identificado — a lista atual do card foi mantida.";
+      }
     } catch (e) {
       avisoIA = `PDF anexado, mas a leitura por IA falhou: ${e instanceof Error ? e.message : "erro"}`;
     }
