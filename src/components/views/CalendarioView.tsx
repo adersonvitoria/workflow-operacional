@@ -64,6 +64,17 @@ function montarEventos(cards: Card[]): Evento[] {
     .sort((a, b) => FAIXA[a.turno].ini - FAIXA[b.turno].ini || a.cliente.localeCompare(b.cliente));
 }
 
+/**
+ * Item unificado da agenda do dia: visita, orçamento ou execução de
+ * implantação, todos posicionados PELO TURNO — o dia é organizado por
+ * Manhã/Tarde/Dia, e não por tipo de card. Orçamentos usam o turno
+ * cadastrado no card; a execução de implantação ocupa o dia inteiro.
+ */
+type ItemAgenda =
+  | { categoria: "VISITA"; turno: Turno; cliente: string; ev: Evento }
+  | { categoria: "ORCAMENTO"; turno: Turno; cliente: string; card: Card }
+  | { categoria: "EXECUCAO"; turno: Turno; cliente: string; card: Card };
+
 /** Dia local (YYYY-MM-DD) de um ISO datetime. */
 function ymdIso(iso: string): string {
   return ymd(new Date(iso));
@@ -121,9 +132,26 @@ export function CalendarioView() {
     return mapa;
   }, [dias, orcamentos]);
 
+  // Agenda unificada do dia, agrupada por turno (visitas + orçamentos +
+  // execuções juntos, cada um mantendo o próprio visual de card).
+  const itensPorDia = useMemo(() => {
+    const mapa = new Map<string, ItemAgenda[]>();
+    for (const d of dias) {
+      const ds = ymd(d);
+      const itens: ItemAgenda[] = [
+        ...(eventosPorDia.get(ds) ?? []).map((ev): ItemAgenda => ({ categoria: "VISITA", turno: ev.turno, cliente: ev.cliente, ev })),
+        ...(orcamentosPorDia.get(ds) ?? []).map((c): ItemAgenda => ({ categoria: "ORCAMENTO", turno: (c.manutencao?.turno ?? "DIA") as Turno, cliente: c.cliente.nome, card: c })),
+        ...(execucoesPorDia.get(ds) ?? []).map((c): ItemAgenda => ({ categoria: "EXECUCAO", turno: "DIA" as Turno, cliente: c.cliente.nome, card: c })),
+      ];
+      itens.sort((a, b) => a.cliente.localeCompare(b.cliente));
+      mapa.set(ds, itens);
+    }
+    return mapa;
+  }, [dias, eventosPorDia, orcamentosPorDia, execucoesPorDia]);
+
   const diasVisiveis = useMemo(
-    () => dias.filter((d) => (eventosPorDia.get(ymd(d))?.length ?? 0) + (execucoesPorDia.get(ymd(d))?.length ?? 0) + (orcamentosPorDia.get(ymd(d))?.length ?? 0) > 0),
-    [dias, eventosPorDia, execucoesPorDia, orcamentosPorDia],
+    () => dias.filter((d) => (itensPorDia.get(ymd(d))?.length ?? 0) > 0),
+    [dias, itensPorDia],
   );
 
   // Técnicos (somente tipo TÉCNICO, não terceiros) sem OS hoje.
@@ -176,9 +204,7 @@ export function CalendarioView() {
             <div className="mx-auto mt-12 text-center text-sm text-slate-400">Nenhuma visita agendada nesta semana.</div>
           )}
           {diasVisiveis.map((d) => {
-            const evs = eventosPorDia.get(ymd(d)) ?? [];
-            const execs = execucoesPorDia.get(ymd(d)) ?? [];
-            const orcs = orcamentosPorDia.get(ymd(d)) ?? [];
+            const itens = itensPorDia.get(ymd(d)) ?? [];
             const ehHoje = ymd(d) === hojeStr;
             return (
               <div key={ymd(d)} className={["flex w-60 shrink-0 flex-col self-start rounded-card border bg-white shadow-card dark:bg-slate-900", ehHoje ? "border-brand/40 ring-1 ring-brand/20" : "border-slate-200 dark:border-slate-800"].join(" ")}>
@@ -188,69 +214,61 @@ export function CalendarioView() {
                 </header>
 
                 <div className="flex-1 space-y-3 p-2">
-                  {/* Orçamentos (Manutenção): ocupam o período útil (sem fins de semana). */}
-                  {orcs.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
-                        <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                        Orçamentos <span className="text-slate-300 dark:text-slate-600">· {orcs.length}</span>
-                      </p>
-                      {orcs.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelecionado(c)}
-                          className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-indigo-50 text-indigo-800 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:ring-indigo-500/40"
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="font-semibold">{dataBR(c.manutencao?.dataInicio)} – {dataBR(c.manutencao?.dataFim)}</span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />Orçamento</span>
-                          </div>
-                          <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
-                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.manutencao?.tecnico || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Região:</span> {c.manutencao?.regiao || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Nº orçamento:</span> {c.numeroOrcamento || "—"}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {/* Implantação em execução: ocupa os dias úteis do período (sem fds). */}
-                  {execs.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
-                        <span className="h-2 w-2 rounded-full bg-teal-500" />
-                        Execução · Implantação <span className="text-slate-300 dark:text-slate-600">· {execs.length}</span>
-                      </p>
-                      {execs.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelecionado(c)}
-                          className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-teal-50 text-teal-800 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:ring-teal-500/40"
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="font-semibold">{dataBR(c.dataInicioExecucao)} – {dataBR(c.dataFimExecucao)}</span>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-teal-500" />Execução</span>
-                          </div>
-                          <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
-                          <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.tecnicos || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Aux. Técnico:</span> {c.auxiliarTecnico || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Nº do chip:</span> {c.numeroChip || "—"}</p>
-                          <p className="break-words"><span className="opacity-70">Região:</span> {c.regiao || "—"}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {/* Agenda do dia organizada POR TURNO: visitas, orçamentos e
+                      execuções entram juntos no turno cadastrado, cada tipo com
+                      o próprio visual de card. */}
                   {(["MANHA", "TARDE", "DIA"] as Turno[])
-                    .map((t) => ({ t, itens: evs.filter((e) => e.turno === t) }))
-                    .filter((g) => g.itens.length > 0)
+                    .map((t) => ({ t, grupo: itens.filter((i) => i.turno === t) }))
+                    .filter((g) => g.grupo.length > 0)
                     .map((g) => (
                       <div key={g.t} className="space-y-1.5">
                         <p className="flex items-center gap-1.5 border-b border-slate-100 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
                           <span className={`h-2 w-2 rounded-full ${TURNO_META[g.t].ponto}`} />
-                          {FAIXA[g.t].rotulo} <span className="text-slate-300 dark:text-slate-600">· {g.itens.length}</span>
+                          {FAIXA[g.t].rotulo} <span className="text-slate-300 dark:text-slate-600">· {g.grupo.length}</span>
                         </p>
-                        {g.itens.map((ev) => {
+                        {g.grupo.map((item) => {
+                          if (item.categoria === "ORCAMENTO") {
+                            const c = item.card;
+                            return (
+                              <button
+                                key={`orc-${c.id}`}
+                                type="button"
+                                onClick={() => setSelecionado(c)}
+                                className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-indigo-50 text-indigo-800 ring-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-200 dark:ring-indigo-500/40"
+                              >
+                                <div className="mb-1 flex items-center justify-between gap-2">
+                                  <span className="font-semibold">{dataBR(c.manutencao?.dataInicio)} – {dataBR(c.manutencao?.dataFim)}</span>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />Orçamento</span>
+                                </div>
+                                <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
+                                <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.manutencao?.tecnico || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Região:</span> {c.manutencao?.regiao || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Nº orçamento:</span> {c.numeroOrcamento || "—"}</p>
+                              </button>
+                            );
+                          }
+                          if (item.categoria === "EXECUCAO") {
+                            const c = item.card;
+                            return (
+                              <button
+                                key={`exec-${c.id}`}
+                                type="button"
+                                onClick={() => setSelecionado(c)}
+                                className="block w-full rounded-lg border px-2.5 py-2 text-left text-xs ring-1 ring-inset transition hover:brightness-95 bg-teal-50 text-teal-800 ring-teal-200 dark:bg-teal-500/15 dark:text-teal-200 dark:ring-teal-500/40"
+                              >
+                                <div className="mb-1 flex items-center justify-between gap-2">
+                                  <span className="font-semibold">{dataBR(c.dataInicioExecucao)} – {dataBR(c.dataFimExecucao)}</span>
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold dark:bg-black/20"><span className="h-1.5 w-1.5 rounded-full bg-teal-500" />Execução</span>
+                                </div>
+                                <p className="break-words text-sm font-semibold leading-snug">{c.cliente.nome}</p>
+                                <p className="mt-1 break-words"><span className="opacity-70">Técnico:</span> {c.tecnicos || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Aux. Técnico:</span> {c.auxiliarTecnico || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Nº do chip:</span> {c.numeroChip || "—"}</p>
+                                <p className="break-words"><span className="opacity-70">Região:</span> {c.regiao || "—"}</p>
+                              </button>
+                            );
+                          }
+                          const ev = item.ev;
                           const f = FAIXA[ev.turno];
                           const meta = TURNO_META[ev.turno];
                           const classe = ev.cobrado ? meta.classe : NAO_COBRADO_CLASSE;
